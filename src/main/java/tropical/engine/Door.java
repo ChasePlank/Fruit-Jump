@@ -8,7 +8,7 @@ package tropical.engine;
  */
 public class Door {
     static int nextId = 0;
-    final int id;  // unique ID for save system
+    public final int id;  // unique ID for save system
     
     double x0, y0, x1, y1;  // AABB bounds
     boolean locked = true;

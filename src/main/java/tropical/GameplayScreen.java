@@ -53,11 +53,26 @@ public class GameplayScreen extends Screen {
     // Weapons
     private final Hookshot hookshot;
 
+    // Save/continue
+    private static final String SAVE_FILE = System.getProperty("user.home")
+            + "/.tropical-punch-autosave.txt";
+    private double playTime = 0;
+
     public GameplayScreen(ScreenManager manager, int levelNum) {
+        this(manager, levelNum, null);
+    }
+
+    /**
+     * Full constructor. `resume` = a loaded GameState to restore into the
+     * freshly generated level (autosave continuation), or null for a
+     * fresh run.
+     */
+    public GameplayScreen(ScreenManager manager, int levelNum, SaveSystem.GameState resume) {
         super(manager);
         this.levelNum = levelNum;
 
-        // Generate + build level
+        // Generate + build level (deterministic seed: same levelNum
+        // always makes the same level — saves reference the level number)
         LevelGen gen = new LevelGen(60, 14, 1000L + levelNum);
         map = gen.generate();
         world = new World();
@@ -83,11 +98,38 @@ public class GameplayScreen extends Screen {
         // Weapons
         hookshot = new Hookshot(player);
 
+        // Restore from autosave if provided (level number must match —
+        // the seed determines the level; a save from a different level
+        // can't be applied to this one)
+        if (resume != null && resume.levelNum == levelNum) {
+            new SaveSystem().applyState(resume, player, combat, inventory, world);
+            // -1 = checkpoint spawn marker: restore stats but spawn at
+            // the level's start position, not a mid-level coordinate.
+            if (resume.playerX < 0) {
+                player.x = map.spawnX;
+                player.y = map.spawnY;
+                player.vx = 0;
+                player.vy = 0;
+            }
+        }
+
         canvas = new Canvas(VIEW_W, VIEW_H);
         gc = canvas.getGraphicsContext2D();
 
         root = new javafx.scene.layout.StackPane(canvas);
         root.getStyleClass().add("screen-bg");
+    }
+
+    /** Snapshot current state and write the autosave file. */
+    private void autosave() {
+        SaveSystem.GameState state = SaveSystem.GameState.snapshot(
+            player, combat, inventory, world, "level" + levelNum, playTime);
+        state.levelNum = levelNum;
+        try {
+            new SaveSystem().save(state, SAVE_FILE);
+        } catch (java.io.IOException ex) {
+            System.err.println("autosave failed: " + ex.getMessage());
+        }
     }
 
     @Override
@@ -180,11 +222,28 @@ public class GameplayScreen extends Screen {
             player.vy = 0;
         }
 
-        // Exit reached: next level (replace — no way back)
+        // Exit reached: autosave (next level's checkpoint), then next
+        // level (replace — no way back). The save stores the NEW level's
+        // spawn state (fresh position, carried HP/keys) — Continue
+        // resumes at the next level's start, which is the checkpoint.
         if (Math.abs(player.x - map.exitX) < 24 && Math.abs(player.y - map.exitY) < 40) {
-            manager.replace(new GameplayScreen(manager, levelNum + 1));
+            int nextLevel = levelNum + 1;
+            SaveSystem.GameState checkpoint = new SaveSystem.GameState();
+            checkpoint.levelNum = nextLevel;
+            checkpoint.playerX = -1; checkpoint.playerY = -1;  // -1 = spawn
+            checkpoint.playerHP = (int) combat.playerHP;
+            checkpoint.keys = inventory.keys;
+            checkpoint.playTime = playTime;
+            try {
+                new SaveSystem().save(checkpoint, SAVE_FILE);
+            } catch (java.io.IOException ex) {
+                System.err.println("checkpoint save failed: " + ex.getMessage());
+            }
+            manager.replace(new GameplayScreen(manager, nextLevel));
             return;
         }
+
+        playTime += dt;
 
         // Camera follows (with look-ahead)
         camera.update(dt, player.x, player.y, player.vx);

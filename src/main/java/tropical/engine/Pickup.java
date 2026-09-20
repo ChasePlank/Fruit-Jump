@@ -10,7 +10,7 @@ public class Pickup {
     public enum Type { HEART, KEY }
     
     static int nextId = 0;
-    final int id;  // unique ID for save system
+    public final int id;  // unique ID for save system
     
     public Type type;
     public double x, y;          // center

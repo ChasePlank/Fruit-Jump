@@ -14,7 +14,7 @@ public class Enemy {
     enum AIState { PATROL, CHASE }
     
     static int nextId = 0;
-    final int id;  // unique ID for save system
+    public final int id;  // unique ID for save system
     
     public final Physics.Body body;
     AIState state = AIState.PATROL;
