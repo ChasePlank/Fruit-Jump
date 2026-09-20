@@ -199,55 +199,68 @@ public class GameplayScreen extends Screen {
         gc.setFill(Color.web("#87CEEB"));
         gc.fillRect(0, 0, VIEW_W, VIEW_H);
 
-        // Solid tiles
-        gc.setFill(Color.web("#228B22"));
-        for (Physics.AABB t : world.tiles) drawTile(t);
-        // One-ways
-        gc.setFill(Color.web("#DAA520"));
-        for (Physics.AABB t : world.oneways) drawTile(t);
-        // Spikes
-        gc.setFill(Color.web("#A9A9A9"));
-        for (Physics.AABB t : world.spikes) drawTile(t);
-        // Doors
-        gc.setFill(Color.web("#8B4513"));
-        for (Door d : world.doors) drawTile(d.aabb());
+        // Solid tiles: grass-topped dirt (rect base + grass strip)
+        for (Physics.AABB t : world.tiles) drawGroundTile(t);
+        // Cracked tiles: crack overlay on top of ground
+        for (Physics.AABB t : world.cracked) drawCrackedTile(t);
+        // One-ways: wooden platform
+        for (Physics.AABB t : world.oneways) {
+            gc.setFill(Color.web("#8B5A2B"));
+            drawTile(t);
+            gc.setFill(Color.web("#DAA520"));
+            double sx = camera.worldToScreenX(t.x0), sy = camera.worldToScreenY(t.y0);
+            gc.fillRect(sx, sy, t.x1 - t.x0, 4);
+        }
+        // Spikes: sprite
+        for (Physics.AABB t : world.spikes) {
+            double sx = camera.worldToScreenX(t.x0), sy = camera.worldToScreenY(t.y0);
+            if (sx > VIEW_W || sx + (t.x1 - t.x0) < 0) continue;
+            gc.drawImage(Sprites.spike, sx, sy, 32, 32);
+        }
+        // Doors: sprite (2 tiles tall)
+        for (Door d : world.doors) {
+            if (d.isSolid()) {
+                double sx = camera.worldToScreenX(d.aabb().x0), sy = camera.worldToScreenY(d.aabb().y0);
+                if (sx > VIEW_W || sx + 32 < 0) continue;
+                gc.drawImage(Sprites.door, sx, sy, 32, 64);
+            }
+        }
 
-        // Pickups
+        // Pickups: sprites
         for (Pickup p : world.pickups) {
             if (!p.active) continue;
-            if (p.type == Pickup.Type.HEART) gc.setFill(Color.web("#FF4444"));
-            else gc.setFill(Color.web("#FFD700"));
-            gc.fillRect(camera.worldToScreenX(p.x - p.hw),
-                        camera.worldToScreenY(p.y - p.hh),
-                        p.hw * 2, p.hh * 2);
+            double sx = camera.worldToScreenX(p.x - 8), sy = camera.worldToScreenY(p.y - 8);
+            if (p.type == Pickup.Type.HEART) gc.drawImage(Sprites.heart, sx, sy, 16, 16);
+            else gc.drawImage(Sprites.key, sx, sy, 16, 16);
         }
 
-        // Enemies
+        // Enemies: sprite
         for (Enemy e : world.enemies) {
             if (e.dead) continue;
-            gc.setFill(Color.web("#8B0000"));
-            gc.fillRect(camera.worldToScreenX(e.body.x - e.body.hw),
-                        camera.worldToScreenY(e.body.y - e.body.hh),
-                        e.body.hw * 2, e.body.hh * 2);
+            double sx = camera.worldToScreenX(e.body.x - e.body.hw),
+                    sy = camera.worldToScreenY(e.body.y - e.body.hh);
+            gc.drawImage(Sprites.enemy, sx, sy, e.body.hw * 2, e.body.hh * 2);
         }
 
-        // Player (radioactive banana)
-        gc.setFill(Color.web("#F5A623"));
-        gc.fillRect(camera.worldToScreenX(player.x - player.hw),
-                    camera.worldToScreenY(player.y - player.hh),
-                    player.hw * 2, player.hh * 2);
+        // Exit flag
+        double ex = camera.worldToScreenX(map.exitX - 12), ey = camera.worldToScreenY(map.exitY - 20);
+        if (ex > -32 && ex < VIEW_W) gc.drawImage(Sprites.exit, ex, ey, 16, 24);
+
+        // Player: radioactive banana sprite (48x44 body → 24x22 sprite scaled)
+        gc.drawImage(Sprites.banana,
+                camera.worldToScreenX(player.x - player.hw),
+                camera.worldToScreenY(player.y - player.hh),
+                player.hw * 2, player.hh * 2);
 
         // Projectiles
         for (Projectile p : world.projectiles) {
             if (!p.active) continue;
             if (p.type == Projectile.Type.ARROW) {
-                gc.setFill(Color.web("#DEB887"));
-                gc.fillRect(camera.worldToScreenX(p.x - 6), camera.worldToScreenY(p.y - 2), 12, 4);
+                gc.drawImage(Sprites.arrow, camera.worldToScreenX(p.x - 6), camera.worldToScreenY(p.y - 2), 12, 4);
             } else {
-                // Bomb: pulsing circle, red as fuse burns
-                gc.setFill(p.timer < 0.4 ? Color.web("#FF4500") : Color.web("#2F4F4F"));
-                double r = 6;
-                gc.fillOval(camera.worldToScreenX(p.x - r), camera.worldToScreenY(p.y - r), r * 2, r * 2);
+                // Bomb: red flash as fuse burns
+                gc.drawImage(p.timer < 0.4 ? Sprites.bombFlash : Sprites.bomb,
+                        camera.worldToScreenX(p.x - 6), camera.worldToScreenY(p.y - 6), 12, 12);
             }
         }
 
@@ -257,9 +270,37 @@ public class GameplayScreen extends Screen {
             gc.setLineWidth(3);
             gc.strokeLine(camera.worldToScreenX(player.x), camera.worldToScreenY(player.y),
                           camera.worldToScreenX(hookshot.anchorX), camera.worldToScreenY(hookshot.anchorY));
+            // Hook claw at the anchor
+            gc.setFill(Color.web("#C0C0C0"));
+            double ax = camera.worldToScreenX(hookshot.anchorX), ay = camera.worldToScreenY(hookshot.anchorY);
+            gc.fillOval(ax - 4, ay - 4, 8, 8);
         }
 
         renderHUD();
+    }
+
+    private void drawGroundTile(Physics.AABB t) {
+        double sx = camera.worldToScreenX(t.x0), sy = camera.worldToScreenY(t.y0);
+        double w = t.x1 - t.x0, h = t.y1 - t.y0;
+        if (sx > VIEW_W || sy > VIEW_H || sx + w < 0 || sy + h < 0) return;
+        // Dirt base
+        gc.setFill(Color.web("#8B5A2B"));
+        gc.fillRect(sx, sy, w, h);
+        // Grass top ONLY if nothing solid directly above (a stacked
+        // column of tiles shouldn't have grass bands mid-pillar —
+        // visible in the first screenshot as stripes on every segment)
+        gc.setFill(Color.web("#228B22"));
+        boolean above = false;
+        for (Physics.AABB o : world.tiles) {
+            if (o.x0 == t.x0 && o.y1 == t.y0) { above = true; break; }
+        }
+        if (!above) gc.fillRect(sx, sy, w, Math.min(8, h));
+    }
+
+    private void drawCrackedTile(Physics.AABB t) {
+        double sx = camera.worldToScreenX(t.x0), sy = camera.worldToScreenY(t.y0);
+        if (sx > VIEW_W || sx + 32 < 0) return;
+        gc.drawImage(Sprites.crack, sx, sy, 32, 32);
     }
 
     private void drawTile(Physics.AABB t) {
