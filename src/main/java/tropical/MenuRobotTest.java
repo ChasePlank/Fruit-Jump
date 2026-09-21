@@ -58,6 +58,7 @@ public class MenuRobotTest extends Application {
                     // DOWN twice to Settings, ENTER (real focus routing)
                     robot.keyType(KeyCode.DOWN);
                     robot.keyType(KeyCode.DOWN);
+                    robot.keyType(KeyCode.DOWN);
                     robot.keyType(KeyCode.ENTER);
                 }
                 case 3 -> {

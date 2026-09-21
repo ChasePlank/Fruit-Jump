@@ -62,6 +62,7 @@ public class MenuSmokeTest extends Application {
                 case 2 -> {
                     check("ENTER: title -> MainMenu", topIs(MainMenu.class));
                     key(KeyCode.DOWN); // focus Continue
+                    key(KeyCode.DOWN); // focus Rooms Mode
                     key(KeyCode.DOWN); // focus Settings
                     key(KeyCode.ENTER); // push settings
                 }
@@ -71,6 +72,7 @@ public class MenuSmokeTest extends Application {
                 }
                 case 4 -> {
                     check("ESC: settings -> back to MainMenu", topIs(MainMenu.class));
+                    key(KeyCode.UP); // back to Rooms Mode
                     key(KeyCode.UP); // back to Continue
                     key(KeyCode.UP); // back to New Game
                     key(KeyCode.ENTER); // New Game -> replaces with GameplayScreen

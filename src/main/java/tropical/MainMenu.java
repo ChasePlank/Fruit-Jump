@@ -48,6 +48,13 @@ public class MainMenu extends Screen {
             }
         });
 
+        MenuButton roomsMode = new MenuButton("Rooms Mode (prototype)", () -> {
+            // Zelda-style screen transitions — the design Kinger's Scratch
+            // project is built around. One grid of rooms, camera fixed
+            // per room, edge-crossing moves to the adjacent room.
+            manager.replace(new RoomsScreen(manager, 1));
+        });
+
         MenuButton settings = new MenuButton("Settings", () -> {
             manager.push(new SettingsScreen(manager));
         });
@@ -56,9 +63,9 @@ public class MainMenu extends Screen {
             Platform.exit();
         });
 
-        buttons = new MenuButton[]{newGame, continueBtn, settings, quit};
+        buttons = new MenuButton[]{newGame, continueBtn, roomsMode, settings, quit};
 
-        VBox menu = new VBox(20, title, newGame, continueBtn, settings, quit);
+        VBox menu = new VBox(20, title, newGame, continueBtn, roomsMode, settings, quit);
         menu.getStyleClass().add("center-column");
 
         root = new StackPane(menu);
