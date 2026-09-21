@@ -7,9 +7,9 @@
     <artifactId>tropical-punch</artifactId>
     <version>1.0.0</version>
     <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
-        <javafx.version>17.0.2</javafx.version>
+        <maven.compiler.source>27</maven.compiler.source>
+        <maven.compiler.target>27</maven.compiler.target>
+        <javafx.version>27</javafx.version>
     </properties>
     <dependencies>
         <dependency>
