@@ -26,7 +26,12 @@ public class GameplayScreen extends Screen {
     // Tuned constants (match the validator's verified values)
     private static final double RUN_SPEED = 200;
     private static final double JUMP_V = -420;
+    // High-res: window and canvas are 2x the engine's logical 800x600.
+    // The engine (physics, world coords) is untouched — only the VIEW
+    // scales. Nearest-neighbor smoothing keeps pixel art crisp at 2x.
+    private static final double SCALE = 2.0;
     private static final int VIEW_W = 800, VIEW_H = 600;
+    private static final int CANVAS_W = (int) (VIEW_W * SCALE), CANVAS_H = (int) (VIEW_H * SCALE);
 
     // Engine state
     private final World world;
@@ -91,8 +96,11 @@ public class GameplayScreen extends Screen {
             world.addEnemy(new Enemy(e[0], e[1], 24, 24));
         }
 
-        // Camera: room = full level (60*32 x 14*32)
-        camera = new Camera(VIEW_W, VIEW_H);
+        // Camera: room = full level (60*32 x 14*32). Viewport is the
+        // PHYSICAL canvas size — worldToScreen returns physical pixels,
+        // so all draw calls (sprites at 2x, tiles at 2x) land 1:1 on
+        // screen with no resampling.
+        camera = new Camera(CANVAS_W, CANVAS_H);
         camera.setRoom(60 * 32, 14 * 32);
 
         // Weapons
@@ -113,7 +121,7 @@ public class GameplayScreen extends Screen {
             }
         }
 
-        canvas = new Canvas(VIEW_W, VIEW_H);
+        canvas = new Canvas(CANVAS_W, CANVAS_H);
         gc = canvas.getGraphicsContext2D();
 
         root = new javafx.scene.layout.StackPane(canvas);
@@ -264,9 +272,14 @@ public class GameplayScreen extends Screen {
     }
 
     private void render() {
+        // All rendering is in PHYSICAL pixels (canvas 1600x1200).
+        // worldToScreen returns physical coords; sprites are pre-
+        // scaled 2x and drawn at 2x logical size — 1:1, no resampling.
+        final double S = SCALE;
+
         // Sky
         gc.setFill(Color.web("#87CEEB"));
-        gc.fillRect(0, 0, VIEW_W, VIEW_H);
+        gc.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
         // Solid tiles: grass-topped dirt (rect base + grass strip)
         for (Physics.AABB t : world.tiles) drawGroundTile(t);
@@ -274,62 +287,64 @@ public class GameplayScreen extends Screen {
         for (Physics.AABB t : world.cracked) drawCrackedTile(t);
         // One-ways: wooden platform
         for (Physics.AABB t : world.oneways) {
-            gc.setFill(Color.web("#8B5A2B"));
-            drawTile(t);
-            gc.setFill(Color.web("#DAA520"));
             double sx = camera.worldToScreenX(t.x0), sy = camera.worldToScreenY(t.y0);
-            gc.fillRect(sx, sy, t.x1 - t.x0, 4);
+            double w = (t.x1 - t.x0) * S, h = (t.y1 - t.y0) * S;
+            if (sx > CANVAS_W || sy > CANVAS_H || sx + w < 0 || sy + h < 0) continue;
+            gc.setFill(Color.web("#8B5A2B"));
+            gc.fillRect(sx, sy, w, h);
+            gc.setFill(Color.web("#DAA520"));
+            gc.fillRect(sx, sy, w, 8);
         }
-        // Spikes: sprite
+        // Spikes: sprite (32 logical → 64 physical)
         for (Physics.AABB t : world.spikes) {
             double sx = camera.worldToScreenX(t.x0), sy = camera.worldToScreenY(t.y0);
-            if (sx > VIEW_W || sx + (t.x1 - t.x0) < 0) continue;
-            gc.drawImage(Sprites.spike, sx, sy, 32, 32);
+            if (sx > CANVAS_W || sx + 64 < 0) continue;
+            gc.drawImage(Sprites.spike2x, sx, sy, 32 * S, 32 * S);
         }
-        // Doors: sprite (3 tiles tall, from fr-3 to floor)
+        // Doors: sprite (4 tiles tall now)
         for (Door d : world.doors) {
             if (d.isSolid()) {
                 double sx = camera.worldToScreenX(d.aabb().x0), sy = camera.worldToScreenY(d.aabb().y0);
-                if (sx > VIEW_W || sx + 32 < 0) continue;
-                gc.drawImage(Sprites.door, sx, sy, 32, 32 * 4);
+                if (sx > CANVAS_W || sx + 64 < 0) continue;
+                gc.drawImage(Sprites.door2x, sx, sy, 32 * S, 32 * 4 * S);
             }
         }
 
-        // Pickups: sprites
+        // Pickups: sprites at 2x
         for (Pickup p : world.pickups) {
             if (!p.active) continue;
             double sx = camera.worldToScreenX(p.x - 8), sy = camera.worldToScreenY(p.y - 8);
-            if (p.type == Pickup.Type.HEART) gc.drawImage(Sprites.heart, sx, sy, 16, 16);
-            else gc.drawImage(Sprites.key, sx, sy, 16, 16);
+            if (p.type == Pickup.Type.HEART) gc.drawImage(Sprites.heart2x, sx, sy, 16 * S, 16 * S);
+            else gc.drawImage(Sprites.key2x, sx, sy, 16 * S, 16 * S);
         }
 
-        // Enemies: sprite
+        // Enemies: sprite at 2x
         for (Enemy e : world.enemies) {
             if (e.dead) continue;
             double sx = camera.worldToScreenX(e.body.x - e.body.hw),
                     sy = camera.worldToScreenY(e.body.y - e.body.hh);
-            gc.drawImage(Sprites.enemy, sx, sy, e.body.hw * 2, e.body.hh * 2);
+            gc.drawImage(Sprites.enemy2x, sx, sy, e.body.hw * 2 * S, e.body.hh * 2 * S);
         }
 
-        // Exit flag
+        // Exit flag (16x24 logical → 32x48 physical)
         double ex = camera.worldToScreenX(map.exitX - 12), ey = camera.worldToScreenY(map.exitY - 20);
-        if (ex > -32 && ex < VIEW_W) gc.drawImage(Sprites.exit, ex, ey, 16, 24);
+        if (ex > -64 && ex < CANVAS_W) gc.drawImage(Sprites.exit2x, ex, ey, 16 * S, 24 * S);
 
-        // Player: radioactive banana sprite (48x44 body → 24x22 sprite scaled)
-        gc.drawImage(Sprites.banana,
+        // Player: radioactive banana sprite
+        gc.drawImage(Sprites.banana2x,
                 camera.worldToScreenX(player.x - player.hw),
                 camera.worldToScreenY(player.y - player.hh),
-                player.hw * 2, player.hh * 2);
+                player.hw * 2 * S, player.hh * 2 * S);
 
         // Projectiles
         for (Projectile p : world.projectiles) {
             if (!p.active) continue;
             if (p.type == Projectile.Type.ARROW) {
-                gc.drawImage(Sprites.arrow, camera.worldToScreenX(p.x - 6), camera.worldToScreenY(p.y - 2), 12, 4);
+                gc.drawImage(Sprites.arrow2x, camera.worldToScreenX(p.x - 6), camera.worldToScreenY(p.y - 2), 12 * S, 4 * S);
             } else {
                 // Bomb: red flash as fuse burns
-                gc.drawImage(p.timer < 0.4 ? Sprites.bombFlash : Sprites.bomb,
-                        camera.worldToScreenX(p.x - 6), camera.worldToScreenY(p.y - 6), 12, 12);
+                gc.drawImage(p.timer < 0.4 ? Sprites.bombFlash2x : Sprites.bomb2x,
+                        camera.worldToScreenX(p.x - 6), camera.worldToScreenY(p.y - 6), 12 * S, 12 * S);
             }
         }
 
@@ -341,22 +356,23 @@ public class GameplayScreen extends Screen {
             double tipX = hookshot.isPulling() ? hookshot.anchorX : hookshot.hookX;
             double tipY = hookshot.isPulling() ? hookshot.anchorY : hookshot.hookY;
             gc.setStroke(Color.web("#C0C0C0"));
-            gc.setLineWidth(3);
+            gc.setLineWidth(3 * S);
             gc.strokeLine(camera.worldToScreenX(player.x), camera.worldToScreenY(player.y),
                           camera.worldToScreenX(tipX), camera.worldToScreenY(tipY));
             // Hook claw at the tip
             gc.setFill(Color.web("#C0C0C0"));
             double ax = camera.worldToScreenX(tipX), ay = camera.worldToScreenY(tipY);
-            gc.fillOval(ax - 4, ay - 4, 8, 8);
+            gc.fillOval(ax - 4 * S, ay - 4 * S, 8 * S, 8 * S);
         }
 
         renderHUD();
     }
 
     private void drawGroundTile(Physics.AABB t) {
+        final double S = SCALE;
         double sx = camera.worldToScreenX(t.x0), sy = camera.worldToScreenY(t.y0);
-        double w = t.x1 - t.x0, h = t.y1 - t.y0;
-        if (sx > VIEW_W || sy > VIEW_H || sx + w < 0 || sy + h < 0) return;
+        double w = (t.x1 - t.x0) * S, h = (t.y1 - t.y0) * S;
+        if (sx > CANVAS_W || sy > CANVAS_H || sx + w < 0 || sy + h < 0) return;
         // Dirt base
         gc.setFill(Color.web("#8B5A2B"));
         gc.fillRect(sx, sy, w, h);
@@ -368,36 +384,32 @@ public class GameplayScreen extends Screen {
         for (Physics.AABB o : world.tiles) {
             if (o.x0 == t.x0 && o.y1 == t.y0) { above = true; break; }
         }
-        if (!above) gc.fillRect(sx, sy, w, Math.min(8, h));
+        if (!above) gc.fillRect(sx, sy, w, Math.min(16, h));
     }
 
     private void drawCrackedTile(Physics.AABB t) {
+        final double S = SCALE;
         double sx = camera.worldToScreenX(t.x0), sy = camera.worldToScreenY(t.y0);
-        if (sx > VIEW_W || sx + 32 < 0) return;
-        gc.drawImage(Sprites.crack, sx, sy, 32, 32);
-    }
-
-    private void drawTile(Physics.AABB t) {
-        double sx = camera.worldToScreenX(t.x0), sy = camera.worldToScreenY(t.y0);
-        double w = t.x1 - t.x0, h = t.y1 - t.y0;
-        // Cull off-screen
-        if (sx > VIEW_W || sy > VIEW_H || sx + w < 0 || sy + h < 0) return;
-        gc.fillRect(sx, sy, w, h);
+        if (sx > CANVAS_W || sx + 64 < 0) return;
+        gc.drawImage(Sprites.crack2x, sx, sy, 32 * S, 32 * S);
     }
 
     private void renderHUD() {
         gc.setFont(Font.font("Arial", 20));
+        // Reset transform for HUD: text should render at native res,
+        // not scaled (scaled text is blurry and mispositioned).
+        gc.setTransform(1, 0, 0, 1, 0, 0);
         // Hearts
         gc.setFill(Color.RED);
         for (int i = 0; i < (int) combat.playerHP; i++) {
-            gc.fillText("<3", 20 + i * 34, 32);
+            gc.fillText("<3", 40 + i * 68, 64);
         }
         // Keys
         gc.setFill(Color.GOLD);
-        gc.fillText("Key x" + inventory.keys, 20, 60);
+        gc.fillText("Key x" + inventory.keys, 40, 120);
         // Level
         gc.setFill(Color.WHITE);
-        gc.fillText("Level " + levelNum, VIEW_W - 100, 32);
+        gc.fillText("Level " + levelNum, CANVAS_W - 200, 64);
     }
 
     @Override
@@ -410,13 +422,17 @@ public class GameplayScreen extends Screen {
                 e.consume();
             }
             case X -> {
-                // Hookshot: fires toward facing direction (last horizontal
-                // input; up if holding jump). Instant raycast at fire time.
-                double dx = (right ? 1 : 0) - (left ? 1 : 0);
-                double dy = 0;
-                if (e.isShiftDown()) dy = -1;  // Shift+X = fire upward
-                if (dx == 0 && dy == 0) dx = 1;  // default: face right
-                hookshot.fire(dx, dy, world);
+                // Hookshot: X while pulling = cancel (player agency —
+                // a pull must never hold the player hostage).
+                if (hookshot.isPulling()) {
+                    hookshot.release();
+                } else {
+                    double dx = (right ? 1 : 0) - (left ? 1 : 0);
+                    double dy = 0;
+                    if (e.isShiftDown()) dy = -1;  // Shift+X = fire upward
+                    if (dx == 0 && dy == 0) dx = 1;  // default: face right
+                    hookshot.fire(dx, dy, world);
+                }
                 e.consume();
             }
             case F -> {

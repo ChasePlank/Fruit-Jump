@@ -95,7 +95,15 @@ public class ScreenManager {
         world.tiles.addAll(newRoom.tiles);
         world.oneways.addAll(newRoom.oneways);
         
-        // Reposition player at entry edge
+        // Reposition player at entry edge. Vertical entries (north/south)
+        // keep the old simple placement. Horizontal entries (east/west)
+        // use SAFE SPAWN: mid-room height (the old placement) is often
+        // mid-air or INSIDE geometry — an embedded body triggers the
+        // physics teleport every frame, which wedges the player into a
+        // wall with input overridden (playtest: "stuck going left,
+        // couldn't counter"). Instead: raycast down from the top of the
+        // room at the entry x, find the first solid surface, place the
+        // player standing on it.
         double margin = 50; // pixels from edge
         switch (entryEdge) {
             case 0: // Enter from north
@@ -108,16 +116,18 @@ public class ScreenManager {
                 player.y = newRoom.height - margin - player.hh;
                 player.vy = 0;
                 break;
-            case 2: // Enter from east
+            case 2: { // Enter from east — safe spawn on ground
                 player.x = newRoom.width - margin - player.hw;
-                player.y = newRoom.height / 2;
                 player.vx = 0;
+                placeOnGround(newRoom, world);
                 break;
-            case 3: // Enter from west
+            }
+            case 3: { // Enter from west — safe spawn on ground
                 player.x = margin + player.hw;
-                player.y = newRoom.height / 2;
                 player.vx = 0;
+                placeOnGround(newRoom, world);
                 break;
+            }
         }
         
         // Reset grounded state
@@ -125,6 +135,30 @@ public class ScreenManager {
         
         // Update current room
         currentRoom = newRoom;
+    }
+    
+    /**
+     * Place the player standing on the first solid surface below the
+     * top of the room at their current x. Falls back to mid-room if
+     * no ground found (open pit — shouldn't happen, rooms are walled).
+     */
+    private void placeOnGround(Room newRoom, World world) {
+        double probeX = player.x;
+        double bestTop = -1;
+        for (Physics.AABB t : newRoom.tiles) {
+            // tile spans the probe x?
+            if (probeX >= t.x0 && probeX <= t.x1) {
+                if (t.y0 > player.hh && (bestTop < 0 || t.y0 < bestTop)) {
+                    bestTop = t.y0;  // highest surface below head height
+                }
+            }
+        }
+        if (bestTop > 0) {
+            player.y = bestTop - player.hh - 1;  // feet just above surface
+        } else {
+            player.y = newRoom.height / 2;  // fallback: old behavior
+        }
+        player.vy = 0;
     }
     
     public String currentRoomId() {

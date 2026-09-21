@@ -24,11 +24,11 @@ public class TitleScreen extends Screen {
 
         Label title = new Label("TROPICAL PUNCH");
         title.getStyleClass().add("title-text");
-        title.setFont(Font.font("Arial", 48));
+        title.setFont(Font.font("Arial", 80));
 
         pressStart = new Label("Press Start");
         pressStart.getStyleClass().add("press-start");
-        pressStart.setFont(Font.font("Arial", 20));
+        pressStart.setFont(Font.font("Arial", 36));
 
         VBox content = new VBox(40, title, pressStart);
         content.getStyleClass().add("center-column");

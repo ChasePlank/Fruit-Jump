@@ -22,8 +22,8 @@ public class MenuButton extends Button {
         this.action = action;
 
         getStyleClass().add("menu-button");
-        setFont(Font.font("Arial", 24));
-        setMinWidth(200);
+        setFont(Font.font("Arial", 32));
+        setMinWidth(400);
         setFocusTraversable(true);
 
         // Mouse click

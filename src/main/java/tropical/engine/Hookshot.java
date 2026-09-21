@@ -29,6 +29,15 @@ public class Hookshot {
     public double anchorX, anchorY;     // attached anchor point
     Physics.Body player;
     
+    // Failsafes against a stuck pull (found by playtest: firing at a
+    // ledge lip anchors somewhere the pull can't reach — the player
+    // hangs against geometry with input ignored, unable to counter).
+    double pullTimer = 0;              // total time spent pulling
+    double stallTimer = 0;              // time with no progress toward anchor
+    double lastDist = Double.MAX_VALUE; // distance to anchor last frame
+    static final double MAX_PULL_TIME = 1.5;   // hard cap: release
+    static final double STALL_TIME = 0.3;      // no progress for 0.3s: release
+    
     public Hookshot(Physics.Body player) {
         this.player = player;
     }
@@ -63,6 +72,9 @@ public class Hookshot {
             hookY = anchorY;
             state = State.PULLING;
             player.noGravity = true;
+            pullTimer = 0;
+            stallTimer = 0;
+            lastDist = Double.MAX_VALUE;
         } else {
             // No anchor — retract immediately
             hookX = player.x + dirX * MAX_RANGE;
@@ -106,6 +118,26 @@ public class Hookshot {
                 double dx = anchorX - player.x;
                 double dy = anchorY - player.y;
                 double dist = Math.sqrt(dx*dx + dy*dy);
+                
+                // Failsafes: a pull that can't make progress (anchor
+                // behind geometry, player wedged) must not hold the
+                // player hostage. Hard time cap + stall detection.
+                pullTimer += dt;
+                if (pullTimer > MAX_PULL_TIME) {
+                    release();
+                    break;
+                }
+                if (dist > lastDist - 1.0) {
+                    // No meaningful progress this frame
+                    stallTimer += dt;
+                    if (stallTimer > STALL_TIME) {
+                        release();
+                        break;
+                    }
+                } else {
+                    stallTimer = 0;
+                }
+                lastDist = dist;
                 
                 if (dist < RELEASE_DIST) {
                     // Close enough — release with momentum

@@ -15,7 +15,10 @@ import tropical.engine.*;
  * around — distinct from the scrolling GameplayScreen.
  */
 public class RoomsScreen extends Screen {
+    // 2x render scale: canvas 1600x960, room logic at 800x480.
+    static final double S = 2.0;
     static final int VIEW_W = 800, VIEW_H = 480;
+    static final int CANVAS_W = (int)(VIEW_W * S), CANVAS_H = (int)(VIEW_H * S);
 
     final RoomWorld world;
     final tropical.engine.ScreenManager screens;  // engine room-transition manager
@@ -55,7 +58,7 @@ public class RoomsScreen extends Screen {
         phys.tiles.addAll(start.getTiles());
         phys.oneways.addAll(start.getOneways());
 
-        canvas = new Canvas(VIEW_W, VIEW_H);
+        canvas = new Canvas(CANVAS_W, CANVAS_H);
         gc = canvas.getGraphicsContext2D();
         root = new javafx.scene.layout.StackPane(canvas);
         root.getStyleClass().add("screen-bg");
@@ -102,31 +105,33 @@ public class RoomsScreen extends Screen {
     }
 
     void render() {
+        // All drawing in physical pixels: room coords * S.
         // sky
         gc.setFill(Color.web("#87CEEB"));
-        gc.fillRect(0, 0, VIEW_W, VIEW_H);
-        // room tiles (fixed camera: world coords = screen coords)
-        // (current room tiles already in phys.tiles; draw those)
+        gc.fillRect(0, 0, CANVAS_W, CANVAS_H);
+        // room tiles (fixed camera: world coords = screen coords, scaled)
         for (Physics.AABB t : phys.tiles) drawGround(t);
         for (Physics.AABB o : phys.oneways) {
             gc.setFill(Color.web("#DEB887"));
-            gc.fillRect(o.x0, o.y0, o.x1 - o.x0, o.y1 - o.y0);
+            gc.fillRect(o.x0 * S, o.y0 * S, (o.x1 - o.x0) * S, (o.y1 - o.y0) * S);
         }
-        // player
-        gc.drawImage(Sprites.banana, player.x - player.hw, player.y - player.hh);
+        // player (2x sprite at 2x size — 1:1, crisp)
+        gc.drawImage(Sprites.banana2x, (player.x - player.hw) * S, (player.y - player.hh) * S,
+                player.hw * 2 * S, player.hh * 2 * S);
         // HUD: current room id
         gc.setFill(Color.WHITE);
-        gc.fillText("Room " + screens.currentRoomId(), VIEW_W - 100, 20);
+        gc.setFont(javafx.scene.text.Font.font("Arial", 24));
+        gc.fillText("Room " + screens.currentRoomId(), CANVAS_W - 160, 40);
     }
 
     void drawGround(Physics.AABB t) {
         gc.setFill(Color.web("#8B5A2B"));
-        gc.fillRect(t.x0, t.y0, t.x1 - t.x0, t.y1 - t.y0);
+        gc.fillRect(t.x0 * S, t.y0 * S, (t.x1 - t.x0) * S, (t.y1 - t.y0) * S);
         boolean above = false;
         for (Physics.AABB o : phys.tiles) if (o.x0 == t.x0 && o.y1 == t.y0) { above = true; break; }
         if (!above) {
             gc.setFill(Color.web("#228B22"));
-            gc.fillRect(t.x0, t.y0, t.x1 - t.x0, Math.min(8, t.y1 - t.y0));
+            gc.fillRect(t.x0 * S, t.y0 * S, (t.x1 - t.x0) * S, Math.min(16, (t.y1 - t.y0) * S));
         }
     }
 

@@ -25,7 +25,7 @@ public class MainMenu extends Screen {
 
         Label title = new Label("Main Menu");
         title.getStyleClass().add("menu-title");
-        title.setFont(Font.font("Arial", 32));
+        title.setFont(Font.font("Arial", 56));
 
         MenuButton newGame = new MenuButton("New Game", () -> {
             // Start level 1 — replace the menu (no way back via pop)

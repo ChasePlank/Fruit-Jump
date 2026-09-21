@@ -24,22 +24,22 @@ public class GameOverScreen extends Screen {
         
         Label title = new Label("GAME OVER");
         title.getStyleClass().add("title-text");
-        title.setFont(Font.font("Arial", 48));
+        title.setFont(Font.font("Arial", 80));
         title.setStyle("-fx-text-fill: #ff4444;");
         
-        Label stats = new Label(String.format("Reached Level %d\nTime: %.1f seconds", 
+        Label stats = new Label(String.format("Reached Level %d%nTime: %.1f seconds", 
             levelReached, playTime));
         stats.getStyleClass().add("menu-item");
-        stats.setFont(Font.font("Arial", 24));
+        stats.setFont(Font.font("Arial", 36));
         stats.setStyle("-fx-text-fill: white;");
         
         Label retry = new Label("Press ENTER to Retry");
         retry.getStyleClass().add("menu-item");
-        retry.setFont(Font.font("Arial", 20));
+        retry.setFont(Font.font("Arial", 28));
         
         Label menu = new Label("Press ESC for Main Menu");
         menu.getStyleClass().add("menu-item");
-        menu.setFont(Font.font("Arial", 20));
+        menu.setFont(Font.font("Arial", 28));
         
         VBox content = new VBox(40, title, stats, retry, menu);
         content.getStyleClass().add("center-column");

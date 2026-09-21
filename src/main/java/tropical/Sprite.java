@@ -12,13 +12,32 @@ import javafx.scene.image.PixelWriter;
 public class Sprite {
     /** Build a WritableImage from a char grid + palette. */
     public static WritableImage build(String[] rows, java.util.Map<Character, String> palette) {
-        int h = rows.length;
-        int w = rows[0].length();
-        WritableImage img = new WritableImage(w, h);
+        return buildScaled(rows, palette, rows[0].length(), rows.length);
+    }
+
+    /**
+     * Build a sprite at an arbitrary destination size using nearest-
+     * neighbor sampling from the char grid. Each destination pixel maps
+     * to one grid cell — the pixel grid stays crisp at any scale.
+     *
+     * Used to pre-scale sprites to their exact PHYSICAL draw size (2x
+     * the logical size): at render time the image lands 1:1 on screen,
+     * so JavaFX's bilinear pipeline never resamples the art. (JavaFX 17
+     * has no smoothing toggle on GraphicsContext — pre-scaling is the
+     * only way to keep pixel art crisp.)
+     */
+    public static WritableImage buildScaled(String[] rows, java.util.Map<Character, String> palette,
+                                            int dstW, int dstH) {
+        int srcH = rows.length;
+        int srcW = rows[0].length();
+        WritableImage img = new WritableImage(dstW, dstH);
         PixelWriter pw = img.getPixelWriter();
-        for (int y = 0; y < h; y++) {
-            for (int x = 0; x < w; x++) {
-                char c = rows[y].charAt(x);
+        for (int y = 0; y < dstH; y++) {
+            int sy = y * srcH / dstH;
+            String row = rows[sy];
+            for (int x = 0; x < dstW; x++) {
+                int sx = x * srcW / dstW;
+                char c = row.charAt(sx);
                 if (c == ' ') continue;
                 String hex = palette.get(c);
                 if (hex == null) continue;

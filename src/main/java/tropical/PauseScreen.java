@@ -25,7 +25,7 @@ public class PauseScreen extends Screen {
 
         Label title = new Label("Paused");
         title.getStyleClass().add("menu-title");
-        title.setFont(Font.font("Arial", 32));
+        title.setFont(Font.font("Arial", 56));
 
         MenuButton resume = new MenuButton("Resume", manager::pop);
         MenuButton quit = new MenuButton("Quit to Menu", () -> {
