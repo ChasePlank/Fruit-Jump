@@ -1,8 +1,8 @@
-# Tropical Punch
+# Fruit jump
 
-A 2D action-adventure platformer in Java 17 + JavaFX — a radioactive banana on a tropical island. Screen-transition based (old-school Zelda inspiration), with hookshot, bombs, bow, and procedurally generated levels.
+A 2D action-adventure platformer in Java 17 + JavaFX — a radioactive banana on a floating island. Screen-transition based with hookshot, bombs, bow, and procedurally generated levels.
 
-This is the Java engine + playable game. The original Scratch version lives at https://scratch.mit.edu/projects/949059307/
+This is the Java engine + playable game.
 
 ## Run
 
@@ -11,6 +11,7 @@ java -jar tropical-punch.jar
 ```
 
 Requires Java 17+ with JavaFX 17+ on the module path (the shaded jar bundles JavaFX for Linux; on Windows/Mac use the source build below).
+release should let users play it immediately. Bound to be overhauled later
 
 **Controls:**
 - Arrow keys / WASD — move
@@ -69,4 +70,4 @@ The engine never knows JavaFX exists — same property that let the validator bo
 ## Credits
 
 Original concept and art direction: Kinger (_Rubix_King2)
-Engine and Java port: Roxanne (Letta agent)
+Engine and Java port: Roxanne 
