@@ -76,34 +76,34 @@ public class Sprite {
         return out;
     }
 
-    // ---- Player: radioactive banana character, facing right, 12x22 ----
-    // A banana standing on end (classic crescent), with the face placed
-    // on the RIGHT half so the left/right flip is clearly visible (the
-    // old sprite's features were centered — it "faced the camera" and
-    // the flip did nothing, playtest feedback). Brown stem on top.
+    // ---- Player: radioactive banana character, facing right, 14x22 ----
+    // Face (eyes + mouth) is on the RIGHT half — the direction of
+    // travel. Earlier version had features drifting left, so the base
+    // sprite read as looking over its shoulder (playtest: "always
+    // looking behind itself").
     static String[] BANANA = {
         "      BB      ",
         "     KBBK     ",
         "    KYYYYK    ",
         "   KYYYYYYK   ",
         "   KYYYYYYYK  ",
-        "  KYYWYWYYYK  ",
-        "  KYYWYWYYYK  ",
-        "  KYYYYYYYYYK ",
-        "  KYYYYYKKYYK ",
-        "  KYYYYKYYYK  ",
-        "  KYYYYYYYYYK ",
-        "  KYYYYYYYYYK ",
+        "  KYYYYWYWYK  ",
+        "  KYYYYWYWYK  ",
+        "  KYYYYYYYYK  ",
+        "  KYYYKKYYYK  ",
+        "  KYYKYKYKYK  ",
+        "  KYYYYYYYYK  ",
+        "  KYYYYYYYYK  ",
         "  KGGYYYYGGK  ",
         "  KYYGYYGYYK  ",
-        "  KYYYYYYYYYK ",
-        "   KYYYYYYYK  ",
-        "   KYYYYYYYK  ",
-        "    KYYYYYK   ",
-        "    KYYYYYK   ",
-        "     KYYYK    ",
-        "     KYYYK    ",
-        "      KKK     ",
+        "  KYYYYYYYYK  ",
+        "   KYYYYYYK   ",
+        "   KYYYYYYK   ",
+        "    KYYYYK    ",
+        "    KYYYYK    ",
+        "     KYYK     ",
+        "     KYYK     ",
+        "      KK      ",
     };
 
     // ---- Enemy: banana-eating monkey, 16x16 ----

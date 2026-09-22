@@ -21,7 +21,7 @@ public class Enemy {
     
     double patrolSpeed = 60;
     double chaseSpeed = 110;
-    int dir = 1; // 1 = right, -1 = left
+    public int dir = 1; // 1 = right, -1 = left
     
     // Aggro
     double aggroRange = 220;    // horizontal distance to start chasing

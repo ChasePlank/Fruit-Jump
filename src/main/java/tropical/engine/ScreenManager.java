@@ -31,6 +31,11 @@ public class ScreenManager {
         rooms.put(room.id, room);
         return this;
     }
+
+    /** Room lookup by id (for content loading on room entry). */
+    public Room getRoom(String id) {
+        return rooms.get(id);
+    }
     
     /** Start in a specific room. */
     public ScreenManager start(String roomId) {

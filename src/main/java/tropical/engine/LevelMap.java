@@ -93,12 +93,14 @@ public class LevelMap {
                         // on the floor top (fr). The collision AABB is
                         // taller — 3 cells of invisible wall above the
                         // door (top at fr-3, bottom at fr) so it can't be
-                        // jumped over (apex ~73px). Playtest fixes: the
-                        // old box ran y-2*32 to y+2*32, dipping a tile
-                        // INTO the floor ("stretched down") and the
-                        // renderer drew the sprite across the whole box.
+                        // jumped over (apex ~73px). Bug history: first
+                        // box ran to y+2*TILE (dipped into floor, sprite
+                        // stretched down); the "fix" set bottom to y
+                        // (top of the 'D' cell) — one tile ABOVE the
+                        // floor, leaving a 32px gap enemies walked
+                        // through (playtest round 3).
                         {
-                            Door d = new Door(x, y - TILE * 2, x + TILE, y);
+                            Door d = new Door(x, y - TILE * 2, x + TILE, y + TILE);
                             d.visibleH = TILE * 2;
                             doors.add(d);
                         }

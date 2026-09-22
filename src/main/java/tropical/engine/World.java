@@ -77,6 +77,19 @@ public class World {
     public void addBody(Physics.Body b) {
         bodies.add(b);
     }
+
+    /** Clear all room content for a room swap (top-down prototype):
+     *  bodies, tiles, oneways, enemies, projectiles, pickups, doors.
+     *  The caller re-adds the player and the new room's geometry. */
+    public void clearRoom() {
+        bodies.clear();
+        tiles.clear();
+        oneways.clear();
+        enemies.clear();
+        projectiles.clear();
+        pickups.clear();
+        doors.clear();
+    }
     
     /** Add an enemy (also adds its body). */
     public void addEnemy(Enemy e) {

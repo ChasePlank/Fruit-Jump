@@ -69,6 +69,13 @@ public class RoomWorld {
             else if (b[0] > a[0]) { ra.connectSouth(b[0] + "," + b[1]); rb.connectNorth(a[0] + "," + a[1]); }
             else { ra.connectNorth(b[0] + "," + b[1]); rb.connectSouth(a[0] + "," + a[1]); }
         }
+
+        // Per-room content: enemies, pickups, doors (playtest: rooms
+        // were "barren" — 4 empty rooms with nothing to do)
+        for (int i = 0; i < path.size(); i++) {
+            int[] p = path.get(i);
+            populateRoom(grid[p[0]][p[1]], i, i == 0);
+        }
     }
 
     boolean onPath(List<int[]> path, int r, int c) {
@@ -150,7 +157,90 @@ public class RoomWorld {
         return room;
     }
 
+    /** Room themes (biomes). Theme changes every 10 rooms — entering a
+     *  new terrain (playtest: "theme changing every 10 rooms as if
+     *  entering a new terrain or biome"). */
+    public enum Theme {
+        JUNGLE("#228B22", "#8B5A2B"),   // green floor, brown blocks
+        BEACH("#F4E4BC", "#C2B280"),    // sand floor, sandstone blocks
+        CAVE("#3A3A3A", "#5A5A5A"),     // dark floor, gray stone
+        TEMPLE("#D4C48A", "#A8965A");    // gold floor, ancient stone
+
+        public final String floorColor, blockColor;
+        Theme(String floor, String block) {
+            this.floorColor = floor;
+            this.blockColor = block;
+        }
+    }
+
+    /** Theme for a room, cycling every 10 rooms along the main path. */
+    public Theme themeFor(String roomId) {
+        int idx = mainPath.indexOf(roomId);
+        if (idx < 0) idx = 0;
+        Theme[] all = Theme.values();
+        return all[(idx / 10) % all.length];
+    }
+
     boolean hasPathNeighbor(List<int[]> path, int rr, int cc) {
         return onPath(path, rr, cc);
+    }
+
+    // ---- Per-room content (enemies, pickups, doors) ----
+    // Stored per room; RoomsScreen loads them on room entry.
+
+    /** Enemies in a room: {x, y, patrolDir} — top-down monkeys. */
+    public final java.util.Map<String, java.util.List<double[]>> roomEnemies = new java.util.HashMap<>();
+    /** Pickups in a room. */
+    public final java.util.Map<String, java.util.List<Pickup>> roomPickups = new java.util.HashMap<>();
+    /** Doors in a room (top-down: block a doorway until unlocked). */
+    public final java.util.Map<String, java.util.List<Door>> roomDoors = new java.util.HashMap<>();
+
+    /** Populate content for one room: 1-3 enemies (not in the start
+     *  room), 2-4 coins, occasionally a heart, and every 4th path room
+     *  a locked door on its EAST doorway with a key placed in the
+     *  PREVIOUS room (the key is always findable before the door —
+     *  same lock-and-key rule as the platformer). */
+    void populateRoom(Room room, int pathIdx, boolean isStart) {
+        String id = room.id;
+        java.util.List<double[]> foes = new java.util.ArrayList<>();
+        java.util.List<Pickup> items = new java.util.ArrayList<>();
+        java.util.List<Door> doors = new java.util.ArrayList<>();
+
+        if (!isStart) {
+            int n = 1 + rng.nextInt(3);
+            for (int i = 0; i < n; i++) {
+                // spawn in the open quadrant areas (avoid corridors)
+                foes.add(new double[]{96 + rng.nextInt(ROOM_W - 192),
+                                      96 + rng.nextInt(ROOM_H - 192),
+                                      rng.nextBoolean() ? 1 : -1});
+            }
+        }
+
+        int coins = 2 + rng.nextInt(3);
+        for (int i = 0; i < coins; i++) {
+            items.add(Pickup.coin(96 + rng.nextInt(ROOM_W - 192),
+                                   96 + rng.nextInt(ROOM_H - 192)));
+        }
+        if (rng.nextDouble() < 0.25) {
+            items.add(Pickup.heart(96 + rng.nextInt(ROOM_W - 192),
+                                   96 + rng.nextInt(ROOM_H - 192)));
+        }
+
+        // Locked door every 4th path room (not the start room): blocks
+        // the east doorway; key goes in the previous room.
+        if (pathIdx > 0 && pathIdx % 4 == 0) {
+            Door d = new Door(ROOM_W - 32, ROOM_H / 2 - 48, ROOM_W, ROOM_H / 2 + 48);
+            d.visibleH = 96;
+            doors.add(d);
+            // key in the PREVIOUS room
+            String prevId = mainPath.get(pathIdx - 1);
+            java.util.List<Pickup> prevItems = roomPickups.computeIfAbsent(prevId, k -> new java.util.ArrayList<>());
+            prevItems.add(Pickup.key(96 + rng.nextInt(ROOM_W - 192),
+                                     96 + rng.nextInt(ROOM_H - 192)));
+        }
+
+        roomEnemies.put(id, foes);
+        roomPickups.put(id, items);
+        roomDoors.put(id, doors);
     }
 }
