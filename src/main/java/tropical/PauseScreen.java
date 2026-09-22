@@ -17,11 +17,9 @@ public class PauseScreen extends Screen {
     private final javafx.scene.layout.StackPane root;
     private final MenuButton[] buttons;
     private int focusIndex = 0;
-    private final GameplayScreen game;
 
-    public PauseScreen(ScreenManager manager, GameplayScreen game) {
+    public PauseScreen(ScreenManager manager, Screen game) {
         super(manager);
-        this.game = game;
 
         Label title = new Label("Paused");
         title.getStyleClass().add("menu-title");

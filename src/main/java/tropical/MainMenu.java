@@ -33,15 +33,20 @@ public class MainMenu extends Screen {
         });
 
         MenuButton continueBtn = new MenuButton("Continue", () -> {
-            // Load the autosave checkpoint (written on each level
-            // transition). -1 x/y = spawn at the level's start.
+            // Load the autosave checkpoint. The save's MODE decides
+            // which game resumes — a rooms-mode save used to dump the
+            // player into the platformer (playtest round 5).
             String saveFile = System.getProperty("user.home")
                     + "/.tropical-punch-autosave.txt";
             try {
                 tropical.engine.SaveSystem.GameState state =
                     new tropical.engine.SaveSystem().load(saveFile);
-                int level = state.levelNum > 0 ? state.levelNum : 1;
-                manager.replace(new GameplayScreen(manager, level, state));
+                if ("rooms".equals(state.mode)) {
+                    manager.replace(new RoomsScreen(manager, 1, state));
+                } else {
+                    int level = state.levelNum > 0 ? state.levelNum : 1;
+                    manager.replace(new GameplayScreen(manager, level, state));
+                }
             } catch (java.io.IOException ex) {
                 // No save — Continue does nothing (honest no-op)
                 System.out.println("no save to continue from");

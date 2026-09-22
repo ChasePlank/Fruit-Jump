@@ -197,9 +197,13 @@ public class RoomWorld {
 
     /** Populate content for one room: 1-3 enemies (not in the start
      *  room), 2-4 coins, occasionally a heart, and every 4th path room
-     *  a locked door on its EAST doorway with a key placed in the
-     *  PREVIOUS room (the key is always findable before the door —
-     *  same lock-and-key rule as the platformer). */
+     *  a locked door blocking the room's PATH EXIT doorway (the edge
+     *  the main path actually leaves through) with a key placed in the
+     *  PREVIOUS room. All content is placed on OPEN FLOOR — validated
+     *  against the room's obstacle tiles. (First version scattered
+     *  blindly: a key could land inside a block, unreachable, and the
+     *  door could seal a room whose path exit wasn't east — dead ends,
+     *  playtest round 5.) */
     void populateRoom(Room room, int pathIdx, boolean isStart) {
         String id = room.id;
         java.util.List<double[]> foes = new java.util.ArrayList<>();
@@ -209,38 +213,81 @@ public class RoomWorld {
         if (!isStart) {
             int n = 1 + rng.nextInt(3);
             for (int i = 0; i < n; i++) {
-                // spawn in the open quadrant areas (avoid corridors)
-                foes.add(new double[]{96 + rng.nextInt(ROOM_W - 192),
-                                      96 + rng.nextInt(ROOM_H - 192),
-                                      rng.nextBoolean() ? 1 : -1});
+                double[] p = openFloor(room, 14);
+                if (p != null) foes.add(new double[]{p[0], p[1], rng.nextBoolean() ? 1 : -1});
             }
         }
 
         int coins = 2 + rng.nextInt(3);
         for (int i = 0; i < coins; i++) {
-            items.add(Pickup.coin(96 + rng.nextInt(ROOM_W - 192),
-                                   96 + rng.nextInt(ROOM_H - 192)));
+            double[] p = openFloor(room, 10);
+            if (p != null) items.add(Pickup.coin(p[0], p[1]));
         }
         if (rng.nextDouble() < 0.25) {
-            items.add(Pickup.heart(96 + rng.nextInt(ROOM_W - 192),
-                                   96 + rng.nextInt(ROOM_H - 192)));
+            double[] p = openFloor(room, 12);
+            if (p != null) items.add(Pickup.heart(p[0], p[1]));
         }
 
-        // Locked door every 4th path room (not the start room): blocks
-        // the east doorway; key goes in the previous room.
-        if (pathIdx > 0 && pathIdx % 4 == 0) {
-            Door d = new Door(ROOM_W - 32, ROOM_H / 2 - 48, ROOM_W, ROOM_H / 2 + 48);
-            d.visibleH = 96;
-            doors.add(d);
-            // key in the PREVIOUS room
-            String prevId = mainPath.get(pathIdx - 1);
-            java.util.List<Pickup> prevItems = roomPickups.computeIfAbsent(prevId, k -> new java.util.ArrayList<>());
-            prevItems.add(Pickup.key(96 + rng.nextInt(ROOM_W - 192),
-                                     96 + rng.nextInt(ROOM_H - 192)));
+        // Locked door every 4th path room (not the start room, not the
+        // last): blocks the doorway the path EXITS through. Key goes in
+        // the previous room, on open floor.
+        if (pathIdx > 0 && pathIdx % 4 == 0 && pathIdx < mainPath.size() - 1) {
+            Door d = doorOnExit(room, mainPath.get(pathIdx + 1));
+            if (d != null) {
+                doors.add(d);
+                String prevId = mainPath.get(pathIdx - 1);
+                Room prev = roomById(prevId);
+                double[] k = prev != null ? openFloor(prev, 10) : null;
+                if (k != null) {
+                    java.util.List<Pickup> prevItems = roomPickups.computeIfAbsent(prevId, k2 -> new java.util.ArrayList<>());
+                    prevItems.add(Pickup.key(k[0], k[1]));
+                }
+            }
         }
 
         roomEnemies.put(id, foes);
         roomPickups.put(id, items);
         roomDoors.put(id, doors);
+    }
+
+    /** Find a random open-floor point: not inside any obstacle tile,
+     *  with margin. Returns null if the room is too packed (rare). */
+    double[] openFloor(Room room, int margin) {
+        java.util.List<Physics.AABB> tiles = room.getTiles();
+        for (int tries = 0; tries < 40; tries++) {
+            double x = 64 + rng.nextInt(ROOM_W - 128);
+            double y = 64 + rng.nextInt(ROOM_H - 128);
+            boolean clear = true;
+            for (Physics.AABB t : tiles) {
+                if (x + margin > t.x0 && x - margin < t.x1
+                        && y + margin > t.y0 && y - margin < t.y1) {
+                    clear = false;
+                    break;
+                }
+            }
+            if (clear) return new double[]{x, y};
+        }
+        return null;
+    }
+
+    /** Locked door covering the doorway this room's path exit uses
+     *  (toward `nextId`). Returns null if the exit edge can't be
+     *  determined. */
+    Door doorOnExit(Room room, String nextId) {
+        String[] nr = nextId.split(",");
+        int nrr = Integer.parseInt(nr[0]), ncc = Integer.parseInt(nr[1]);
+        String[] me = room.id.split(",");
+        int myR = Integer.parseInt(me[0]), myC = Integer.parseInt(me[1]);
+        int wall = 32, gap = 96;
+        if (ncc > myC) return new Door(ROOM_W - wall, ROOM_H / 2 - gap / 2, ROOM_W, ROOM_H / 2 + gap / 2);
+        if (ncc < myC) return new Door(0, ROOM_H / 2 - gap / 2, wall, ROOM_H / 2 + gap / 2);
+        if (nrr > myR) return new Door(ROOM_W / 2 - gap / 2, ROOM_H - wall, ROOM_W / 2 + gap / 2, ROOM_H);
+        if (nrr < myR) return new Door(ROOM_W / 2 - gap / 2, 0, ROOM_W / 2 + gap / 2, wall);
+        return null;
+    }
+
+    Room roomById(String id) {
+        String[] p = id.split(",");
+        return grid[Integer.parseInt(p[0])][Integer.parseInt(p[1])];
     }
 }

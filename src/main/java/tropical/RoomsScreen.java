@@ -38,6 +38,14 @@ public class RoomsScreen extends Screen {
     int facing = 1;  // 1=right, -1=left (persists — render + future weapons)
 
     public RoomsScreen(ScreenManager manager, int levelNum) {
+        this(manager, levelNum, null);
+    }
+
+    /** Full constructor. `resume` = a loaded rooms-mode GameState, or
+     *  null for a fresh run. Restores coins/keys/HP and the current
+     *  room. (Continue previously dumped a rooms save into the
+     *  platformer — playtest round 5.) */
+    public RoomsScreen(ScreenManager manager, int levelNum, SaveSystem.GameState resume) {
         super(manager);
         world = new RoomWorld(5, 5, 2000L + levelNum);  // 25 rooms — theme changes every 10 along the path
         phys = new World();
@@ -58,10 +66,47 @@ public class RoomsScreen extends Screen {
         // load the start room's geometry + content
         loadRoom(world.startRoomId);
 
+        // Restore from a rooms save
+        if (resume != null && "rooms".equals(resume.mode)) {
+            inventory.coins = resume.coins;
+            inventory.keys = resume.keys;
+            combat.playerHP = resume.playerHP;
+            // Restore room (falls back to start room if the saved room
+            // id isn't in this generated world — shouldn't happen, the
+            // seed is deterministic)
+            if (resume.roomId != null && screens.getRoom(resume.roomId) != null) {
+                screens.start(resume.roomId);
+                loadRoom(resume.roomId);
+            }
+        }
+
         canvas = new Canvas(CANVAS_W, CANVAS_H);
         gc = canvas.getGraphicsContext2D();
         root = new javafx.scene.layout.StackPane(canvas);
         root.getStyleClass().add("screen-bg");
+        canvas.setManaged(false);
+        GameplayScreen.fitToWindow(root, canvas);
+    }
+
+    // Save/continue (rooms mode)
+    static final String SAVE_FILE = System.getProperty("user.home")
+            + "/.tropical-punch-autosave.txt";
+
+    /** Snapshot + write the rooms autosave (mode=rooms). */
+    void autosave() {
+        SaveSystem.GameState state = new SaveSystem.GameState();
+        state.mode = "rooms";
+        state.roomId = screens.currentRoomId();
+        state.playerX = player.x;
+        state.playerY = player.y;
+        state.playerHP = (int) combat.playerHP;
+        state.keys = inventory.keys;
+        state.coins = inventory.coins;
+        try {
+            new SaveSystem().save(state, SAVE_FILE);
+        } catch (java.io.IOException ex) {
+            System.err.println("rooms autosave failed: " + ex.getMessage());
+        }
     }
 
     /** Load a room's geometry + content into the live world. Called on
@@ -139,10 +184,10 @@ public class RoomsScreen extends Screen {
         screens.update(dt, phys);  // edge-crossing detection + transitions
 
         // Room changed (transition completed): load the new room's
-        // content. Note: transitions take 0.3s; the ID changes when the
-        // transition COMPLETES.
+        // content + autosave (Continue resumes in the last room).
         if (!screens.currentRoomId().equals(roomBefore)) {
             loadRoom(screens.currentRoomId());
+            autosave();
         }
 
         // Enemies: World.update already runs updateAI (chase logic uses
@@ -268,7 +313,23 @@ public class RoomsScreen extends Screen {
         else if (e.getCode() == KeyCode.RIGHT || e.getCode() == KeyCode.D) right = true;
         else if (e.getCode() == KeyCode.UP || e.getCode() == KeyCode.W) up = true;
         else if (e.getCode() == KeyCode.DOWN || e.getCode() == KeyCode.S) down = true;
-        else if (e.getCode() == KeyCode.ESCAPE) manager.replace(new MainMenu(manager));  // RoomsScreen replaced the menu on entry — pop would empty the stack (white screen, playtest bug)
+        else if (e.getCode() == KeyCode.ESCAPE) {
+            // Pause overlay (same as the platformer). Quit-to-menu from
+            // the pause screen is the way out; ESC here no longer
+            // silently replaces the stack.
+            autosave();
+            manager.push(new PauseScreen(manager, this));
+        }
+    }
+
+    @Override
+    public void pause() { if (timer != null) timer.stop(); }
+
+    @Override
+    public void resume() {
+        accumulator = 0;
+        lastPulse = -1;
+        if (timer != null) timer.start();
     }
 
     // keyReleased is wired at the scene level (Main calls the top screen

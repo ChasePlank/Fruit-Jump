@@ -130,6 +130,32 @@ public class GameplayScreen extends Screen {
 
         root = new javafx.scene.layout.StackPane(canvas);
         root.getStyleClass().add("screen-bg");
+
+        // Fit the fixed-size canvas into the (now resizable) window:
+        // uniform scale, centered, letterboxed. Without this the
+        // 1600x1200 canvas overflows a smaller window and clips the
+        // HUD (playtest: "stuck unable to see certain stats").
+        javafx.scene.layout.StackPane.setMargin(canvas, null);
+        canvas.setManaged(false);
+        fitToWindow(root, canvas);
+    }
+
+    /** Bind a fixed-size canvas to its parent's size: scale to fit
+     *  (preserve aspect), center. Re-evaluated on every resize. */
+    static void fitToWindow(javafx.scene.layout.StackPane parent, Canvas canvas) {
+        parent.widthProperty().addListener((obs, o, n) -> fitCanvas(parent, canvas));
+        parent.heightProperty().addListener((obs, o, n) -> fitCanvas(parent, canvas));
+        fitCanvas(parent, canvas);
+    }
+
+    static void fitCanvas(javafx.scene.layout.StackPane parent, Canvas canvas) {
+        double pw = parent.getWidth(), ph = parent.getHeight();
+        if (pw <= 0 || ph <= 0) return;
+        double scale = Math.min(pw / canvas.getWidth(), ph / canvas.getHeight());
+        canvas.setScaleX(scale);
+        canvas.setScaleY(scale);
+        canvas.setTranslateX((pw - canvas.getWidth() * scale) / 2);
+        canvas.setTranslateY((ph - canvas.getHeight() * scale) / 2);
     }
 
     /** Snapshot current state and write the autosave file. */

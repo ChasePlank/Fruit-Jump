@@ -23,6 +23,11 @@ public class SaveSystem {
         public double playerVX, playerVY;
         public int playerHP;
         public int keys;
+        public int coins;
+        /** Which game the save belongs to: "platformer" or "rooms".
+         *  Continue branches on this — a rooms save used to dump the
+         *  player into the platformer (playtest round 5). */
+        public String mode = "platformer";
         /** Level number for checkpoint saves (deterministic seed).
          *  -1 = not a level checkpoint (mid-room saves from the engine's
          *  own save tests). */
@@ -56,6 +61,7 @@ public class SaveSystem {
             state.playerVY = player.vy;
             state.playerHP = (int) combat.playerHP;
             state.keys = inv.keys;
+            state.coins = inv.coins;
             
             // Room state
             state.roomId = roomId;
@@ -89,6 +95,8 @@ public class SaveSystem {
             out.println("vy=" + state.playerVY);
             out.println("hp=" + state.playerHP);
             out.println("keys=" + state.keys);
+            out.println("coins=" + state.coins);
+            out.println("mode=" + state.mode);
             out.println("level=" + state.levelNum);
             out.println();
             
@@ -153,6 +161,8 @@ public class SaveSystem {
             case "vy": state.playerVY = Double.parseDouble(value); break;
             case "hp": state.playerHP = Integer.parseInt(value); break;
             case "keys": state.keys = Integer.parseInt(value); break;
+            case "coins": state.coins = Integer.parseInt(value); break;
+            case "mode": state.mode = value; break;
             case "level": state.levelNum = Integer.parseInt(value); break;
         }
     }
@@ -220,6 +230,7 @@ public class SaveSystem {
         player.vy = state.playerVY;
         combat.playerHP = state.playerHP;
         inv.keys = state.keys;
+        inv.coins = state.coins;
         
         // Room state
         for (Enemy e : world.enemies) {

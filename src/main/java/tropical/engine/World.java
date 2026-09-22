@@ -251,8 +251,12 @@ public class World {
         }
         for (Enemy e : enemies) {
             if (!e.dead && playerBody != null) {
-                e.hitWall = senseWall(e.body, e.dir);
-                e.atLedge = senseLedge(e.body, e.dir);
+                if (e.topDown) {
+                    e.hitWall = e.senseWallTopDown(tiles);
+                } else {
+                    e.hitWall = senseWall(e.body, e.dir);
+                    e.atLedge = senseLedge(e.body, e.dir);
+                }
                 e.updateAI(dt, playerBody.x, playerBody.y);
             }
         }
