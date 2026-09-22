@@ -14,7 +14,16 @@ public class Door {
     boolean locked = true;
     Physics.AABB aabb;
     AudioSystem audio = null;  // optional
-    
+
+    /**
+     * Visible door height in pixels (the sprite). The COLLISION box is
+     * taller — an invisible wall extends above the door so it can't be
+     * jumped over (apex ~73px). Previously the sprite stretched to fill
+     * the whole 4-tile collision box (playtest: "the door stretched
+     * down, not up" — the AABB also dipped into the floor).
+     */
+    public double visibleH = 64;
+
     public Door(double x0, double y0, double x1, double y1) {
         this.id = nextId++;
         this.x0 = x0;

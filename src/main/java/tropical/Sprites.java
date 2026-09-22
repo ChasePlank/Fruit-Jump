@@ -19,9 +19,14 @@ public class Sprites {
     static final WritableImage banana, enemy, heart, key, spike,
             door, crack, exit, bomb, bombFlash, arrow;
 
+    // Left-facing variants (mirrored char grids) for facing-direction
+    // rendering (playtest: "able to look both directions")
+    static final WritableImage bananaL, enemyL;
+
     // 2x variants for the high-res canvas
     static final WritableImage banana2x, enemy2x, heart2x, key2x, spike2x,
             door2x, crack2x, exit2x, bomb2x, bombFlash2x, arrow2x;
+    static final WritableImage bananaL2x, enemyL2x;
 
     static final int SCALE = 2;
 
@@ -38,6 +43,10 @@ public class Sprites {
         exit   = Sprite.build(Sprite.EXIT, pal);
         bomb   = Sprite.build(Sprite.BOMB, pal);
         arrow  = Sprite.build(Sprite.ARROW, pal);
+
+        // Mirrored (left-facing) variants
+        bananaL = Sprite.build(Sprite.flipX(Sprite.BANANA), pal);
+        enemyL  = Sprite.build(Sprite.flipX(Sprite.ENEMY), pal);
 
         // Bomb flash: same grid, red-shifted palette (fuse nearly spent)
         Map<Character, String> flashPal = new HashMap<>(pal);
@@ -56,5 +65,8 @@ public class Sprites {
         bomb2x   = Sprite.buildScaled(Sprite.BOMB, pal, Sprite.BOMB[0].length() * SCALE, Sprite.BOMB.length * SCALE);
         arrow2x  = Sprite.buildScaled(Sprite.ARROW, pal, Sprite.ARROW[0].length() * SCALE, Sprite.ARROW.length * SCALE);
         bombFlash2x = Sprite.buildScaled(Sprite.BOMB, flashPal, Sprite.BOMB[0].length() * SCALE, Sprite.BOMB.length * SCALE);
+
+        bananaL2x = Sprite.buildScaled(Sprite.flipX(Sprite.BANANA), pal, Sprite.BANANA[0].length() * SCALE, Sprite.BANANA.length * SCALE);
+        enemyL2x  = Sprite.buildScaled(Sprite.flipX(Sprite.ENEMY), pal, Sprite.ENEMY[0].length() * SCALE, Sprite.ENEMY.length * SCALE);
     }
 }

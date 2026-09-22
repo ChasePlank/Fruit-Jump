@@ -137,13 +137,21 @@ public class RoomWorld {
         }
         // (floor already handles the closed-south case)
 
-        // Interior platforms for verticality (1-2 floating platforms)
+        // Interior platforms for verticality (1-2 floating platforms).
+        // Height constraint: the player's jump apex is ~73px, so each
+        // platform must be a reachable rise (32-64px) from the surface
+        // below it (floor, or the previous platform — stepping stones).
+        // The old range (96-224px above floor) was unreachable (playtest:
+        // "can't jump on the platforms, too high").
         int plats = 1 + rng.nextInt(2);
+        double prevTop = floorY;
         for (int i = 0; i < plats; i++) {
             int pw = 96 + rng.nextInt(96);
             int px = wall + 48 + rng.nextInt(ROOM_W - 2 * wall - 96 - pw);
-            int py = floorY - 96 - rng.nextInt(128);
+            int rise = 32 + rng.nextInt(33);  // 32-64px: within jump range
+            int py = (int) Math.max(wall + 32, prevTop - rise);
             room.oneway(px, py, px + pw, py + 16);
+            prevTop = py;
         }
 
         return room;

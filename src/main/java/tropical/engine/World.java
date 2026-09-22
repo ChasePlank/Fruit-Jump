@@ -195,6 +195,18 @@ public class World {
                         break;
                     }
                 }
+                // Arrow-enemy collision: kill on first hit. This was
+                // missing entirely — arrows flew through enemies
+                // (playtest: "arrows fire, but do nothing").
+                if (p.active) {
+                    for (Enemy e : enemies) {
+                        if (!e.dead && pbox.overlaps(e.body.aabb())) {
+                            e.dead = true;
+                            p.active = false;
+                            break;
+                        }
+                    }
+                }
             }
             
             if (!p.active) {

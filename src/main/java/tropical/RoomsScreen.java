@@ -35,6 +35,7 @@ public class RoomsScreen extends Screen {
     double accumulator = 0;
     long lastPulse = -1;
     boolean left, right;
+    int facing = 1;  // 1=right, -1=left (persists — render + future weapons)
 
     public RoomsScreen(ScreenManager manager, int levelNum) {
         super(manager);
@@ -92,6 +93,8 @@ public class RoomsScreen extends Screen {
 
     void update(double dt) {
         player.vx = left ? -220 : right ? 220 : 0;
+        if (left && !right) facing = -1;
+        else if (right && !left) facing = 1;
         phys.update(dt);
         screens.update(dt, phys);  // edge-crossing detection + transitions
 
@@ -115,8 +118,9 @@ public class RoomsScreen extends Screen {
             gc.setFill(Color.web("#DEB887"));
             gc.fillRect(o.x0 * S, o.y0 * S, (o.x1 - o.x0) * S, (o.y1 - o.y0) * S);
         }
-        // player (2x sprite at 2x size — 1:1, crisp)
-        gc.drawImage(Sprites.banana2x, (player.x - player.hw) * S, (player.y - player.hh) * S,
+        // player (2x sprite at 2x size — 1:1, crisp; facing-aware)
+        gc.drawImage(facing < 0 ? Sprites.bananaL2x : Sprites.banana2x,
+                (player.x - player.hw) * S, (player.y - player.hh) * S,
                 player.hw * 2 * S, player.hh * 2 * S);
         // HUD: current room id
         gc.setFill(Color.WHITE);
@@ -140,7 +144,7 @@ public class RoomsScreen extends Screen {
         if (e.getCode() == KeyCode.LEFT || e.getCode() == KeyCode.A) left = true;
         else if (e.getCode() == KeyCode.RIGHT || e.getCode() == KeyCode.D) right = true;
         else if (e.getCode() == KeyCode.SPACE) { if (player.grounded) player.vy = -420; }
-        else if (e.getCode() == KeyCode.ESCAPE) manager.pop();  // back to menu (RoomsScreen is standalone for now)
+        else if (e.getCode() == KeyCode.ESCAPE) manager.replace(new MainMenu(manager));  // RoomsScreen replaced the menu on entry — pop would empty the stack (white screen, playtest bug)
     }
 
     // keyReleased is wired at the scene level (Main calls the top screen

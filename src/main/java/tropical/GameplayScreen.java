@@ -55,6 +55,10 @@ public class GameplayScreen extends Screen {
     // Input state (held keys)
     private boolean left, right;
 
+    // Facing direction (1=right, -1=left). Persists after keys release —
+    // weapons fire where you're looking (playtest suggestion).
+    private int facing = 1;
+
     // Weapons
     private final Hookshot hookshot;
 
@@ -208,6 +212,11 @@ public class GameplayScreen extends Screen {
             player.vx = 0;
             if (left) player.vx -= RUN_SPEED;
             if (right) player.vx += RUN_SPEED;
+            // Facing persists after keys release — weapons fire where
+            // you're LOOKING, not where you're holding (playtest:
+            // "bombs default right, shift that to where youre facing")
+            if (left && !right) facing = -1;
+            else if (right && !left) facing = 1;
         }
 
         // Engine step
@@ -261,7 +270,11 @@ public class GameplayScreen extends Screen {
             } catch (java.io.IOException ex) {
                 System.err.println("checkpoint save failed: " + ex.getMessage());
             }
-            manager.replace(new GameplayScreen(manager, nextLevel));
+            // Carry HP/keys/playTime into the next level. The checkpoint
+            // (playerX=-1) restores stats but spawns at the level start.
+            // Previously the next level got a FRESH Combat — full HP
+            // every level (playtest: "lives still reset each level").
+            manager.replace(new GameplayScreen(manager, nextLevel, checkpoint));
             return;
         }
 
@@ -280,6 +293,11 @@ public class GameplayScreen extends Screen {
         // Sky
         gc.setFill(Color.web("#87CEEB"));
         gc.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+        // Facing sprite: mirrored variant when facing left
+        // (playtest: "able to look both directions")
+        javafx.scene.image.Image playerSprite =
+                facing < 0 ? Sprites.bananaL2x : Sprites.banana2x;
 
         // Solid tiles: grass-topped dirt (rect base + grass strip)
         for (Physics.AABB t : world.tiles) drawGroundTile(t);
@@ -301,12 +319,14 @@ public class GameplayScreen extends Screen {
             if (sx > CANVAS_W || sx + 64 < 0) continue;
             gc.drawImage(Sprites.spike2x, sx, sy, 32 * S, 32 * S);
         }
-        // Doors: sprite (4 tiles tall now)
+        // Doors: visible sprite is 2 tiles (64px) sitting on the floor;
+        // the collision wall above it is intentionally invisible.
         for (Door d : world.doors) {
             if (d.isSolid()) {
-                double sx = camera.worldToScreenX(d.aabb().x0), sy = camera.worldToScreenY(d.aabb().y0);
+                double sx = camera.worldToScreenX(d.aabb().x0);
+                double sy = camera.worldToScreenY(d.aabb().y1 - d.visibleH);
                 if (sx > CANVAS_W || sx + 64 < 0) continue;
-                gc.drawImage(Sprites.door2x, sx, sy, 32 * S, 32 * 4 * S);
+                gc.drawImage(Sprites.door2x, sx, sy, 32 * S, d.visibleH * S);
             }
         }
 
@@ -330,8 +350,8 @@ public class GameplayScreen extends Screen {
         double ex = camera.worldToScreenX(map.exitX - 12), ey = camera.worldToScreenY(map.exitY - 20);
         if (ex > -64 && ex < CANVAS_W) gc.drawImage(Sprites.exit2x, ex, ey, 16 * S, 24 * S);
 
-        // Player: radioactive banana sprite
-        gc.drawImage(Sprites.banana2x,
+        // Player: radioactive banana sprite (facing-aware)
+        gc.drawImage(playerSprite,
                 camera.worldToScreenX(player.x - player.hw),
                 camera.worldToScreenY(player.y - player.hh),
                 player.hw * 2 * S, player.hh * 2 * S);
@@ -427,24 +447,21 @@ public class GameplayScreen extends Screen {
                 if (hookshot.isPulling()) {
                     hookshot.release();
                 } else {
-                    double dx = (right ? 1 : 0) - (left ? 1 : 0);
+                    double dx = facing;
                     double dy = 0;
                     if (e.isShiftDown()) dy = -1;  // Shift+X = fire upward
-                    if (dx == 0 && dy == 0) dx = 1;  // default: face right
                     hookshot.fire(dx, dy, world);
                 }
                 e.consume();
             }
             case F -> {
                 // Arrow: fast projectile in facing direction
-                int dir = (left && !right) ? -1 : 1;
-                world.addProjectile(Projectile.arrow(player.x, player.y - 10, dir));
+                world.addProjectile(Projectile.arrow(player.x, player.y - 10, facing));
                 e.consume();
             }
             case G -> {
                 // Bomb: thrown arc in facing direction
-                int dir = (left && !right) ? -1 : 1;
-                world.addProjectile(Projectile.bomb(player.x, player.y - 10, dir));
+                world.addProjectile(Projectile.bomb(player.x, player.y - 10, facing));
                 e.consume();
             }
             case ESCAPE -> {

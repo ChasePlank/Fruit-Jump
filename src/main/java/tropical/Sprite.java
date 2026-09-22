@@ -56,7 +56,8 @@ public class Sprite {
         p.put('G', "#5CBF3E"); // radioactive green (glow spots)
         p.put('W', "#FFFFFF");
         p.put('K', "#1A1A1A"); // near-black outline
-        p.put('B', "#8B5A2B"); // brown (crate, stems)
+        p.put('B', "#8B5A2B"); // brown (crate, stems, monkey fur)
+        p.put('T', "#D2A679"); // tan (monkey face)
         p.put('S', "#787878"); // stone gray
         p.put('L', "#A8A8A8"); // stone light
         p.put('R', "#E23B2E"); // red (heart, bomb flash)
@@ -67,40 +68,63 @@ public class Sprite {
         return p;
     }
 
-    // ---- Player: radioactive banana, facing right, 12x16 ----
+    /** Horizontally mirror a char grid (for left-facing sprite variants). */
+    public static String[] flipX(String[] rows) {
+        String[] out = new String[rows.length];
+        for (int i = 0; i < rows.length; i++)
+            out[i] = new StringBuilder(rows[i]).reverse().toString();
+        return out;
+    }
+
+    // ---- Player: radioactive banana, facing right, 12x22 ----
+    // Grid aspect matches the 24x44 physics body exactly (uniform 2x
+    // scale). The old 12x16 grid stretched 2.75x vertically — the
+    // character looked sunk/elongated (playtest: "offset down halfway").
     static String[] BANANA = {
-        "  KKKKK     ",
-        " KGGGGGK    ",
-        "KGWWGGGGK   ",
-        "KGGGGGGGGK  ",
-        " KGGGGGGGK  ",
-        " KYYYYYYYK  ",
-        "KYYYYYYYYYK ",
-        "KYYYYYYYYYYK",
-        "KYYYYYYYYYYK",
-        "KYYYYKYYYYYK",
-        "KYYYK D KYYK",
-        "KYYYK D KYYK",
-        " KYYKKKKKYYK",
-        " KYYYYYYYYYK",
-        "  KKKKKKKKK ",
-        "     KK     ",
+        "   KKKKKK    ",
+        "  KYYYYYYK   ",
+        " KYYYYYYYYK  ",
+        " KYYWYYWYYK  ",
+        " KYYWYYWYYK  ",
+        " KYYYYYYYYK  ",
+        " KYYYKKYYYK  ",
+        " KYYKYYKYYK  ",
+        " KYYYYYYYYK  ",
+        " KYYYYYYYYK  ",
+        " KGGYYYYGGK  ",
+        " KYYGYYGYYK  ",
+        " KYYYYYYYYK  ",
+        " KYYYYYYYYK  ",
+        "  KYYYYYYK   ",
+        "  KYYYYYYK   ",
+        "   KYYYYK    ",
+        "   KYYYYK    ",
+        "    KYYK     ",
+        "    KYYK     ",
+        "     KK      ",
+        "     BK      ",
     };
 
-    // ---- Enemy: grumpy coconut crab, 12x12 ----
+    // ---- Enemy: banana-eating monkey, 16x16 ----
+    // (playtest: "enemies seem to be rocks — monkeys or apes would
+    // fit better, things that eat bananas")
     static String[] ENEMY = {
-        " KKKKKKKK  ",
-        "KBSSSSSSBK ",
-        "KSSKSSKSSBK",
-        "KSSKSSKSSBK",
-        "KSSSSSSSSBK",
-        "KSSKKKKSSBK",
-        "KSSSSSSSSBK",
-        " KBSSSSBK  ",
-        "  KBSSBK    ",
-        "   KBBK     ",
-        "   K KK     ",
-        "   KK       ",
+        "  KKKK    KKKK  ",
+        " KBBBBKKKKBBBBK ",
+        " KBBTTTTTTTTBBK ",
+        " KBTTTTTTTTTTBK ",
+        " KBTKKTTTTKKTBK ",
+        " KBTKKTTTTKKTBK ",
+        " KBTTTTTTTTTTBK ",
+        " KBTTTTKKTTTTBK ",
+        " KBTTTTTTTTTTBK ",
+        " KBBKKKKKKKKBBK ",
+        "  KBBTTTTTTBBK  ",
+        "   KBBBBBBBBK   ",
+        "   KBKBBBBKBK   ",
+        "   KBKBBBBKBK   ",
+        "    KK KBK KK   ",
+        "       KKK      ",
     };
 
     // ---- Heart pickup, 8x8 ----

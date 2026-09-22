@@ -71,7 +71,15 @@ public class Combat {
     /** Process contact between player and an enemy. Returns true if enemy died. */
     public boolean processContact(Physics.Body player, Enemy enemy) {
         if (enemy.dead) return false;
-        if (!enemy.overlaps(player)) return false;
+        // Contact with a 4px tolerance. Exact AABB overlap missed grazing
+        // touches — collision resolution keeps bodies just short of
+        // overlap, so walking into an enemy sometimes did nothing
+        // (playtest: "enemies seem to only damage occasionally").
+        boolean nearX = player.x + player.hw >= enemy.body.x - enemy.body.hw - 4
+                     && player.x - player.hw <= enemy.body.x + enemy.body.hw + 4;
+        boolean nearY = player.y + player.hh >= enemy.body.y - enemy.body.hh - 4
+                     && player.y - player.hh <= enemy.body.y + enemy.body.hh + 4;
+        if (!nearX || !nearY) return false;
 
         if (!enemy.stompImmune && isStomp(player, enemy.body)) {
             enemy.stomp();

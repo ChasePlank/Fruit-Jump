@@ -290,8 +290,14 @@ public class LevelGen {
                     && (r < 1 || g[r-1][c] != '^')) {
                     run++;
                 } else {
-                    if (run >= 5 && rng.nextDouble() < enemyChance) {
-                        g[r-1][c - run / 2] = 'o';
+                    // Skip enemy placement near the spawn — a run that
+                    // starts at column 0 puts its midpoint enemy right
+                    // on the player spawn (playtest: "enemy spawns right
+                    // on you, instantly taking a life"). 6 cells ≈ the
+                    // spawn platform plus a safe walking buffer.
+                    int mid = c - run / 2;
+                    if (run >= 5 && mid > 6 && rng.nextDouble() < enemyChance) {
+                        g[r-1][mid] = 'o';
                     }
                     run = 0;
                 }

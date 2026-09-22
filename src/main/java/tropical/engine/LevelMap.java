@@ -89,14 +89,19 @@ public class LevelMap {
                         pickups.add(Pickup.heart(x + TILE / 2, y + TILE / 2));
                         break;
                     case 'D':
-                        // The 'D' char is at row fr-1 (one above the floor
-                        // tile at fr). The AABB must span from fr-3 down to
-                        // the floor top (fr) — 3 cells of barrier above the
-                        // ground (96px). The player's jump apex is ~73px,
-                        // so anything shorter is jumpable over and the
-                        // key is pointless (found by playtest: every door
-                        // was cleared with a plain jump).
-                        doors.add(new Door(x, y - TILE * 2, x + TILE, y + TILE * 2));
+                        // Door: VISIBLE sprite is 2 tiles (64px) sitting
+                        // on the floor top (fr). The collision AABB is
+                        // taller — 3 cells of invisible wall above the
+                        // door (top at fr-3, bottom at fr) so it can't be
+                        // jumped over (apex ~73px). Playtest fixes: the
+                        // old box ran y-2*32 to y+2*32, dipping a tile
+                        // INTO the floor ("stretched down") and the
+                        // renderer drew the sprite across the whole box.
+                        {
+                            Door d = new Door(x, y - TILE * 2, x + TILE, y);
+                            d.visibleH = TILE * 2;
+                            doors.add(d);
+                        }
                         break;
                     case 'C':
                         // Cracked tile: solid until bombed. ONE AABB
