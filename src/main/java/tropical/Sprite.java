@@ -76,33 +76,34 @@ public class Sprite {
         return out;
     }
 
-    // ---- Player: radioactive banana, facing right, 12x22 ----
-    // Grid aspect matches the 24x44 physics body exactly (uniform 2x
-    // scale). The old 12x16 grid stretched 2.75x vertically — the
-    // character looked sunk/elongated (playtest: "offset down halfway").
+    // ---- Player: radioactive banana character, facing right, 12x22 ----
+    // A banana standing on end (classic crescent), with the face placed
+    // on the RIGHT half so the left/right flip is clearly visible (the
+    // old sprite's features were centered — it "faced the camera" and
+    // the flip did nothing, playtest feedback). Brown stem on top.
     static String[] BANANA = {
-        "   KKKKKK    ",
-        "  KYYYYYYK   ",
-        " KYYYYYYYYK  ",
-        " KYYWYYWYYK  ",
-        " KYYWYYWYYK  ",
-        " KYYYYYYYYK  ",
-        " KYYYKKYYYK  ",
-        " KYYKYYKYYK  ",
-        " KYYYYYYYYK  ",
-        " KYYYYYYYYK  ",
-        " KGGYYYYGGK  ",
-        " KYYGYYGYYK  ",
-        " KYYYYYYYYK  ",
-        " KYYYYYYYYK  ",
-        "  KYYYYYYK   ",
-        "  KYYYYYYK   ",
-        "   KYYYYK    ",
-        "   KYYYYK    ",
-        "    KYYK     ",
-        "    KYYK     ",
-        "     KK      ",
-        "     BK      ",
+        "      BB      ",
+        "     KBBK     ",
+        "    KYYYYK    ",
+        "   KYYYYYYK   ",
+        "   KYYYYYYYK  ",
+        "  KYYWYWYYYK  ",
+        "  KYYWYWYYYK  ",
+        "  KYYYYYYYYYK ",
+        "  KYYYYYKKYYK ",
+        "  KYYYYKYYYK  ",
+        "  KYYYYYYYYYK ",
+        "  KYYYYYYYYYK ",
+        "  KGGYYYYGGK  ",
+        "  KYYGYYGYYK  ",
+        "  KYYYYYYYYYK ",
+        "   KYYYYYYYK  ",
+        "   KYYYYYYYK  ",
+        "    KYYYYYK   ",
+        "    KYYYYYK   ",
+        "     KYYYK    ",
+        "     KYYYK    ",
+        "      KKK     ",
     };
 
     // ---- Enemy: banana-eating monkey, 16x16 ----

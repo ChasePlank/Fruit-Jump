@@ -350,11 +350,16 @@ public class GameplayScreen extends Screen {
         double ex = camera.worldToScreenX(map.exitX - 12), ey = camera.worldToScreenY(map.exitY - 20);
         if (ex > -64 && ex < CANVAS_W) gc.drawImage(Sprites.exit2x, ex, ey, 16 * S, 24 * S);
 
-        // Player: radioactive banana sprite (facing-aware)
-        gc.drawImage(playerSprite,
-                camera.worldToScreenX(player.x - player.hw),
-                camera.worldToScreenY(player.y - player.hh),
-                player.hw * 2 * S, player.hh * 2 * S);
+        // Player: radioactive banana sprite (facing-aware). Drawn at its
+        // OWN aspect, centered on the body — the 14x22 grid stretched
+        // into the 24x44 body box read as a pencil (playtest).
+        {
+            double ph = player.hh * 2 * S;
+            double pw = ph * (Sprite.BANANA[0].length() / (double) Sprite.BANANA.length);
+            double px = camera.worldToScreenX(player.x) - pw / 2;
+            double py = camera.worldToScreenY(player.y) - ph / 2;
+            gc.drawImage(playerSprite, px, py, pw, ph);
+        }
 
         // Projectiles
         for (Projectile p : world.projectiles) {

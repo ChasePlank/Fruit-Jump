@@ -95,39 +95,30 @@ public class ScreenManager {
         world.tiles.addAll(newRoom.tiles);
         world.oneways.addAll(newRoom.oneways);
         
-        // Reposition player at entry edge. Vertical entries (north/south)
-        // keep the old simple placement. Horizontal entries (east/west)
-        // use SAFE SPAWN: mid-room height (the old placement) is often
-        // mid-air or INSIDE geometry — an embedded body triggers the
-        // physics teleport every frame, which wedges the player into a
-        // wall with input overridden (playtest: "stuck going left,
-        // couldn't counter"). Instead: raycast down from the top of the
-        // room at the entry x, find the first solid surface, place the
-        // player standing on it.
+        // Reposition player at entry edge. TOP-DOWN rooms: enter just
+        // inside the doorway, in the open corridor band. (The old
+        // side-view placeOnGround raycast is obsolete — no floor strip
+        // exists in top-down rooms.)
         double margin = 50; // pixels from edge
         switch (entryEdge) {
-            case 0: // Enter from north
+            case 0: // Enter from north (came through south door)
                 player.x = newRoom.width / 2;
-                player.y = margin;
+                player.y = margin + player.hh;
                 player.vy = 0;
                 break;
-            case 1: // Enter from south
+            case 1: // Enter from south (came through north door)
                 player.x = newRoom.width / 2;
                 player.y = newRoom.height - margin - player.hh;
                 player.vy = 0;
                 break;
-            case 2: { // Enter from east — safe spawn on ground
+            case 2: // Enter from east (came through west door)
                 player.x = newRoom.width - margin - player.hw;
                 player.vx = 0;
-                placeOnGround(newRoom, world);
                 break;
-            }
-            case 3: { // Enter from west — safe spawn on ground
+            case 3: // Enter from west (came through east door)
                 player.x = margin + player.hw;
                 player.vx = 0;
-                placeOnGround(newRoom, world);
                 break;
-            }
         }
         
         // Reset grounded state

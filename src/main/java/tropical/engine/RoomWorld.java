@@ -76,82 +76,75 @@ public class RoomWorld {
         return false;
     }
 
-    /** Build one room's geometry. Connections get doorway gaps in walls. */
+    /** Build one room's geometry. TOP-DOWN layout (2.5D RPG dungeon,
+     *  original-Zelda style): border walls with doorway gaps where
+     *  connections exist, interior obstacle blocks you walk AROUND.
+     *  No floor strip, no platforms, no pits — those are side-view
+     *  concepts (playtest: "less of a platformer, more like an rpg
+     *  dungeon feel"). */
     Room buildRoom(int rr, int cc, List<int[]> path) {
         Room room = new Room(rr + "," + cc, ROOM_W, ROOM_H);
         int wall = 32;
         int doorGap = 96;  // doorway gap height/width (pixels)
 
-        // Border walls with doorway gaps where connections exist.
-        // Connections are determined AFTER all rooms built, so build all
-        // walls closed here EXCEPT the edges that are on the path —
-        // determined by checking the path for neighbors.
         boolean openN = hasPathNeighbor(path, rr - 1, cc);
         boolean openS = hasPathNeighbor(path, rr + 1, cc);
         boolean openE = hasPathNeighbor(path, rr, cc + 1);
         boolean openW = hasPathNeighbor(path, rr, cc - 1);
 
-        // Floor (with pit gaps sometimes for jump variety — keep the
-        // walking line continuous: a pit is a 64-96px gap, jumpable)
-        int floorY = ROOM_H - wall;
-        if (rng.nextDouble() < 0.4 && ROOM_W > 400) {
-            int pitX = 200 + rng.nextInt(ROOM_W - 400);
-            int pitW = 64 + rng.nextInt(33);
-            room.tile(0, floorY, pitX, ROOM_H);
-            room.tile(pitX + pitW, floorY, ROOM_W, ROOM_H);
-        } else {
-            room.tile(0, floorY, ROOM_W, ROOM_H);
-        }
-
-        // Left wall (west): gap for openW at mid-height
+        // Border walls, doorway gaps at mid-edges
+        // West wall: gap at vertical center
         if (openW) {
-            int gapY = floorY - doorGap;  // doorway at walking height
+            int gapY = ROOM_H / 2 - doorGap / 2;
             room.tile(0, 0, wall, gapY);
             room.tile(0, gapY + doorGap, wall, ROOM_H);
         } else {
             room.tile(0, 0, wall, ROOM_H);
         }
-        // Right wall (east)
+        // East wall
         if (openE) {
-            int gapY = floorY - doorGap;
+            int gapY = ROOM_H / 2 - doorGap / 2;
             room.tile(ROOM_W - wall, 0, ROOM_W, gapY);
             room.tile(ROOM_W - wall, gapY + doorGap, ROOM_W, ROOM_H);
         } else {
             room.tile(ROOM_W - wall, 0, ROOM_W, ROOM_H);
         }
-        // Top wall (north): gap for openN at mid-width
+        // North wall: gap at horizontal center
         if (openN) {
             int gapX = ROOM_W / 2 - doorGap / 2;
             room.tile(0, 0, gapX, wall);
             room.tile(gapX + doorGap, 0, ROOM_W, wall);
-            // a ledge to reach the doorway
-            room.tile(gapX - 64, wall + 96, gapX + doorGap + 64, wall + 96 + 16);
         } else {
             room.tile(0, 0, ROOM_W, wall);
         }
-        // Bottom wall (south): gap for openS
+        // South wall
         if (openS) {
             int gapX = ROOM_W / 2 - doorGap / 2;
-            room.tile(0, floorY, gapX, ROOM_H);
-            room.tile(gapX + doorGap, floorY, ROOM_W, ROOM_H);
+            room.tile(0, ROOM_H - wall, gapX, ROOM_H);
+            room.tile(gapX + doorGap, ROOM_H - wall, ROOM_W, ROOM_H);
+        } else {
+            room.tile(0, ROOM_H - wall, ROOM_W, ROOM_H);
         }
-        // (floor already handles the closed-south case)
 
-        // Interior platforms for verticality (1-2 floating platforms).
-        // Height constraint: the player's jump apex is ~73px, so each
-        // platform must be a reachable rise (32-64px) from the surface
-        // below it (floor, or the previous platform — stepping stones).
-        // The old range (96-224px above floor) was unreachable (playtest:
-        // "can't jump on the platforms, too high").
-        int plats = 1 + rng.nextInt(2);
-        double prevTop = floorY;
-        for (int i = 0; i < plats; i++) {
-            int pw = 96 + rng.nextInt(96);
-            int px = wall + 48 + rng.nextInt(ROOM_W - 2 * wall - 96 - pw);
-            int rise = 32 + rng.nextInt(33);  // 32-64px: within jump range
-            int py = (int) Math.max(wall + 32, prevTop - rise);
-            room.oneway(px, py, px + pw, py + 16);
-            prevTop = py;
+        // Interior obstacles: 2-4 solid blocks to walk around. Kept
+        // out of the corridor bands (mid-height horizontal, mid-width
+        // vertical) so every doorway-to-doorway line stays walkable.
+        int blocks = 2 + rng.nextInt(3);
+        for (int i = 0; i < blocks; i++) {
+            int bw = 32 + rng.nextInt(65);   // 32-96
+            int bh = 32 + rng.nextInt(65);
+            int bx = 0, by = 0;
+            boolean ok = false;
+            for (int tries = 0; tries < 20 && !ok; tries++) {
+                bx = wall + 32 + rng.nextInt(ROOM_W - 2 * wall - 64 - bw);
+                by = wall + 32 + rng.nextInt(ROOM_H - 2 * wall - 64 - bh);
+                // corridor bands: mid-height (horizontal travel) and
+                // mid-width (vertical travel)
+                boolean inHCorridor = by < ROOM_H / 2 + 48 && by + bh > ROOM_H / 2 - 48;
+                boolean inVCorridor = bx < ROOM_W / 2 + 48 && bx + bw > ROOM_W / 2 - 48;
+                ok = !inHCorridor && !inVCorridor;
+            }
+            if (ok) room.tile(bx, by, bx + bw, by + bh);
         }
 
         return room;

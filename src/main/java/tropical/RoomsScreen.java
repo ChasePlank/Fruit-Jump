@@ -34,7 +34,7 @@ public class RoomsScreen extends Screen {
     AnimationTimer timer;
     double accumulator = 0;
     long lastPulse = -1;
-    boolean left, right;
+    boolean left, right, up, down;
     int facing = 1;  // 1=right, -1=left (persists — render + future weapons)
 
     public RoomsScreen(ScreenManager manager, int levelNum) {
@@ -44,8 +44,9 @@ public class RoomsScreen extends Screen {
         combat = new Combat();
         inventory = new PlayerInventory();
 
-        // player starts center-bottom of the start room
-        player = new Physics.Body(RoomWorld.ROOM_W / 2 - 12, RoomWorld.ROOM_H - 120, 24, 44);
+        // player starts center of the start room (top-down: no floor
+        // strip to stand on — center is open corridor)
+        player = new Physics.Body(RoomWorld.ROOM_W / 2 - 16, RoomWorld.ROOM_H / 2 - 16, 32, 32);
         player.oneway = true;
         phys.addBody(player);
 
@@ -92,15 +93,20 @@ public class RoomsScreen extends Screen {
     @Override public void exit() { if (timer != null) timer.stop(); }
 
     void update(double dt) {
-        player.vx = left ? -220 : right ? 220 : 0;
+        // TOP-DOWN (2.5D) movement — RPG dungeon feel, original-Zelda
+        // style (playtest: "less of a platformer, more like an rpg
+        // dungeon"). No gravity, no jump: the player walks in 4
+        // directions and obstacles are walked AROUND, not jumped over.
+        player.noGravity = true;
+        player.vx = (right ? 1 : 0) * 220 - (left ? 1 : 0) * 220;
+        player.vy = (down ? 1 : 0) * 220 - (up ? 1 : 0) * 220;
         if (left && !right) facing = -1;
         else if (right && !left) facing = 1;
         phys.update(dt);
         screens.update(dt, phys);  // edge-crossing detection + transitions
 
-        // fell out of the world (shouldn't happen — rooms are walled,
-        // but a pit in the bottom wall could leak): reset to room center
-        if (player.y > RoomWorld.ROOM_H + 200) {
+        // out of the world safety net (shouldn't happen — rooms are walled)
+        if (player.y > RoomWorld.ROOM_H + 200 || player.y < -200) {
             player.x = RoomWorld.ROOM_W / 2;
             player.y = RoomWorld.ROOM_H / 2;
             player.vx = 0; player.vy = 0;
@@ -118,10 +124,13 @@ public class RoomsScreen extends Screen {
             gc.setFill(Color.web("#DEB887"));
             gc.fillRect(o.x0 * S, o.y0 * S, (o.x1 - o.x0) * S, (o.y1 - o.y0) * S);
         }
-        // player (2x sprite at 2x size — 1:1, crisp; facing-aware)
+        // player (facing-aware; sprite drawn at its OWN aspect, centered
+        // on the body — the body box is square 32x32 but the sprite grid
+        // is 14x22; stretching to the box made it look like a pencil)
+        double ph = player.hh * 2 * S;                 // physical height = body height
+        double pw = ph * (Sprite.BANANA[0].length() / (double) Sprite.BANANA.length);  // sprite aspect
         gc.drawImage(facing < 0 ? Sprites.bananaL2x : Sprites.banana2x,
-                (player.x - player.hw) * S, (player.y - player.hh) * S,
-                player.hw * 2 * S, player.hh * 2 * S);
+                player.x * S - pw / 2, player.y * S - ph / 2, pw, ph);
         // HUD: current room id
         gc.setFill(Color.WHITE);
         gc.setFont(javafx.scene.text.Font.font("Arial", 24));
@@ -129,21 +138,20 @@ public class RoomsScreen extends Screen {
     }
 
     void drawGround(Physics.AABB t) {
-        gc.setFill(Color.web("#8B5A2B"));
+        // TOP-DOWN: walls/blocks are stone, no grass tops (side-view
+        // concept). Slight highlight on the top edge for depth.
+        gc.setFill(Color.web("#787878"));
         gc.fillRect(t.x0 * S, t.y0 * S, (t.x1 - t.x0) * S, (t.y1 - t.y0) * S);
-        boolean above = false;
-        for (Physics.AABB o : phys.tiles) if (o.x0 == t.x0 && o.y1 == t.y0) { above = true; break; }
-        if (!above) {
-            gc.setFill(Color.web("#228B22"));
-            gc.fillRect(t.x0 * S, t.y0 * S, (t.x1 - t.x0) * S, Math.min(16, (t.y1 - t.y0) * S));
-        }
+        gc.setFill(Color.web("#A8A8A8"));
+        gc.fillRect(t.x0 * S, t.y0 * S, (t.x1 - t.x0) * S, 4 * S);
     }
 
     @Override
     public void handleKey(javafx.scene.input.KeyEvent e) {
         if (e.getCode() == KeyCode.LEFT || e.getCode() == KeyCode.A) left = true;
         else if (e.getCode() == KeyCode.RIGHT || e.getCode() == KeyCode.D) right = true;
-        else if (e.getCode() == KeyCode.SPACE) { if (player.grounded) player.vy = -420; }
+        else if (e.getCode() == KeyCode.UP || e.getCode() == KeyCode.W) up = true;
+        else if (e.getCode() == KeyCode.DOWN || e.getCode() == KeyCode.S) down = true;
         else if (e.getCode() == KeyCode.ESCAPE) manager.replace(new MainMenu(manager));  // RoomsScreen replaced the menu on entry — pop would empty the stack (white screen, playtest bug)
     }
 
@@ -152,5 +160,7 @@ public class RoomsScreen extends Screen {
     public void handleKeyReleased(javafx.scene.input.KeyEvent e) {
         if (e.getCode() == KeyCode.LEFT || e.getCode() == KeyCode.A) left = false;
         else if (e.getCode() == KeyCode.RIGHT || e.getCode() == KeyCode.D) right = false;
+        else if (e.getCode() == KeyCode.UP || e.getCode() == KeyCode.W) up = false;
+        else if (e.getCode() == KeyCode.DOWN || e.getCode() == KeyCode.S) down = false;
     }
 }
