@@ -9,3 +9,10 @@ target/
 
 META-INF/
 build27/
+
+# build staging and JavaFX natives — never commit these
+fat/
+gameclasses/
+jfx27/
+*.dll
+saves/
