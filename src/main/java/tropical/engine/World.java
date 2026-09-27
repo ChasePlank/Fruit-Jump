@@ -27,6 +27,11 @@ public class World {
     public final List<Physics.AABB> spikes = new ArrayList<>();  // contact-damage zones
     final ParticlePool particles;
     AudioSystem audio = null;  // optional
+    /** Optional navigation view of the room (top-down mode). When set, top-down
+     *  enemies chase what they can see, along a flow field. Null in the
+     *  platformer, where the side-view AI is unchanged. */
+    public RoomNav nav = null;
+    private int navAimC = -1, navAimR = -1, navAimAge = 99;
 
     // Slope tuning
     static final double SLOPE_SNAP_UP = 12.0;    // max px/frame feet can snap up (walking up)
@@ -249,6 +254,21 @@ public class World {
         for (Physics.Body b : bodies) {
             if (b.oneway) { playerBody = b; break; }  // player is marked oneway=true
         }
+        boolean navAI = nav != null && playerBody != null;
+        if (navAI) {
+            // One visibility pass and one flow field serve every enemy this
+            // frame: sight is what gates the AI, and the field is what moves it.
+            // The field is aimed at the player's CURRENT tile, which is also the
+            // best stand-in for where a searching enemy last saw them.
+            int tc = nav.colOf(playerBody.x), tr = nav.rowOf(playerBody.y);
+            nav.eye.compute(tc, tr, nav.lightTiles);
+            if (tc != navAimC || tr != navAimR || ++navAimAge >= 8) {
+                nav.grid.flowTo(tc, tr);
+                navAimC = tc;
+                navAimR = tr;
+                navAimAge = 0;
+            }
+        }
         for (Enemy e : enemies) {
             if (!e.dead && playerBody != null) {
                 if (e.topDown) {
@@ -257,7 +277,20 @@ public class World {
                     e.hitWall = senseWall(e.body, e.dir);
                     e.atLedge = senseLedge(e.body, e.dir);
                 }
-                e.updateAI(dt, playerBody.x, playerBody.y);
+                if (navAI && e.topDown) {
+                    // Is the player visible FROM THIS ENEMY. The shadowcast above
+                    // is the player's own light - asking it whether the player can
+                    // see the player is always yes, which is a bug that looks
+                    // exactly like enemies having perfect knowledge. One ray per
+                    // enemy is the right shape: a shadowcast is for lighting,
+                    // a line of sight is for questions.
+                    boolean canSee = nav.eye.lineOfSight(
+                        nav.colOf(e.body.x), nav.rowOf(e.body.y),
+                        nav.colOf(playerBody.x), nav.rowOf(playerBody.y));
+                    e.updateTopDownNav(dt, nav, canSee, playerBody.x, playerBody.y);
+                } else {
+                    e.updateAI(dt, playerBody.x, playerBody.y);
+                }
             }
         }
         

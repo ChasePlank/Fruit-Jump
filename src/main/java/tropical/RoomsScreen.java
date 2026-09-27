@@ -40,8 +40,6 @@ public class RoomsScreen extends Screen {
     /** Tile-space view of the current room: eyes (Visibility) and legs
      *  (PathGrid), built from the same solid geometry so they cannot disagree. */
     private final RoomNav nav = new RoomNav(RoomWorld.ROOM_W, RoomWorld.ROOM_H);
-    /** How far the player's light reaches, in tiles. */
-    private static final double LIGHT_TILES = 9.0;
 
     public RoomsScreen(ScreenManager manager, int levelNum) {
         this(manager, levelNum, null);
@@ -124,6 +122,7 @@ public class RoomsScreen extends Screen {
         Room room = screens.getRoom(roomId);
         phys.tiles.addAll(room.getTiles());
         nav.rebuild(phys.tiles);   // walls + locked doors, for sight and pathing
+        phys.nav = nav;             // and the AI chases by the same map
         phys.oneways.addAll(room.getOneways());
 
         // Content from the generator (enemies/pickups/doors). Pickups
@@ -312,7 +311,7 @@ public class RoomsScreen extends Screen {
         //
         // Unexplored tiles are drawn solid black; remembered ones are dimmed to
         // Visibility.MEMORY_LIGHT, which is the "I have been here" look.
-        nav.eye.compute(nav.colOf(player.x), nav.rowOf(player.y), LIGHT_TILES);
+        // (the eye is computed by World each frame, before the AI reads it)
         for (int r = 0; r < nav.rows; r++) {
             for (int c = 0; c < nav.cols; c++) {
                 double light = nav.eye.displayLight(c, r);

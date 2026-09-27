@@ -29,6 +29,11 @@ public class RoomNav {
     public final Visibility eye;
     private final boolean[] solid;
 
+    /** How far the player's light reaches, in tiles. The AI reads the same
+     *  value the renderer draws with, so what you can see and what enemies can
+     *  see are the same thing by construction. */
+    public double lightTiles = 9.0;
+
     public RoomNav(int roomWidth, int roomHeight) {
         cols = Math.max(1, (roomWidth + TILE - 1) / TILE);
         rows = Math.max(1, (roomHeight + TILE - 1) / TILE);

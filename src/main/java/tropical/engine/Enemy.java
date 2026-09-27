@@ -11,13 +11,15 @@ package tropical.engine;
  * The enemy is a physics body (gravity, collision) driven by AI velocity.
  */
 public class Enemy {
-    enum AIState { PATROL, CHASE }
+    /** AI state. Public because the game wants it too: an alert marker,
+     *  a sound cue, a different sprite - not just for tests. */
+    public enum AIState { PATROL, CHASE }
     
     static int nextId = 0;
     public final int id;  // unique ID for save system
     
     public final Physics.Body body;
-    AIState state = AIState.PATROL;
+    public AIState state = AIState.PATROL;
     
     double patrolSpeed = 60;
     double chaseSpeed = 110;
@@ -31,6 +33,16 @@ public class Enemy {
     public double hdx = 1, hdy = 0;  // heading (unit-ish vector)
     private final java.util.Random tdr = new java.util.Random();
     
+    // --- top-down navigation (only used when World has a RoomNav) ---------
+    /** Where the enemy last SAW the player. Its whole knowledge of the world. */
+    public double knownX = 0, knownY = 0;
+    double alertTimer = 0;
+    public boolean hasTarget = false;
+    /** Seconds of chasing a memory after losing sight of the player. */
+    static final double SIGHT_GIVE_UP = 1.6;
+    /** Sight reaches a bit further than the old proximity aggro did. */
+    static final double SIGHT_RANGE = 340;
+
     // Aggro
     double aggroRange = 220;    // horizontal distance to start chasing
     double deaggroRange = 320;  // hysteresis: don't stop chasing immediately
@@ -68,6 +80,86 @@ public class Enemy {
      * AI update. The World reports hitWall/atLedge for this frame.
      * Player position used for chase logic.
      */
+    /**
+     * Top-down AI with a navigation grid. Two things change from the
+     * straight-line chase, and both are the point:
+     *
+     *  - It chases what it can SEE. Sight is passed in from World, which asks
+     *    the room's visibility mask, so an enemy in the dark does not know where
+     *    the player is - the fog stops being decoration and starts being safety.
+     *  - It walks a FLOW FIELD, not a straight line, so walls get routed around
+     *    instead of absorbed. The old version pushed toward the player on both
+     *    axes and scraped along the first corner it met.
+     *
+     * Losing sight does not mean forgetting: it keeps walking to the last place
+     * it saw the player for SIGHT_GIVE_UP seconds, which is what makes an enemy
+     * feel like it is looking for you rather than switching off.
+     */
+    public void updateTopDownNav(double dt, RoomNav nav, boolean canSee,
+                                 double px, double py) {
+        double dist = Math.hypot(px - body.x, py - body.y);
+        if (canSee && dist < SIGHT_RANGE) {
+            knownX = px;
+            knownY = py;
+            hasTarget = true;
+            alertTimer = SIGHT_GIVE_UP;
+            state = AIState.CHASE;
+        } else if (hasTarget) {
+            alertTimer -= dt;
+            if (alertTimer <= 0) {
+                hasTarget = false;
+                state = AIState.PATROL;
+            }
+        }
+
+        if (!hasTarget) {
+            patrolTopDown();
+        } else {
+            int next = nav.grid.flowNext(nav.colOf(body.x), nav.rowOf(body.y));
+            if (next >= 0) {
+                double tx = nav.centreX(nav.grid.col(next));
+                double ty = nav.centreY(nav.grid.row(next));
+                double sx = tx - body.x, sy = ty - body.y;
+                double len = Math.hypot(sx, sy);
+                if (len > 1) {
+                    body.vx = sx / len * chaseSpeed;
+                    body.vy = sy / len * chaseSpeed;
+                } else {
+                    body.vx = 0;
+                    body.vy = 0;
+                }
+            } else {
+                // No field to the remembered spot (it is inside a wall, or the
+                // room changed under it): fall back to pushing straight at it and
+                // let the walls sort it out.
+                double len = Math.max(1, Math.hypot(knownX - body.x, knownY - body.y));
+                body.vx = (knownX - body.x) / len * chaseSpeed;
+                body.vy = (knownY - body.y) / len * chaseSpeed;
+            }
+        }
+        dir = body.vx >= 0 ? 1 : -1;
+    }
+
+    /** Patrol: walk a heading, pick a new one when a wall is ahead. */
+    private void patrolTopDown() {
+        if (hitWall) {
+            hitWall = false;
+            double oldX = hdx, oldY = hdy;
+            int tries = 0;
+            do {
+                switch (tdr.nextInt(4)) {
+                    case 0 -> { hdx = 1; hdy = 0; }
+                    case 1 -> { hdx = -1; hdy = 0; }
+                    case 2 -> { hdx = 0; hdy = 1; }
+                    default -> { hdx = 0; hdy = -1; }
+                }
+            } while (hdx == -oldX && hdy == -oldY && ++tries < 4);
+        }
+        body.vx = hdx * patrolSpeed;
+        body.vy = hdy * patrolSpeed;
+        dir = body.vx >= 0 ? 1 : -1;
+    }
+
     public void updateAI(double dt, double playerX, double playerY) {
         if (dead) {
             deadTimer += dt;
@@ -137,23 +229,7 @@ public class Enemy {
         }
 
         if (state == AIState.PATROL) {
-            // Wall ahead: pick a new random heading (avoid oscillation:
-            // never the exact reverse unless it's the only option)
-            if (hitWall) {
-                hitWall = false;
-                double oldX = hdx, oldY = hdy;
-                int tries = 0;
-                do {
-                    switch (tdr.nextInt(4)) {
-                        case 0 -> { hdx = 1; hdy = 0; }
-                        case 1 -> { hdx = -1; hdy = 0; }
-                        case 2 -> { hdx = 0; hdy = 1; }
-                        default -> { hdx = 0; hdy = -1; }
-                    }
-                } while (hdx == -oldX && hdy == -oldY && ++tries < 4);
-            }
-            body.vx = hdx * patrolSpeed;
-            body.vy = hdy * patrolSpeed;
+            patrolTopDown();
         } else {
             // CHASE: move toward the player on both axes
             if (dist > 1) {
