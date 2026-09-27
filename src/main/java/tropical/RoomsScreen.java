@@ -21,6 +21,9 @@ public class RoomsScreen extends Screen {
     static final int CANVAS_W = (int)(VIEW_W * S), CANVAS_H = (int)(VIEW_H * S);
 
     final RoomWorld world;
+    /** Rooms the player has stood in. The minimap reveals the dungeon the same way
+     *  the room's own fog reveals a room: by having been there. */
+    private final java.util.Set<String> visitedRooms = new java.util.HashSet<>();
     final tropical.engine.ScreenManager screens;  // engine room-transition manager
     final World phys;
     final Physics.Body player;
@@ -120,6 +123,7 @@ public class RoomsScreen extends Screen {
         phys.addBody(player);
 
         Room room = screens.getRoom(roomId);
+        visitedRooms.add(roomId);
         phys.tiles.addAll(room.getTiles());
         nav.rebuild(phys.tiles);   // walls + locked doors, for sight and pathing
         phys.nav = nav;             // and the AI chases by the same map
@@ -319,6 +323,56 @@ public class RoomsScreen extends Screen {
                 gc.setFill(Color.rgb(0, 0, 0, 1.0 - light));
                 gc.fillRect(c * RoomNav.TILE * S, r * RoomNav.TILE * S,
                             RoomNav.TILE * S, RoomNav.TILE * S);
+            }
+        }
+        drawMinimap();
+    }
+
+
+    /**
+     * Minimap: the room grid, revealed as it is visited.
+     *
+     * Drawn last so it sits above the fog of war - it is UI, not part of the room.
+     * The dungeon is a grid of screens, so the map that helps is a grid of cells:
+     * the current room bright, rooms already seen dim, the rest dark, with a dot
+     * for a room holding a key you have not taken and a ring on the exit.
+     *
+     * Deliberately not a tile map: at room scale the player navigates rooms, and a
+     * tile minimap of one screen tells them nothing about where they are.
+     */
+    void drawMinimap() {
+        final double cell = 22 * S;
+        final double pad = 10 * S;
+        double w = world.cols * cell, h = world.rows * cell;
+        double x0 = CANVAS_W - w - pad, y0 = pad;
+        String here = screens.currentRoomId();
+
+        gc.setFill(Color.rgb(0, 0, 0, 0.55));
+        gc.fillRect(x0 - 4 * S, y0 - 4 * S, w + 8 * S, h + 8 * S);
+
+        for (int r = 0; r < world.rows; r++) {
+            for (int c = 0; c < world.cols; c++) {
+                String id = c + "," + r;
+                double x = x0 + c * cell, y = y0 + r * cell;
+                boolean seen = visitedRooms.contains(id);
+                gc.setFill(id.equals(here) ? Color.web("#7CFC00")
+                        : seen ? Color.web("#2E7D32")
+                        : Color.web("#1B1B1B"));
+                gc.fillRect(x, y, cell - 2 * S, cell - 2 * S);
+
+                if (!seen) continue;
+                boolean hasKey = false;
+                for (Pickup pk : world.roomPickups.getOrDefault(id, java.util.List.of())) {
+                    if (pk.type == Pickup.Type.KEY && pk.active) hasKey = true;
+                }
+                if (hasKey) {
+                    gc.setFill(Color.GOLD);
+                    gc.fillOval(x + cell * 0.35, y + cell * 0.35, cell * 0.3, cell * 0.3);
+                }
+                if (id.equals(world.exitRoomId)) {
+                    gc.setFill(Color.web("#E74C3C"));
+                    gc.fillRect(x + cell * 0.3, y + cell * 0.3, cell * 0.4, cell * 0.4);
+                }
             }
         }
     }
