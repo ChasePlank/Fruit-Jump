@@ -37,6 +37,12 @@ public class RoomsScreen extends Screen {
     boolean left, right, up, down;
     int facing = 1;  // 1=right, -1=left (persists — render + future weapons)
 
+    /** Tile-space view of the current room: eyes (Visibility) and legs
+     *  (PathGrid), built from the same solid geometry so they cannot disagree. */
+    private final RoomNav nav = new RoomNav(RoomWorld.ROOM_W, RoomWorld.ROOM_H);
+    /** How far the player's light reaches, in tiles. */
+    private static final double LIGHT_TILES = 9.0;
+
     public RoomsScreen(ScreenManager manager, int levelNum) {
         this(manager, levelNum, null);
     }
@@ -117,6 +123,7 @@ public class RoomsScreen extends Screen {
 
         Room room = screens.getRoom(roomId);
         phys.tiles.addAll(room.getTiles());
+        nav.rebuild(phys.tiles);   // walls + locked doors, for sight and pathing
         phys.oneways.addAll(room.getOneways());
 
         // Content from the generator (enemies/pickups/doors). Pickups
@@ -205,6 +212,7 @@ public class RoomsScreen extends Screen {
             if (d.tryUnlock(player, inventory, combat)) {
                 phys.tiles.remove(d.aabb());
                 phys.doors.remove(d);
+                nav.rebuild(phys.tiles);   // an opened door is a wall that changed
             }
         }
 
@@ -296,6 +304,24 @@ public class RoomsScreen extends Screen {
         gc.fillText("Coins: " + inventory.coins, 20, 40);
         gc.fillText("Keys: " + inventory.keys, 20, 72);
         gc.fillText("HP: " + (int) combat.playerHP, 20, 104);
+        // --- Fog of war ---------------------------------------------------
+        // Drawn last so it dims the floor, the blocks AND the sprites in one
+        // pass: in a dungeon, an enemy you cannot see should not be on screen.
+        // The mask comes from the same solid geometry navigation uses, so what
+        // blocks an eye and what blocks a chase cannot drift apart.
+        //
+        // Unexplored tiles are drawn solid black; remembered ones are dimmed to
+        // Visibility.MEMORY_LIGHT, which is the "I have been here" look.
+        nav.eye.compute(nav.colOf(player.x), nav.rowOf(player.y), LIGHT_TILES);
+        for (int r = 0; r < nav.rows; r++) {
+            for (int c = 0; c < nav.cols; c++) {
+                double light = nav.eye.displayLight(c, r);
+                if (light >= 0.999) continue;
+                gc.setFill(Color.rgb(0, 0, 0, 1.0 - light));
+                gc.fillRect(c * RoomNav.TILE * S, r * RoomNav.TILE * S,
+                            RoomNav.TILE * S, RoomNav.TILE * S);
+            }
+        }
     }
 
     void drawGround(Physics.AABB t) {

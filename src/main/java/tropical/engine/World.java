@@ -327,7 +327,7 @@ public class World {
 
         // Apply gravity (unless disabled)
         if (!b.noGravity) {
-            b.vy += Physics.GRAVITY * dt;
+            b.vy += Physics.GRAVITY * b.gravityScale * dt;
         }
 
         // Reset grounded

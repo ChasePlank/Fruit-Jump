@@ -18,6 +18,9 @@ public class Physics {
         public boolean grounded;      // touching ground this frame
         public boolean oneway;        // can jump through from below
         public boolean noGravity;     // skip gravity (hookshot pull, etc.)
+        /** Per-body gravity multiplier. 1.0 = normal; JumpFeel eases this
+         *  near a jump's apex. Default 1.0 keeps every existing body inert. */
+        public double gravityScale = 1.0;
         public boolean hitByExplosion; // damaged by bomb blast this frame
         
         public Body(double x, double y, double w, double h) {

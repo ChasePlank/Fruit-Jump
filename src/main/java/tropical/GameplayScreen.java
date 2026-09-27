@@ -54,6 +54,8 @@ public class GameplayScreen extends Screen {
 
     // Input state (held keys)
     private boolean left, right;
+    /** Input forgiveness for the jump: coyote time, buffering, cut, apex hang. */
+    private final JumpFeel jumpFeel = new JumpFeel();
 
     // Facing direction (1=right, -1=left). Persists after keys release —
     // weapons fire where you're looking (playtest suggestion).
@@ -225,6 +227,14 @@ public class GameplayScreen extends Screen {
     }
 
     private void engineUpdate(double dt) {
+        // Jump feel first: it needs this frame's ground state and vy to tell a
+        // launch from a landing (the ground probe still reports grounded on the
+        // launch frame), then answers whether a buffered jump should fire now.
+        jumpFeel.update(dt, player.grounded, player.vy);
+        if (jumpFeel.consumeJump(player.vy)) player.vy = JumpFeel.CALIBRATED_JUMP_V;
+        player.vy = jumpFeel.cutVelocity(player.vy);
+        player.gravityScale = jumpFeel.gravityScale(player.vy);
+
         // Hookshot first: if it's pulling, it OWNS player velocity —
         // don't zero it with input, and let the physics step consume it.
         // (The old order — input zeroing, then world.update, then
@@ -469,7 +479,9 @@ public class GameplayScreen extends Screen {
             case LEFT, A -> { left = true; e.consume(); }
             case RIGHT, D -> { right = true; e.consume(); }
             case SPACE, UP, W -> {
-                if (player.grounded) player.vy = JUMP_V;
+                // The feel module decides whether this press becomes a jump
+                // (it may be buffered until landing, or refused while rising).
+                jumpFeel.press();
                 e.consume();
             }
             case X -> {
@@ -507,6 +519,7 @@ public class GameplayScreen extends Screen {
         switch (e.getCode()) {
             case LEFT, A -> left = false;
             case RIGHT, D -> right = false;
+            case SPACE, UP, W -> jumpFeel.release();   // releasing early cuts the jump
         }
     }
 }
