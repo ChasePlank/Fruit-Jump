@@ -34,7 +34,11 @@ public class ShotWater extends Application {
         stage.setScene(scene);
         stage.show();
 
-        screens.push(new GameplayScreen(screens, 4));
+        // level and output path from system properties, so one tool captures any
+        // feature: -Dlevel=4 -Dshot=/root/downloads/climb-shot.png
+        int level = Integer.getInteger("level", 4);
+        final String shotPath = System.getProperty("shot", "/root/downloads/climb-shot.png");
+        screens.push(new GameplayScreen(screens, level));
         Robot robot = new Robot();
 
         after(500, () -> robot.keyPress(KeyCode.RIGHT));       // walk toward the climb
@@ -42,7 +46,7 @@ public class ShotWater extends Application {
         after(2500, () -> {
             var img = scene.snapshot(null);
             try {
-                writePng(img, "/root/downloads/climb-shot.png");
+                writePng(img, shotPath);
                 System.out.println("PASS: wrote /root/downloads/water-shot.png ("
                     + (int) img.getWidth() + "x" + (int) img.getHeight() + ")");
             } catch (Exception ex) {
