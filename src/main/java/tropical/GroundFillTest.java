@@ -74,7 +74,7 @@ public class GroundFillTest {
         // screenshot of the water actually on screen
         StringBuilder wet = new StringBuilder("  flooded game levels: ");
         for (int lv = 1; lv <= 40; lv++) {
-            LevelMap m = new LevelGen(60, 14, 1000L + lv).generate();
+            LevelMap m = new LevelGen(60, 14, 1000L + lv, lv).generate();
             int first = -1, cells = 0;
             for (int c = 0; c < 60; c++) {
                 for (int r = 0; r < 14; r++) {
@@ -85,6 +85,20 @@ public class GroundFillTest {
                 .append("(col").append(first).append(") ");
         }
         System.out.println(wet);
+        StringBuilder climbs = new StringBuilder("  climbing game levels: ");
+        for (int lv = 1; lv <= 40; lv++) {
+            LevelMap m = new LevelGen(60, 14, 1000L + lv, lv).generate();
+            for (int c = 10; c < 22; c++) {
+                for (int r = 5; r < 10; r++) {
+                    if (m.cell(r, c) == '#' && m.cell(r + 1, c) == ' '
+                            && m.cell(r + 2, c) == '#') {
+                        climbs.append("L").append(lv).append("(col").append(c).append(") ");
+                        c = 60; break;
+                    }
+                }
+            }
+        }
+        System.out.println(climbs);
         System.out.println("================================================");
 
         int[] l1 = survey(1, 60);
@@ -115,6 +129,27 @@ public class GroundFillTest {
         check("scaling: level-22 levels are all completable now that gaps cap at 4",
             done22 == l22Count, done22 + "/" + l22Count
                 + (failed22.isEmpty() ? "" : " failing: " + failed22));
+
+        // EVERY band, not just the two I kept checking. The whole difficulty curve
+        // was untested above level 1 until now (DoorStressTest calls the 3-arg
+        // constructor, so levelNum is always 1), and "it works at 1 and at 22" is
+        // not the same claim as "it works".
+        int[] bands = {2, 3, 5, 8, 12, 16, 20, 25, 30};
+        StringBuilder bandReport = new StringBuilder();
+        int badBands = 0;
+        for (int lv : bands) {
+            int done = 0, total = 0;
+            for (long seed = 401; seed <= 412; seed++) {
+                LevelGen g = new LevelGen(W, H, seed, lv);
+                g.generate();
+                total++;
+                if (LevelValidator.validateGenerated(g, 30.0)) done++;
+            }
+            if (done < total) badBands++;
+            bandReport.append("L").append(lv).append(":").append(done).append("/").append(total).append(" ");
+        }
+        check("scaling: every level band is completable, not just the ones I checked",
+            badBands == 0, bandReport.toString().trim());
 
         int widest = 0;
         for (long seed = 2001; seed <= 2100; seed++) {

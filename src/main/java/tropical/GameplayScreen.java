@@ -85,6 +85,11 @@ public class GameplayScreen extends Screen {
 
         // Generate + build level (deterministic seed: same levelNum
         // always makes the same level — saves reference the level number)
+        // The 4-arg constructor, so the generator knows which level this is. The
+        // 3-arg one forces levelNum = 1 internally, which meant every difficulty
+        // setting in LevelGen - gap width, enemy count, the platform climbs - was
+        // quietly inert in the actual game. The seed formula is unchanged, so
+        // level 1 is still exactly the level it was.
         LevelGen gen = new LevelGen(60, 14, 1000L + levelNum, levelNum);
         map = gen.generate();
         world = new World();

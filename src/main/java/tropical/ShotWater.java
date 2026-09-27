@@ -10,7 +10,7 @@ import javafx.scene.robot.Robot;
 import javafx.stage.Stage;
 
 /**
- * ShotWater - run level 3 (which comes out with a flooded gap at column 9) and
+ * ShotWater - run level 4 (which comes out with a platform climb at column 12) and
  * capture a frame once the player has walked into view of it.
  *
  * This exists because the game-side water wiring is the one part of the water
@@ -34,15 +34,15 @@ public class ShotWater extends Application {
         stage.setScene(scene);
         stage.show();
 
-        screens.push(new GameplayScreen(screens, 3));
+        screens.push(new GameplayScreen(screens, 4));
         Robot robot = new Robot();
 
-        after(700, () -> robot.keyPress(KeyCode.RIGHT));       // walk toward the pool
-        after(1700, () -> robot.keyRelease(KeyCode.RIGHT));
-        after(2100, () -> {
+        after(500, () -> robot.keyPress(KeyCode.RIGHT));       // walk toward the climb
+        after(2100, () -> robot.keyRelease(KeyCode.RIGHT));
+        after(2500, () -> {
             var img = scene.snapshot(null);
             try {
-                writePng(img, "/root/downloads/water-shot.png");
+                writePng(img, "/root/downloads/climb-shot.png");
                 System.out.println("PASS: wrote /root/downloads/water-shot.png ("
                     + (int) img.getWidth() + "x" + (int) img.getHeight() + ")");
             } catch (Exception ex) {
@@ -50,7 +50,7 @@ public class ShotWater extends Application {
             }
             Platform.exit();
         });
-        after(2600, () -> System.exit(0));
+        after(3000, () -> System.exit(0));
     }
 
     static void after(int ms, Runnable r) {
