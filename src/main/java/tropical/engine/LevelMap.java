@@ -126,10 +126,29 @@ public class LevelMap {
     }
 
     /** Parse from a text block (lines split on \n). */
-    static LevelMap parse(String text) {
+    /** Parse a level from text. Nothing is trimmed or dropped: the grid you
+     *  write is the grid you get, and every row is padded to the level's width
+     *  (text blocks strip trailing spaces, so an all-space row arrives short).
+     *
+     *  This used to drop EVERY empty line, which means a level with a blank row
+     *  in the middle parsed fine and was wrong - everything below shifted up one
+     *  row. An empty line in a grid is data, not formatting, and a parser cannot
+     *  tell them apart, so it should not try. Levels written as text blocks use
+     *  a trailing `\` on the opening quotes to shed the block's own newline.
+     *
+     *  Public because the text format IS the level editor: tools and tests author
+     *  levels by writing the same characters the game reads. */
+    public static LevelMap parse(String text) {
+        String[] raw = text.split("\n", -1);
+        for (int i = 0; i < raw.length; i++) {
+            if (raw[i].endsWith("\r")) raw[i] = raw[i].substring(0, raw[i].length() - 1);
+        }
+        int width = 0;
+        for (String line : raw) width = Math.max(width, line.length());
         List<String> rows = new ArrayList<>();
-        for (String line : text.split("\n")) {
-            if (!line.isEmpty()) rows.add(line);
+        for (String line : raw) {
+            if (line.length() < width) line = line + " ".repeat(width - line.length());
+            rows.add(line);
         }
         return new LevelMap(rows);
     }

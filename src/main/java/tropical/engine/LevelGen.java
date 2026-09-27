@@ -248,36 +248,10 @@ public class LevelGen {
             }
         }
 
-        // --- Cracked floor + hidden pocket (bombable, OFF the bot's
-        // concern). TWO adjacent floor tiles on a flat stretch are
-        // CRACKED; below them a 2-cell pocket with a heart. Intact:
-        // solid, walk over. Bombed: hole opens, player drops in,
-        // grabs the heart, jumps out (2-cell climb, jump clears 2.2).
-        // TWO cells, not one: the player body is 48px wide — a 32px
-        // hole is always spanned by the lips and can never be entered
-        // (found by physics test). The bot never bombs, so the path
-        // is unaffected either way.
-        if (rng.nextDouble() < 0.5) {
-            int from = 6, to = width - 10;
-            for (int tries = 0; tries < 10; tries++) {
-                int c = from + rng.nextInt(to - from);
-                int fr = pathFloor[c];
-                if (fr < 0 || fr > height - 4) continue;
-                if (g[fr][c] != '#' || g[fr][c + 1] != '#') continue;
-                boolean flat = true;
-                for (int cc = c - 1; cc <= c + 2; cc++) {
-                    if (cc < 0 || cc >= width || pathFloor[cc] != fr) { flat = false; break; }
-                }
-                if (!flat) continue;
-                if (g[fr + 1][c] != ' ' && g[fr + 1][c] != '#') continue;
-                if (g[fr + 1][c + 1] != ' ' && g[fr + 1][c + 1] != '#') continue;
-                g[fr][c] = 'C';       // cracked floor tiles
-                g[fr][c + 1] = 'C';
-                g[fr + 1][c] = ' ';   // pocket interior
-                g[fr + 1][c + 1] = 'h';  // heart in the pocket
-                break;
-            }
-        }
+        // --- Cracked floor + hidden chamber is placed AFTER the enemy scan,
+        // further down: the chamber floor is a long run of '#' with open space
+        // above it, which is exactly what that scan looks for, and an enemy
+        // sealed inside a bombable chamber is dead content.
 
         // --- Enemies on wide flat stretches of the main path ---
         // Frequency scales with level: 40% + 10%/level, capped 85%.
@@ -296,7 +270,8 @@ public class LevelGen {
                     // on you, instantly taking a life"). 6 cells ≈ the
                     // spawn platform plus a safe walking buffer.
                     int mid = c - run / 2;
-                    if (run >= 5 && mid > 6 && rng.nextDouble() < enemyChance) {
+                    if (run >= 5 && mid > 6 && rng.nextDouble() < enemyChance
+                            && g[r - 1][mid] == ' ') {   // never overwrite a pickup
                         g[r-1][mid] = 'o';
                     }
                     run = 0;
@@ -310,10 +285,119 @@ public class LevelGen {
             if (g[r][width - 1] == ' ') g[r][width - 1] = '#';
         }
 
+        // --- Cracked floor + hidden chamber (bombable, OFF the bot's concern).
+        // TWO adjacent floor tiles on a flat stretch are CRACKED; below them a
+        // chamber with a heart. Intact: solid, walk over. Bombed: the hole opens,
+        // the player drops in, takes the heart and jumps back out.
+        //
+        // TWO cells wide, not one: a 32px hole is spanned by the lips and can
+        // never be entered. The bot never bombs, so the path is unaffected.
+        //
+        // WHY THE SEAT IS ONE CELL: the bombed hole is the SECOND cell of air.
+        // A chamber H cells tall has its floor one row below that, so climbing
+        // straight out is H+1 cells; the body is 44px and a cell is 32px, so H
+        // must be >= 2 to fit inside at all - which makes the climb 3 cells =
+        // 96px against a 73px jump. There is no H that works: the door has to be
+        // the hole. Hence 1 cell of seat plus the open hole above it (64px of air,
+        // the body fits with its head poking up) and a floor two rows down, which
+        // is a 2-cell climb = 64px, inside the jump with the same margin the
+        // walk's own step limit assumes.
+        //
+        // The old version cleared that one cell and wrote NO floor. On a flat run
+        // the heart hung over the map's void, so taking it dropped the player out
+        // of the world; where the column was already filled the cavity was 32px
+        // and the body could not fit. Either way the feature never worked.
+        if (rng.nextDouble() < 0.5) {
+            int from = 6, to = width - 10;
+            for (int tries = 0; tries < 10; tries++) {
+                int c = from + rng.nextInt(to - from);
+                int fr = pathFloor[c];
+                if (fr < 0 || fr > height - 4) continue;
+                if (g[fr][c] != '#' || g[fr][c + 1] != '#') continue;
+                boolean flat = true;
+                for (int cc = c - 1; cc <= c + 2; cc++) {
+                    if (cc < 0 || cc >= width || pathFloor[cc] != fr) { flat = false; break; }
+                }
+                if (!flat) continue;
+                boolean clear = true;
+                for (int cc = c; cc <= c + 1 && clear; cc++) {
+                    for (int rr = fr + 1; rr <= fr + 2; rr++) {
+                        if (g[rr][cc] != ' ' && g[rr][cc] != '#') { clear = false; break; }
+                    }
+                }
+                if (!clear) continue;
+                g[fr][c] = 'C';          // cracked floor: the chamber's ceiling
+                g[fr][c + 1] = 'C';      // AND its doorway
+                g[fr + 1][c] = ' ';      // one cell of seat (the hole is the other)
+                g[fr + 1][c + 1] = 'h';  // heart in the seat
+                g[fr + 2][c] = '#';      // chamber floor, written explicitly: the
+                g[fr + 2][c + 1] = '#';  // grounding pass fills below the LOWEST
+                                         // block, so with no floor the heart would
+                                         // be the lowest block and get buried
+                break;
+            }
+        }
+
+        // Border walls
+        for (int r = 0; r < height; r++) {
+            g[r][0] = (g[r][0] == ' ') ? '#' : g[r][0];
+            if (g[r][width - 1] == ' ') g[r][width - 1] = '#';
+        }
+
+        // --- Ground the terrain (Kinger: "the blocks are floating") -----------
+        // The walk writes ONE '#' per column on flat runs - only climbs and drops
+        // fill their column - so most of a floor was a one-cell ledge hanging over
+        // empty space. The path looked like it floated, and stepping off it
+        // dropped the player out of the level. Copy the lowest block in each
+        // column down to the bottom of the map. See groundFill() for why that is
+        // safe and why gaps survive.
+        groundFill(g);
+
         // Assemble rows (top to bottom)
         List<String> rows = new ArrayList<>();
         for (char[] row : g) rows.add(new String(row));
         this.lastMap = new LevelMap(rows);
         return this.lastMap;
+    }
+
+    /** Terrain: what counts as ground for grounding purposes. Pickups, enemies,
+     *  the spawn/exit markers and one-way platforms are deliberately absent. */
+    static boolean isTerrain(char ch) {
+        return ch == '#' || ch == 'C' || ch == 'D'
+            || ch == '/' || ch == '\\' || ch == '^';
+    }
+
+    /**
+     * Ground the terrain: copy the lowest block in each column down to the
+     * bottom of the map.
+     *
+     * Four rules make it safe:
+     *
+     *  - The anchor is the LOWEST terrain cell, so nothing above it moves. The
+     *    path surface, doors, keys, enemies and spikes are untouched by
+     *    construction rather than by luck.
+     *  - A column with no terrain is left alone. That is a gap, and gaps are the
+     *    jumps - running per column grounds the cliffs either side of a gap
+     *    without bridging it.
+     *  - One-way platforms are not terrain: they exist to be jumped up through,
+     *    and grounding one turns a platform into a pillar.
+     *  - A cavity survives as long as it has a floor, because the floor is then
+     *    the lowest cell and the fill starts below it. The chamber above builds
+     *    its own floor for exactly this reason.
+     *
+     * Runs last, after enemies: a freshly filled mass offers the enemy scan brand
+     * new long runs of '#' with open space above, deep inside what should be rock.
+     */
+    private void groundFill(char[][] g) {
+        for (int c = 0; c < width; c++) {
+            int anchor = -1;
+            for (int r = height - 1; r >= 0; r--) {
+                if (isTerrain(g[r][c])) { anchor = r; break; }
+            }
+            if (anchor < 0) continue;              // a gap - leave it open
+            for (int r = anchor + 1; r < height; r++) {
+                if (g[r][c] == ' ') g[r][c] = '#';
+            }
+        }
     }
 }

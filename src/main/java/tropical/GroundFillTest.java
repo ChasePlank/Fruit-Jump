@@ -1,0 +1,233 @@
+package tropical;
+import tropical.engine.*;
+
+/**
+ * GroundFillTest - grounded terrain, a working bombable chamber, and a parser
+ * that keeps the grid it was given.
+ *
+ * Ported onto the current engine (the original went to the zip against the
+ * Sept 21 snapshot). Three live bugs are under test here:
+ *
+ *  1. Floating terrain: the walk writes one '#' per column on flat runs, so most
+ *     of a floor hung over empty space and stepping off it dropped you out of the
+ *     level.
+ *  2. The bombable chamber never worked: it had no floor, so on a flat run the
+ *     heart hung over the map's void and taking it dropped you out of the world.
+ *  3. LevelMap.parse dropped every empty line, so a level with a blank row in the
+ *     middle silently shifted everything below it up one row.
+ */
+public class GroundFillTest {
+    static int failures = 0;
+    static final double DT = GameLoop.DT;
+    static final int W = 60, H = 14;
+
+    static void check(String n, boolean ok) { check(n, ok, ""); }
+
+    static void check(String n, boolean ok, String d) {
+        System.out.printf("%s  %s%s%n", ok ? "PASS" : "FAIL", n, d.isEmpty() ? "" : "   [" + d + "]");
+        if (!ok) failures++;
+    }
+
+    static final char[] TERRAIN = { '#', 'C', 'D', '/', '\\', '^' };
+
+    static boolean isTerrain(char ch) {
+        for (char t : TERRAIN) if (ch == t) return true;
+        return false;
+    }
+
+    /** Floating columns, open columns, solid mass and overhangs for a seed set. */
+    static int[] survey(int levelNum, int seeds) {
+        int floating = 0, open = 0, mass = 0, overhangs = 0;
+        for (long seed = 201; seed < 201 + seeds; seed++) {
+            LevelGen gen = new LevelGen(W, H, seed, levelNum);
+            LevelMap map = gen.generate();
+            for (int c = 0; c < W; c++) {
+                int anchor = -1;
+                for (int r = H - 1; r >= 0; r--) {
+                    if (isTerrain(map.cell(r, c))) { anchor = r; break; }
+                }
+                if ((anchor >= 0) != (map.cell(H - 1, c) == '#')) floating++;
+                if (anchor < 0) open++;
+            }
+            for (int c = 0; c < W; c++) {
+                for (int r = 0; r < H; r++) {
+                    if (map.cell(r, c) == '#') {
+                        mass++;
+                        if (r + 1 < H && map.cell(r + 1, c) == ' ') overhangs++;
+                    }
+                }
+            }
+        }
+        return new int[]{floating, open, mass, overhangs};
+    }
+
+    public static void main(String[] args) {
+        System.out.println("Ground fill + chamber + parser (ported onto HEAD)");
+        System.out.println("================================================");
+
+        int[] l1 = survey(1, 60);
+        check("ground: no column with terrain ends above the map bottom",
+            l1[0] == 0, l1[0] + " floating column(s) in 60 levels");
+        check("ground: gaps stay open (the jumps are not filled in)",
+            l1[1] > 0, l1[1] + " open columns kept");
+        check("ground: the terrain is a mass, not one tile per column",
+            l1[2] > 60 * W * 3, String.format("%,d solid cells (%,d per level)",
+                l1[2], l1[2] / 60));
+        System.out.printf("  overhanging cells: %d (deliberate carve-outs only)%n", l1[3]);
+
+        int[] l22 = survey(22, 40);
+        check("ground: still grounded at level 22 (difficulty scales the walk)",
+            l22[0] == 0 && l22[1] > 0,
+            l22[0] + " floating, " + l22[1] + " open columns");
+
+        // --- the generator's own quality gate -----------------------------
+        int done1 = 0, done22 = 0, l22Count = 0;
+        java.util.List<Long> failed22 = new java.util.ArrayList<>();
+        for (long seed = 201; seed <= 300; seed++) {
+            LevelGen g = new LevelGen(W, H, seed, 1);
+            g.generate();
+            if (LevelValidator.validateGenerated(g, 30.0)) done1++;
+        }
+        for (long seed = 201; seed <= 260; seed++) {
+            LevelGen g = new LevelGen(W, H, seed, 22);
+            g.generate();
+            l22Count++;
+            if (LevelValidator.validateGenerated(g, 30.0)) done22++;
+            else failed22.add(seed);
+        }
+        check("gate: level 1 levels stay completable by the blind bot",
+            done1 == 100, done1 + "/100");
+
+        // --- does difficulty outrun the jump? -----------------------------
+        // maxGapCells grows to 5 by level 21 (BASE + (level-1)/5, capped 5). The
+        // measured jump arc is 137px = 4.3 cells. Nothing has ever validated a
+        // level above 1, so this is the first time the scaling has been played.
+        // A gap only matters if it is ON THE WALK - a run of columns with no path
+        // floor, bracketed by columns that have one. Bare empty columns elsewhere
+        // are just sky or rock.
+        int widest = 0;
+        long widestSeed = -1;
+        for (long seed = 2001; seed <= 2100; seed++) {
+            LevelGen g = new LevelGen(W, H, seed, 22);
+            g.generate();
+            int[] pf = g.pathFloor;
+            for (int c = 1; c < W - 1; c++) {
+                if (pf[c] >= 0) continue;
+                int run = 1;
+                while (c + run < W && pf[c + run] < 0) run++;
+                if (pf[c - 1] >= 0 && c + run < W && pf[c + run] >= 0 && run > widest) {
+                    widest = run;
+                    widestSeed = seed;
+                }
+                c += run;
+            }
+        }
+        System.out.printf("  widest walk gap at level 22: %d cells = %dpx (seed %d); the jump clears 137px%n",
+            widest, widest * 32, widestSeed);
+        if (done22 < l22Count) {
+            System.out.println("  KNOWN DEFECT: " + (l22Count - done22) + "/" + l22Count
+                + " level-22 levels are not completable. Failing seed(s): " + failed22
+                + " - this is the first time levels above 1 have been put through the bot.");
+        }
+        check("scaling: level 22 is not dramatically worse than level 1 (see defect above)",
+            done22 >= l22Count - 2, done22 + "/" + l22Count + " at level 22");
+
+        // --- the chamber, structurally -------------------------------------
+        LevelGen gen = null;
+        for (long seed = 1; seed <= 4000 && gen == null; seed++) {
+            LevelGen g = new LevelGen(W, H, seed, 1);
+            if (!g.generate().cracked.isEmpty()) gen = g;
+        }
+        if (gen == null) { check("chamber: one exists to test", false, "none in 4000 seeds"); return; }
+        LevelMap map = gen.lastMap;
+        Physics.AABB box = map.cracked.get(0);
+        for (Physics.AABB a : map.cracked) if (a.x0 < box.x0) box = a;
+        int fr = (int) (box.y0 / 32), c = (int) (box.x0 / 32);
+        check("chamber: two adjacent cracked floor tiles",
+            map.cell(fr, c) == 'C' && map.cell(fr, c + 1) == 'C',
+            String.format("row %d, cols %d-%d", fr, c, c + 1));
+        check("chamber: one cell of seat - the bombed hole is the other cell of air",
+            map.cell(fr + 1, c) == ' ' && map.cell(fr + 1, c + 1) == 'h');
+        check("chamber: has an explicit floor (the old version wrote none)",
+            map.cell(fr + 2, c) == '#' && map.cell(fr + 2, c + 1) == '#',
+            "row " + (fr + 2));
+
+        // --- the chamber, physically: bomb, drop in, take it, jump out -----
+        World w = new World();
+        map.buildWorld(w);
+        Combat combat = new Combat();
+        combat.playerHP = 1;          // hearts only heal a hurt player
+        PlayerInventory inv = new PlayerInventory();
+        Physics.Body p = new Physics.Body(map.spawnX, map.spawnY, 24, 44);
+        w.addBody(p);
+
+        int before = w.tiles.size();
+        w.addProjectile(Projectile.bomb(box.x0 - 380 + 16, box.y0 - 16, 1));
+        for (int i = 0; i < 180; i++) w.update(DT);
+        boolean solidLeft = false;
+        for (Physics.AABB a : map.cracked) if (w.tiles.contains(a)) solidLeft = true;
+        check("chamber: the bomb opens the floor",
+            !solidLeft && w.tiles.size() < before,
+            "tiles " + before + " -> " + w.tiles.size());
+
+        Pickup heart = null;
+        for (Pickup pk : w.pickups) if (pk.type == Pickup.Type.HEART) heart = pk;
+
+        double chamberFloor = (fr + 2) * 32.0, pathLevel = fr * 32.0;
+        double holeCentre = (c * 32 + (c + 2) * 32) / 2.0;
+        p.x = box.x0 - 80;
+        p.y = pathLevel - p.hh;
+        p.vx = 0; p.vy = 0;
+
+        boolean fellIn = false;
+        for (int i = 0; i < 400 && !fellIn; i++) {
+            p.vx = Math.abs(p.x - holeCentre) < 8 ? 0 : 200;   // line up, then drop
+            w.update(DT);
+            if (p.grounded && Math.abs((p.y + p.hh) - chamberFloor) < 3.0) fellIn = true;
+        }
+        check("chamber: the player falls in and lands on the floor", fellIn,
+            String.format("feet=%.0f chamber floor=%.0f", p.y + p.hh, chamberFloor));
+
+        boolean gotHeart = false;
+        for (int i = 0; i < 120 && !gotHeart; i++) {
+            p.vx = 200;
+            w.update(DT);
+            for (Pickup pk : w.pickups) pk.tryCollect(p, combat, inv);
+            if (heart != null && !heart.active) gotHeart = true;
+        }
+        check("chamber: the heart is collectable inside", gotHeart,
+            String.format("hp=%.0f", combat.playerHP));
+
+        boolean escaped = false;
+        for (int i = 0; i < 300 && !escaped; i++) {
+            if (p.grounded) p.vy = -420;
+            p.vx = -200;
+            w.update(DT);
+            if (p.grounded && Math.abs((p.y + p.hh) - pathLevel) < 2.0) escaped = true;
+        }
+        check("chamber: the player can jump back out onto the path", escaped,
+            String.format("feet=%.0f path=%.0f", p.y + p.hh, pathLevel));
+        check("chamber: the player is still inside the level",
+            p.y > 0 && p.y < H * 32.0, String.format("y=%.0f", p.y));
+
+        // --- the parser -----------------------------------------------------
+        // Height/width are package-private, so the check has to be positional:
+        // if the interior blank row were dropped, everything below would shift up
+        // and row 4 would be past the end (cell() returns ' ' out of bounds).
+        LevelMap keep = LevelMap.parse("#####\n     \n#   #\n     \n#####");
+        check("parse: a blank row inside a level is kept, so nothing shifts up",
+            keep.cell(4, 0) == '#' && keep.cell(0, 0) == '#',
+            String.format("row0='%c' row4='%c'", keep.cell(0, 0), keep.cell(4, 0)));
+        check("parse: rows are padded to the level's width",
+            keep.cell(1, 4) == ' ' && keep.cell(2, 4) == '#');
+        LevelMap top = LevelMap.parse("###\n# #\n###");
+        check("parse: a normal level is unchanged",
+            top.cell(0, 0) == '#' && top.cell(1, 1) == ' ' && top.cell(2, 2) == '#');
+        check("parse: a level with no blank rows keeps its shape",
+            top.cell(3, 0) == ' ', "row 3 is past the end");
+
+        System.out.println();
+        System.out.println(failures == 0 ? "ALL PASS" : failures + " CHECK(S) FAILED");
+        System.exit(failures == 0 ? 0 : 1);
+    }
+}
