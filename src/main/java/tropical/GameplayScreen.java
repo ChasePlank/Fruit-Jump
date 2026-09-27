@@ -54,6 +54,7 @@ public class GameplayScreen extends Screen {
 
     // Input state (held keys)
     private boolean left, right;
+    private boolean up, down;   // held: swim up / dive (water only)
     /** Input forgiveness for the jump: coyote time, buffering, cut, apex hang. */
     private final JumpFeel jumpFeel = new JumpFeel();
 
@@ -230,8 +231,14 @@ public class GameplayScreen extends Screen {
         // Jump feel first: it needs this frame's ground state and vy to tell a
         // launch from a landing (the ground probe still reports grounded on the
         // launch frame), then answers whether a buffered jump should fire now.
-        jumpFeel.update(dt, player.grounded, player.vy);
-        if (jumpFeel.consumeJump(player.vy)) player.vy = JumpFeel.CALIBRATED_JUMP_V;
+        // "Supported" rather than strictly grounded: a body floating in water is not
+        // grounded, and passing grounded here would refuse every jump out of a pool.
+        jumpFeel.update(dt, player.grounded || world.water.swimming(player), player.vy);
+        if (jumpFeel.consumeJump(player.vy)) {
+            // jumpV answers for the water: a breach hop at the surface (how you get
+            // out of a pool), a paddle when fully under, and the plain jump when dry.
+            player.vy = world.water.jumpV(player, JumpFeel.CALIBRATED_JUMP_V);
+        }
         player.vy = jumpFeel.cutVelocity(player.vy);
         player.gravityScale = jumpFeel.gravityScale(player.vy);
 
@@ -245,9 +252,18 @@ public class GameplayScreen extends Screen {
         
         // Player input → velocity (skipped while hookshot pulls)
         if (!pulling) {
-            player.vx = 0;
-            if (left) player.vx -= RUN_SPEED;
-            if (right) player.vx += RUN_SPEED;
+        // Horizontal input. On land this is the same assignment it always was. In
+        // water it goes through the water system: swimming STEERS (so the body keeps
+        // momentum into and out of the water instead of snapping to a new speed) and
+        // wading is a speed multiplier. Assigning vx directly still works on land,
+        // but it would give water no horizontal effect at all.
+        double desired = 0;
+        if (left) desired -= RUN_SPEED;
+        if (right) desired += RUN_SPEED;
+        world.water.setVerticalInput(up ? -1 : (down ? 1 : 0));
+        player.vx = world.water.swimming(player)
+            ? world.water.steerVx(player, desired, dt)
+            : desired * world.water.speedMultiplier(player);
             // Facing persists after keys release — weapons fire where
             // you're LOOKING, not where you're holding (playtest:
             // "bombs default right, shift that to where youre facing")
@@ -258,6 +274,12 @@ public class GameplayScreen extends Screen {
         // Engine step
         world.update(dt);
         combat.update(dt);
+
+        // Drowning: air ran out a beat ago. Ticks arrive pre-metered (~1/s) so the
+        // damage stays on the engine's clock rather than this loop's.
+        for (int i = 0; i < world.water.drainDrownTicks(player); i++) {
+            combat.hurtPlayer(player, player.x + 1);
+        }
 
         // Enemy contact (stomp or hurt — Combat decides)
         for (Enemy e : new ArrayList<>(world.enemies)) {
@@ -327,6 +349,22 @@ public class GameplayScreen extends Screen {
         final double S = SCALE;
 
         // Sky
+        // Water, drawn UNDER the terrain so tiles read as the pool's walls and over
+        // the sky so an open pool reads as water. Rects are merged water runs, not
+        // one per tile, so a wide pool is a handful of fillRects.
+        Water waterField = world.water.water();
+        if (waterField != null && !waterField.isEmpty()) {
+            for (double[] r : waterField.rects) {
+                double sx = camera.worldToScreenX(r[0]), sy = camera.worldToScreenY(r[1]);
+                double w = r[2] - r[0], h = r[3] - r[1];
+                if (sx > VIEW_W || sy > VIEW_H || sx + w < 0 || sy + h < 0) continue;
+                gc.setFill(Color.web("#2E86C1", 0.55));
+                gc.fillRect(sx, sy, w, h);
+                gc.setFill(Color.web("#7FD4F0", 0.85));   // surface line
+                gc.fillRect(sx, sy, w, 3);
+            }
+        }
+
         gc.setFill(Color.web("#87CEEB"));
         gc.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
@@ -468,6 +506,15 @@ public class GameplayScreen extends Screen {
         // Keys
         gc.setFill(Color.GOLD);
         gc.fillText("Key x" + inventory.keys, 40, 120);
+        // Air: only while it is actually draining, so a swimmer at the surface never
+        // sees a bar they do not need.
+        double air = world.water.airFraction(player);
+        if (air < 1.0) {
+            gc.setFill(Color.web("#0B3D5C"));
+            gc.fillRect(40, 138, 160, 16);
+            gc.setFill(air > 0.35 ? Color.web("#7FD4F0") : Color.web("#E74C3C"));
+            gc.fillRect(40, 138, 160 * air, 16);
+        }
         // Level
         gc.setFill(Color.WHITE);
         gc.fillText("Level " + levelNum, CANVAS_W - 200, 64);
@@ -481,7 +528,13 @@ public class GameplayScreen extends Screen {
             case SPACE, UP, W -> {
                 // The feel module decides whether this press becomes a jump
                 // (it may be buffered until landing, or refused while rising).
+                up = true;                     // held: also the swim-up stroke
                 jumpFeel.press();
+                e.consume();
+            }
+
+            case DOWN, S -> {
+                down = true;                       // dive while held
                 e.consume();
             }
             case X -> {
@@ -519,7 +572,11 @@ public class GameplayScreen extends Screen {
         switch (e.getCode()) {
             case LEFT, A -> left = false;
             case RIGHT, D -> right = false;
-            case SPACE, UP, W -> jumpFeel.release();   // releasing early cuts the jump
+            case SPACE, UP, W -> {
+                up = false;
+                jumpFeel.release();            // releasing early cuts the jump
+            }
+            case DOWN, S -> down = false;
         }
     }
 }

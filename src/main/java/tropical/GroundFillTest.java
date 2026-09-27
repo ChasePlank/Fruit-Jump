@@ -132,6 +132,67 @@ public class GroundFillTest {
         check("scaling: level 22 is not dramatically worse than level 1 (see defect above)",
             done22 >= l22Count - 2, done22 + "/" + l22Count + " at level 22");
 
+        // --- flooded gaps ---------------------------------------------------
+        // Water in the one place the walk already leaves empty. It costs the
+        // guaranteed path nothing (the bot jumps gaps as before) and turns a
+        // missed jump from "fall out of the world" into "swim out".
+        int flooded = 0, waterCells = 0;
+        for (long seed = 201; seed <= 300; seed++) {
+            LevelMap m = new LevelGen(W, H, seed, 1).generate();
+            int n = 0;
+            for (int r = 0; r < H; r++) {
+                for (int c = 0; c < W; c++) if (m.cell(r, c) == '~') n++;
+            }
+            waterCells += n;
+            if (n > 0) flooded++;
+        }
+        check("flooded: some generated levels have water", flooded > 0,
+            flooded + "/100 levels, " + waterCells + " water cells");
+
+        LevelMap pool = null;
+        int pr = -1, pc0 = -1, pc1 = -1;
+        for (long seed = 201; seed <= 600 && pool == null; seed++) {
+            LevelMap m = new LevelGen(W, H, seed, 1).generate();
+            for (int r = 0; r < H && pool == null; r++) {
+                for (int c = 0; c < W; c++) {
+                    if (m.cell(r, c) == '~') {
+                        pool = m; pr = r; pc0 = c; pc1 = c;
+                        while (pc1 + 1 < W && m.cell(r, pc1 + 1) == '~') pc1++;
+                        break;
+                    }
+                }
+            }
+        }
+        if (pool != null) {
+            int depth = 0;
+            while (pool.cell(pr + depth, pc0) == '~') depth++;
+            check("flooded: the pool is 2-3 cells wide and 2 deep",
+                (pc1 - pc0 + 1) >= 2 && (pc1 - pc0 + 1) <= 3 && depth == 2,
+                String.format("%d wide, %d deep (%dpx)", pc1 - pc0 + 1, depth, depth * 32));
+            check("flooded: the pool has a solid floor, not a bottomless void",
+                pool.cell(pr + depth, pc0) == '#');
+            check("flooded: the surface sits at the walk level",
+                pool.cell(pr, pc0 - 1) == '#' && pool.cell(pr, pc1 + 1) == '#');
+
+            World pw = new World();
+            pool.buildWorld(pw);
+            double cx = (pc0 * 32 + (pc1 + 1) * 32) / 2.0;
+            Physics.Body swimmer = new Physics.Body(cx, (pr + 1) * 32.0, 24, 44);
+            pw.addBody(swimmer);
+            boolean out = false;
+            for (int i = 0; i < 900 && !out; i++) {
+                pw.water.setVerticalInput(-1);        // hold UP
+                swimmer.vx = -200;                    // steer at a lip
+                pw.update(DT);
+                if (swimmer.grounded && !swimmer.inWater && (swimmer.y + swimmer.hh) <= pr * 32 + 1) {
+                    out = true;
+                }
+            }
+            check("flooded: a swimmer who falls in can climb out", out,
+                String.format("x=%.0f feet=%.0f inWater=%b", swimmer.x, swimmer.y + swimmer.hh,
+                    swimmer.inWater));
+        }
+
         // --- the chamber, structurally -------------------------------------
         LevelGen gen = null;
         for (long seed = 1; seed <= 4000 && gen == null; seed++) {

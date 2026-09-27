@@ -31,6 +31,8 @@ public class LevelGen {
     final int levelNum;
     final int maxGapCells;
     final int maxStepCells;
+    /** Chance a 2-3 cell gap is flooded. 0 disables flooded gaps. */
+    static final double FLOODED_GAPS = 0.35;
     /** Floor row of the carved path per column (-1 = no path floor).
      *  Recorded during generation so tests measure the ACTUAL path,
      *  not a heuristic re-read of the grid. */
@@ -105,7 +107,34 @@ public class LevelGen {
                     }
                 } else {
                     int gap = 1 + rng.nextInt(maxGapCells);
+                    int gapStart = col;
                     col += gap;
+
+                    // Some gaps are FLOODED. A gap is the one place the walk already
+                    // leaves empty, so water costs the guaranteed path nothing: the
+                    // bot jumps gaps exactly as before (same pathFloor, same jump
+                    // waypoints), and a player who misses the jump lands in water
+                    // instead of falling out of the level.
+                    //
+                    // TWO rows of water, not three: at the walk's default floor row
+                    // (height-3), three rows plus a pool floor does not fit inside the
+                    // map at all - the condition is never true and it silently floods
+                    // nothing. A pool that looks reasonable and can never exist is
+                    // worth checking by counting, not by reading.
+                    //
+                    // Escapable by construction: the surface sits at the path level
+                    // and the pool is 64px deep, so the breach hop clears the lip.
+                    // Deeper would be a trap. One-cell gaps are left alone - a 32px
+                    // slot is not a place to swim.
+                    if (gap >= 2 && rng.nextDouble() < FLOODED_GAPS
+                            && lastFloorRow + 2 < height) {
+                        for (int cc = gapStart; cc < col; cc++) {
+                            g[lastFloorRow][cc] = '~';       // surface, level with
+                            g[lastFloorRow + 1][cc] = '~';   // the walk
+                            g[lastFloorRow + 2][cc] = '#';   // pool floor, so it is
+                        }                                    // not bottomless
+                    }
+
                     int len = 2 + rng.nextInt(2);
                     for (int i = 0; i < len && col < width - 4; i++, col++) {
                         g[lastFloorRow][col] = '#';
