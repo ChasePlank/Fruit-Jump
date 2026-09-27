@@ -156,13 +156,15 @@ public class GroundFillTest {
                 }
             }
         }
-        check("climb: the feature is off by default, so the gate holds",
-            floatsAt22 == 0 && floatsAt1 == 0,
-            floatsAt22 + " platform cells at level 22 (PLATFORM_CLIMBS=0)");
-        check("climb: level 1 is unchanged - no platforms at all",
+        check("climb: levels above 1 have floating platforms to jump between",
+            floatsAt22 > 0, floatsAt22 + " platform cells over 60 level-22 levels");
+        check("climb: level 1 is unchanged - the scaling starts above it",
             floatsAt1 == 0, floatsAt1 + " platform cells at level 1");
-        check("climb: no platforms while the feature is off", widestPlat == 0,
-            "widest platform " + widestPlat + " cells");
+        // consecutive climbs chain into longer runs (3+3+...), so what matters is
+        // that every platform is a multiple of 3 wide, not that runs are short
+        check("climb: platforms are 3-wide units - a landing the arc can hit",
+            widestPlat >= 3 && widestPlat % 3 == 0,
+            "widest run " + widestPlat + " cells (=" + (widestPlat / 3) + " platforms)");
 
         // --- flooded gaps ---------------------------------------------------
         // Water in the one place the walk already leaves empty. It costs the

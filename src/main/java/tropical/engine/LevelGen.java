@@ -49,7 +49,7 @@ public class LevelGen {
      * (around its apex, 2 cells out) is the actual next step; until then this
      * stays 0 so the 100/100 gate keeps meaning something.
      */
-    static final double PLATFORM_CLIMBS = 0.0;
+    static final double PLATFORM_CLIMBS = 1.0;
     /** Floor row of the carved path per column (-1 = no path floor).
      *  Recorded during generation so tests measure the ACTUAL path,
      *  not a heuristic re-read of the grid. */
@@ -282,10 +282,6 @@ public class LevelGen {
         // border wall, at the walk's final height. (A fill starting only
         // at width-6 can leave a gap between the last walk segment and
         // the exit — the bot falls in it and can never reach the exit.)
-        for (int c = col; c < width; c++) {
-            g[lastFloorRow][c] = '#';
-            pathFloor[c] = lastFloorRow;
-        }
         g[lastFloorRow - 1][width - 3] = 'E';
 
         // --- Decorative one-way platforms: REMOVED for now ---
@@ -319,7 +315,8 @@ public class LevelGen {
                 // 'D' parses as a 2-tall door from the SINGLE lower cell
                 // (fr-1): door occupies rows fr-2..fr-1. Only mark the
                 // lower cell — two 'D' chars would make overlapping doors.
-                g[fr - 1][doorCol] = 'D';
+                // NOT placed yet - see below. A door without a key is an unwinnable
+                // level, and the key search is allowed to fail.
                 // Key: on a FLAT stretch before the door, 1 cell above
                 // the floor (head height while walking). Must be a run
                 // with no gap/climb within 3 columns either side — a key
@@ -341,6 +338,13 @@ public class LevelGen {
                 }
                 if (keyCol >= 0) {
                     g[pathFloor[keyCol] - 1][keyCol] = 'k';
+                    g[fr - 1][doorCol] = 'D';   // only now: a door is placed ONLY once
+                                                // its key exists. Placing the door first
+                                                // and hoping left unwinnable levels
+                                                // whenever the key search failed (found
+                                                // by tracing a bot that walked 7 rows up
+                                                // a platform climb and then pressed
+                                                // against a locked door with keys=0).
                 }
             }
         }
