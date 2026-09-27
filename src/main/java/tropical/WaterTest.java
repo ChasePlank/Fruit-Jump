@@ -1,0 +1,212 @@
+package tropical;
+import tropical.engine.*;
+
+/**
+ * WaterTest - the headline checks for the water system, ported onto the current
+ * engine. The full suite from Sept 23 had 50 checks; these are the ones that
+ * decide whether the water is usable at all, including the two bugs that took
+ * real work to find (the flipped buoyancy sign, and the swim stroke cutting out
+ * mid-breach so a swimmer could never get out of a pool).
+ */
+public class WaterTest {
+    static int failures = 0;
+    static final double DT = GameLoop.DT;
+
+    static void check(String n, boolean ok) { check(n, ok, ""); }
+    static void check(String n, boolean ok, String d) {
+        System.out.printf("%s  %s%s%n", ok ? "PASS" : "FAIL", n, d.isEmpty() ? "" : "   [" + d + "]");
+        if (!ok) failures++;
+    }
+
+    static final String FLAT = String.join("\n",
+        "                        ", "                        ", "                        ",
+        "                        ", "                        ", "########################");
+
+    static final String POOL = String.join("\n",
+        "                        ", "                        ",
+        "########        ########",
+        "########~~~~~~~~########", "########~~~~~~~~########",
+        "########~~~~~~~~########", "########~~~~~~~~########",
+        "########################");
+
+    static final String SHALLOW = String.join("\n",
+        "                        ", "                        ", "                        ",
+        "                        ", "                        ", "                        ",
+        "        ~~~~~~~~        ", "########################");
+
+    static final String RIVER = String.join("\n",
+        "                        ", "                        ",
+        "########        ########",
+        "########>>>>>>>>########", "########>>>>>>>>########",
+        "########~~~~~~~~########", "########~~~~~~~~########",
+        "########################");
+
+    /** A shore level with the water: the case that must be climbable out of. */
+    static final String CROSSING = String.join("\n",
+        " ".repeat(40), " ".repeat(40), " ".repeat(40),
+        "#####" + ">".repeat(25) + "#####" + " ".repeat(5),
+        "#####" + ">".repeat(25) + "#####" + " ".repeat(5),
+        "#####" + ">".repeat(25) + "#####" + " ".repeat(5),
+        "#####" + ">".repeat(25) + "#####" + " ".repeat(5),
+        "#".repeat(40));
+
+    static World world(String level) {
+        LevelMap map = LevelMap.parse(level);
+        World w = new World();
+        map.buildWorld(w);
+        return w;
+    }
+
+    static Physics.Body player(World w, double x, double y) {
+        Physics.Body b = new Physics.Body(x, y, 24, 44);
+        w.addBody(b);
+        return b;
+    }
+
+    static void run(World w, double seconds) {
+        int steps = (int) Math.round(seconds / DT);
+        for (int i = 0; i < steps; i++) w.update(DT);
+    }
+
+    static final double FLOAT_SUB = 1.0 / WaterSystem.BUOYANCY;
+
+    public static void main(String[] args) {
+        System.out.println("Water system (ported onto HEAD)");
+        System.out.println("===============================");
+
+        // 1. no water: nothing changes
+        World dry = world(FLAT);
+        check("dry: no water field is installed", dry.water.water() == null);
+        Physics.Body dp = player(dry, 100, 40);
+        run(dry, 0.25);
+        double n = Math.round(0.25 / DT);
+        double expected = 40 + Physics.GRAVITY * DT * DT * (n * (n + 1) / 2.0);
+        check("dry: free fall is plain gravity", Math.abs(dp.y - expected) < 1.0,
+            String.format("y=%.2f expected=%.2f", dp.y, expected));
+        check("dry: no splash, no water state",
+            dry.water.splashEvents() == 0 && !dp.inWater && dp.submersion == 0);
+
+        // 2. buoyancy finds the surface
+        World w = world(POOL);
+        Physics.Body p = player(w, 384, 106);
+        run(w, 4.0);
+        check("float: settles at the buoyancy equilibrium",
+            Math.abs(w.water.submersion(p) - FLOAT_SUB) < 0.08,
+            String.format("sub=%.3f equilibrium=%.3f", w.water.submersion(p), FLOAT_SUB));
+        check("float: head above the surface", (p.y - p.hh) < 96,
+            String.format("head=%.1f surface=96", p.y - p.hh));
+
+        // 3. depth decides wading versus swimming
+        World sh = world(SHALLOW);
+        Physics.Body sp = player(sh, 384, 200);
+        run(sh, 2.0);
+        check("depth: 1 tile of water is a puddle, not a pool",
+            !sh.water.swimming(sp) && sp.inWater && sh.water.jumpV(sp, -420) == -420,
+            String.format("swimming=%b inWater=%b", sh.water.swimming(sp), sp.inWater));
+
+        // 4. splash on entry, and breath while floating
+        World sp2 = world(POOL);
+        Physics.Body ep = player(sp2, 384, 40);
+        run(sp2, 1.5);
+        check("splash: exactly one splash on entry", sp2.water.splashEvents() == 1,
+            "events=" + sp2.water.splashEvents());
+        run(sp2, 3.0);
+        check("splash: no repeats while floating", sp2.water.splashEvents() == 1);
+        check("breath: a floating body does not drown",
+            sp2.water.air(ep) > 0.99 * WaterSystem.BREATH_SECONDS);
+
+        // 5. breath runs out, then refills
+        World bw = world(POOL);
+        Physics.Body bp = player(bw, 384, 106);
+        bw.water.setVerticalInput(1);            // dive and hold
+        run(bw, 18.0);
+        check("breath: air runs out while held under", bw.water.air(bp) == 0.0);
+        check("drown: damage ticks accrue once air is gone",
+            bw.water.drainDrownTicks(bp) >= 3);
+        bw.water.setVerticalInput(0);
+        bp.y = 106; bp.vy = 0;
+        run(bw, 3.0);
+        check("breath: refills at the surface",
+            bw.water.air(bp) > 0.6 * WaterSystem.BREATH_SECONDS,
+            String.format("air=%.1fs", bw.water.air(bp)));
+
+        // 6. hysteresis: holding UP gets you out of a pool
+        World hw = world(POOL);
+        Physics.Body hp = player(hw, 384, 106);
+        run(hw, 3.0);
+        boolean out = false;
+        for (int i = 0; i < 600 && !out; i++) {
+            hw.water.setVerticalInput(-1);        // swim up
+            hp.vx = -200;                         // and steer at the left shore
+            hw.update(DT);
+            if (hp.grounded && !hp.inWater && (hp.y + hp.hh) <= 96 + 1) out = true;
+        }
+        check("hysteresis: a swimmer holding UP can leave the pool", out,
+            String.format("x=%.0f feet=%.0f inWater=%b", hp.x, hp.y + hp.hh, hp.inWater));
+
+        // 7. currents carry at the river's speed
+        World rw = world(RIVER);
+        Physics.Body rp = player(rw, 300, 106);
+        run(rw, 1.5);
+        check("current: a river carries a floating body at its own speed",
+            Math.abs(rp.vx - LevelMap.CURRENT_SPEED) < 25,
+            String.format("vx=%.1f current=%.0f", rp.vx, LevelMap.CURRENT_SPEED));
+
+        // 8. jump response
+        World jw = world(POOL);
+        Physics.Body jp = player(jw, 384, 106);
+        run(jw, 4.0);
+        check("jump: breaching from the surface is boosted",
+            jw.water.jumpV(jp, -420) == -420 * WaterSystem.BREACH_JUMP);
+        jw.water.setVerticalInput(1);
+        run(jw, 4.0);
+        check("jump: a jump from the bottom is a paddle",
+            jw.water.jumpV(jp, -420) == -420 * WaterSystem.UNDERWATER_JUMP,
+            String.format("sub=%.2f", jp.submersion));
+
+        // 9. drag is frame-rate independent
+        double[] vx = new double[2];
+        double[] dts = { 1.0 / 60.0, 1.0 / 120.0 };
+        for (int i = 0; i < 2; i++) {
+            World dw = world(POOL);
+            Physics.Body x = player(dw, 384, 106);
+            x.vx = 200;
+            int steps = (int) Math.round(1.0 / dts[i]);
+            for (int k = 0; k < steps; k++) dw.update(dts[i]);
+            vx[i] = x.vx;
+        }
+        check("dt: drag decays identically at 60Hz and 120Hz",
+            Math.abs(vx[0] - vx[1]) < 0.1 * Math.abs(vx[0]) + 1.0,
+            String.format("60Hz=%.2f 120Hz=%.2f", vx[0], vx[1]));
+
+        // 10. the crossing: swim a river and climb out onto the far shore
+        World cw = world(CROSSING);
+        Physics.Body cp = player(cw, 80, 74);
+        int jumps = 0;
+        double cooldown = 0;
+        boolean arrived = false;
+        for (int i = 0; i < 1800 && !arrived; i++) {
+            if (cw.water.swimming(cp)) {
+                if (cp.x > 930 && cooldown <= 0) {
+                    cp.vy = cw.water.jumpV(cp, -420);
+                    jumps++;
+                    cooldown = 1.2;
+                }
+                cp.vx = cw.water.steerVx(cp, 200, DT);
+            } else {
+                cp.vx = 200;
+            }
+            cw.update(DT);
+            if (cooldown > 0) cooldown -= DT;
+            if (cp.x > 990 && cp.grounded && !cp.inWater) arrived = true;
+        }
+        check("crossing: a bot swims a 25-tile river and climbs out", arrived,
+            String.format("x=%.0f feet=%.0f jumps=%d", cp.x, cp.y + cp.hh, jumps));
+        check("crossing: getting out needed a breach jump", jumps >= 1);
+        check("crossing: one splash for the entry", cw.water.splashEvents() >= 1);
+
+        System.out.println();
+        System.out.println(failures == 0 ? "ALL PASS" : failures + " CHECK(S) FAILED");
+        System.exit(failures == 0 ? 0 : 1);
+    }
+}

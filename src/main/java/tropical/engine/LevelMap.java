@@ -26,6 +26,10 @@ import java.util.List;
 public class LevelMap {
     static final int TILE = 32;
 
+    /** Drift speed of a current tile, px/s. */
+    public static final double CURRENT_SPEED = 85.0;
+    public static final double CURRENT_UP_SPEED = 70.0;
+
     final List<String> rows;
     final int width, height;   // in cells
     public final double spawnX, spawnY;
@@ -39,6 +43,8 @@ public class LevelMap {
     public final List<double[]> enemies = new ArrayList<>();   // {x, y}
     public final List<Pickup> pickups = new ArrayList<>();
     public final List<Door> doors = new ArrayList<>();
+    /** Water cells as {row, col, dir}: dir 0 none, 1 right, 2 left, 3 down, 4 up. */
+    final List<int[]> waterCells = new ArrayList<>();
 
     LevelMap(List<String> rows) {
         this.rows = rows;
@@ -105,6 +111,11 @@ public class LevelMap {
                             doors.add(d);
                         }
                         break;
+                    case '~': waterCells.add(new int[]{r, c, 0}); break;
+                    case '>': waterCells.add(new int[]{r, c, 1}); break;
+                    case '<': waterCells.add(new int[]{r, c, 2}); break;
+                    case 'V': waterCells.add(new int[]{r, c, 3}); break;
+                    case 'A': waterCells.add(new int[]{r, c, 4}); break;
                     case 'C':
                         // Cracked tile: solid until bombed. ONE AABB
                         // object in both lists — the explosion removes
@@ -165,6 +176,35 @@ public class LevelMap {
             world.doors.add(d);
             world.tiles.add(d.aabb());
         }
+        // Water: not solid, never in collision, applied as forces by WaterSystem.
+        Water w = buildWater();
+        if (!w.isEmpty()) world.setWater(w);
+    }
+
+    /**
+     * Build the level's water field from its water cells. Currents become one
+     * region per tile and overlapping regions are averaged by Water.currentAt, so
+     * a patch of '>' flows at one speed however many tiles wide it is.
+     */
+    public Water buildWater() {
+        Water w = new Water(width, height);
+        for (int[] wc : waterCells) w.set(wc[0], wc[1]);
+        if (w.isEmpty()) return w;
+        w.buildRects();
+        for (int[] wc : waterCells) {
+            int dir = wc[2];
+            if (dir == 0) continue;
+            double x0 = wc[1] * (double) TILE, y0 = wc[0] * (double) TILE;
+            double vx = 0, vy = 0;
+            switch (dir) {
+                case 1: vx = CURRENT_SPEED; break;
+                case 2: vx = -CURRENT_SPEED; break;
+                case 3: vy = CURRENT_SPEED; break;
+                case 4: vy = -CURRENT_UP_SPEED; break;
+            }
+            w.addCurrent(x0, y0, x0 + TILE, y0 + TILE, vx, vy);
+        }
+        return w;
     }
 
     /** The character at a cell, or ' ' if out of bounds. */

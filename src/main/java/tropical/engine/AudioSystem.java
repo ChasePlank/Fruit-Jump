@@ -27,6 +27,7 @@ public class AudioSystem {
         EXPLOSION("explosion"),
         ARROW("arrow"),
         HOOKSHOT("hookshot"),
+        SPLASH("splash"),
         DEATH("death");
         
         final String name;

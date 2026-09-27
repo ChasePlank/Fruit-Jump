@@ -27,6 +27,9 @@ public class World {
     public final List<Physics.AABB> spikes = new ArrayList<>();  // contact-damage zones
     final ParticlePool particles;
     AudioSystem audio = null;  // optional
+    /** Water: buoyancy, drag, currents, breath. Always present; with no field set
+     *  it is a no-op, so nothing that does not use water pays for it. */
+    public final WaterSystem water = new WaterSystem();
     /** Optional navigation view of the room (top-down mode). When set, top-down
      *  enemies chase what they can see, along a flow field. Null in the
      *  platformer, where the side-view AI is unchanged. */
@@ -51,6 +54,11 @@ public class World {
         this.audio = audio;
     }
     
+    /** Set the level's water field (see LevelMap.buildWater). */
+    public void setWater(Water w) {
+        water.setWater(w);
+    }
+
     /** Add a solid tile. */
     public void addTile(double x0, double y0, double x1, double y1) {
         tiles.add(new Physics.AABB(x0, y0, x1, y1));
@@ -318,6 +326,18 @@ public class World {
         }
     }
     
+    /** A splash of droplets at a surface crossing, scaled by impact speed. */
+    void spawnSplash(double x, double y, double speed) {
+        double s = Math.min(1.0, speed / 400.0);
+        emitters.add(Emitter.burst(x, y, (int) (6 + 10 * s))
+            .speed(30 + 60 * s, 80 + 160 * s)
+            .angle(-Math.PI * 0.95, -Math.PI * 0.05)
+            .lifetime(0.25, 0.6)
+            .size(2, 2 + 3 * s)
+            .gravity(600));
+        if (audio != null) audio.playSfx(AudioSystem.Sfx.SPLASH);
+    }
+
     /** Handle bomb explosion: damage enemies, destroy cracked tiles. */
     void handleExplosion(double x, double y) {
         if (audio != null) audio.playSfx(AudioSystem.Sfx.EXPLOSION);
@@ -359,7 +379,15 @@ public class World {
         boolean wasGrounded = b.grounded;  // previous frame's support state
 
         // Apply gravity (unless disabled)
-        if (!b.noGravity) {
+        // Water runs BEFORE gravity. When the body is swimming, water has already
+        // accounted for vertical motion, so gravity must not also apply - both in
+        // one frame double-counts. In shallow water this returns false and gravity
+        // applies as normal. gravityScale is deliberately not applied while
+        // swimming: hang is for jumps, not for floating.
+        boolean mediumApplied = water.applyMedium(b, dt);
+
+        // Apply gravity (unless disabled)
+        if (!b.noGravity && !mediumApplied) {
             b.vy += Physics.GRAVITY * b.gravityScale * dt;
         }
 
@@ -388,6 +416,17 @@ public class World {
                 if (tile.overlaps(probe)) { b.grounded = true; break; }
             }
         }
+
+        // Water state at the post-move position. Splash detection has to happen
+        // here: the crossing happens DURING the move, so only comparing pre-move
+        // and post-move state can tell an entry from a body already floating.
+        //
+        // OUTSIDE the ground probe above, and that matters: inside it, this runs
+        // only while the body is airborne and falling. The symptom is a breath
+        // meter that freezes the instant the body comes to rest - which reads as
+        // "the dive doesn't work" rather than "the meter isn't running".
+        water.postStep(b, dt);
+        if (water.consumeSplash()) spawnSplash(water.splashX(), water.splashY(), water.splashSpeed());
     }
 
     /**
