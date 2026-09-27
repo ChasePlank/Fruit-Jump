@@ -349,24 +349,26 @@ public class GameplayScreen extends Screen {
         final double S = SCALE;
 
         // Sky
-        // Water, drawn UNDER the terrain so tiles read as the pool's walls and over
-        // the sky so an open pool reads as water. Rects are merged water runs, not
-        // one per tile, so a wide pool is a handful of fillRects.
+        gc.setFill(Color.web("#87CEEB"));
+        gc.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+        // Water: AFTER the sky (before it, the sky paints over the pool) and BEFORE the
+        // terrain (so tiles read as the pool's walls). The first version had it before
+        // the sky fill, and the frame came back sky-coloured where the pool should be -
+        // a bug no unit test could see and a screenshot caught immediately.
+        // Rects are merged water runs, not one per tile, so a wide pool is a few fillRects.
         Water waterField = world.water.water();
         if (waterField != null && !waterField.isEmpty()) {
             for (double[] r : waterField.rects) {
                 double sx = camera.worldToScreenX(r[0]), sy = camera.worldToScreenY(r[1]);
                 double w = r[2] - r[0], h = r[3] - r[1];
-                if (sx > VIEW_W || sy > VIEW_H || sx + w < 0 || sy + h < 0) continue;
+                if (sx > CANVAS_W || sy > CANVAS_H || sx + w < 0 || sy + h < 0) continue;
                 gc.setFill(Color.web("#2E86C1", 0.55));
                 gc.fillRect(sx, sy, w, h);
                 gc.setFill(Color.web("#7FD4F0", 0.85));   // surface line
                 gc.fillRect(sx, sy, w, 3);
             }
         }
-
-        gc.setFill(Color.web("#87CEEB"));
-        gc.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
         // Facing sprite: mirrored variant when facing left
         // (playtest: "able to look both directions")

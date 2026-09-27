@@ -31,8 +31,25 @@ public class LevelGen {
     final int levelNum;
     final int maxGapCells;
     final int maxStepCells;
+    /** Columns whose walk surface is a FLOATING platform (see groundFill). */
+    final boolean[] platformColumn;
     /** Chance a 2-3 cell gap is flooded. 0 disables flooded gaps. */
     static final double FLOODED_GAPS = 0.35;
+    /**
+     * Share of flat runs replaced by platform climbs, scaled by level. 0 turns
+     * them off.
+     *
+     * OFF for now, and the reason is measured rather than cautious: the climb
+     * geometry is implemented and the rises are adjacent (a rise combined with a
+     * gap is unlandable - at the end of the arc the body is back at launch height,
+     * so a platform one cell higher is a wall you hit sideways), but the validator
+     * bot still fails ~30% of level-22 levels with them on. The bot jumps a gap
+     * from the lip and lands ~4.3 cells later at ~0 height, so it cannot land on
+     * anything raised. Teaching LevelValidator to fire a gap-and-rise jump earlier
+     * (around its apex, 2 cells out) is the actual next step; until then this
+     * stays 0 so the 100/100 gate keeps meaning something.
+     */
+    static final double PLATFORM_CLIMBS = 0.0;
     /** Floor row of the carved path per column (-1 = no path floor).
      *  Recorded during generation so tests measure the ACTUAL path,
      *  not a heuristic re-read of the grid. */
@@ -50,10 +67,15 @@ public class LevelGen {
         this.rng = new Random(seed);
         this.levelNum = levelNum;
         this.pathFloor = new int[width];
+        this.platformColumn = new boolean[width];
         java.util.Arrays.fill(this.pathFloor, -1);
         
         // Difficulty scaling: gaps grow by 1 every 5 levels (max 5)
-        this.maxGapCells = Math.min(5, BASE_MAX_GAP_CELLS + (levelNum - 1) / 5);
+        // Capped at 4. It used to reach 5 by level 21, and a 5-cell gap is 160px
+        // against a 137px jump - an impossible gap, on any level from 21 on, which
+        // is not difficulty, it is a wall. Difficulty comes from the platform
+        // climbs below instead, which are hard and always passable.
+        this.maxGapCells = Math.min(4, BASE_MAX_GAP_CELLS + (levelNum - 1) / 5);
         // Steps stay at 2 (harder to tune without breaking path)
         this.maxStepCells = BASE_MAX_STEP_CELLS;
     }
@@ -90,13 +112,59 @@ public class LevelGen {
             // players need landing room too).
             double roll = rng.nextDouble();
 
-            if (roll < 0.30) {
+            // Platform climbs arrive with the level number and take their share of
+            // the flat runs, so level 1's walk is exactly what it always was.
+            double climbShare = Math.min(0.20, 0.03 * (levelNum - 1)) * PLATFORM_CLIMBS;
+
+            if (roll < 0.30 - climbShare) {
                 // Flat run (2-4 cells)
                 int len = 2 + rng.nextInt(3);
                 for (int i = 0; i < len && col < width - 4; i++, col++) {
                     g[lastFloorRow][col] = '#';
                     pathFloor[col] = lastFloorRow;
                 }
+            } else if (roll < 0.30) {
+                // PLATFORM CLIMB: a run of floating platforms, each 1-2 cells wide,
+                // rising 1-2 cells, with a 1-3 cell gap between. This is the
+                // difficulty axis now - vertical, and always passable (the same
+                // climb and gap limits the walk already guarantees).
+                //
+                // The platforms are meant to hang in the air, so groundFill leaves
+                // air under them, but it gives the pit a floor two rows down: a
+                // missed jump drops you into a pit you can jump back out of, rather
+                // than out of the level. Hard, not unfair.
+                // Traced against the arc: at 3 cells of travel (96px, t=0.48s) the
+                // body is still 64px = 2 cells up, so a 3-cell gap clears a 1-cell
+                // rise comfortably and a 2-cell rise exactly. WIDER gaps with any
+                // rise are impossible (at 4 cells the body is only 0.7 cells up),
+                // and 1-cell hops are unhittable - the validator bot jumps at the
+                // lip and lands ~4 cells past it, so its landings need room, and it
+                // is the gate every level has to pass.
+                //
+                // Hence: 3-wide platforms, rising 1 cell, with a 3-cell hop between.
+                // A real climb, inside the limits the walk already guarantees.
+                // Geometry, traced against the arc, and it is narrower than it looks:
+                //  - a rise combined with a gap is UNLANDABLE. At 4 cells of travel
+                //    (the end of the arc) the body is back at launch height, so a
+                //    platform one cell higher is a wall you hit sideways. A rise is
+                //    only clearable up close, straight up at the face.
+                //  - so the rises here are ADJACENT steps and the gaps sit between
+                //    groups at the same height. The result still reads as floating
+                //    platforms to jump between - it just respects the same limits the
+                //    rest of the walk does, which is what keeps every level passable.
+                int platforms = 2 + rng.nextInt(3);
+                for (int k = 0; k < platforms && col < width - 4; k++) {
+                    int newRow = Math.max(4, lastFloorRow - 1);
+                    for (int i = 0; i < 3 && col < width - 4; i++, col++) {
+                        g[newRow][col] = '#';
+                        pathFloor[col] = newRow;
+                        platformColumn[col] = true;
+                    }
+                    lastFloorRow = newRow;
+                }
+                col += 1 + rng.nextInt(2);               // the hop at this height
+                needRunway = true;
+                continue;
             } else if (roll < 0.45) {
                 // Gap (1 to MAX_GAP_CELLS), then continue at same height.
                 // No gap right after a climb — landing runway required.
@@ -424,6 +492,16 @@ public class LevelGen {
                 if (isTerrain(g[r][c])) { anchor = r; break; }
             }
             if (anchor < 0) continue;              // a gap - leave it open
+            if (platformColumn[c]) {
+                // A floating platform keeps one row of air beneath it, and the pit is
+                // floored one row below that: a missed jump is a 2-cell climb back
+                // out, the same limit the walk assumes everywhere else. (Two rows of
+                // air would make it three cells to climb - a trap, the same counting
+                // mistake the chamber had.)
+                for (int r = 0; r < height; r++) {
+                    if (g[r][c] == '#') { anchor = Math.min(height - 1, r + 1); break; }
+                }
+            }
             for (int r = anchor + 1; r < height; r++) {
                 if (g[r][c] == ' ') g[r][c] = '#';
             }

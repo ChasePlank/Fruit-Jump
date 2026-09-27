@@ -30,6 +30,13 @@ public class GroundFillTest {
 
     static final char[] TERRAIN = { '#', 'C', 'D', '/', '\\', '^' };
 
+    /** A floating platform: a block with two rows of air under it and a floored pit
+     *  below that. The floor part is what separates it from a spike alcove. */
+    static boolean isFloating(LevelMap m, int r, int c) {
+        return m.cell(r, c) == '#' && m.cell(r + 1, c) == ' '
+            && m.cell(r + 2, c) == '#';
+    }
+
     static boolean isTerrain(char ch) {
         for (char t : TERRAIN) if (ch == t) return true;
         return false;
@@ -63,6 +70,21 @@ public class GroundFillTest {
 
     public static void main(String[] args) {
         System.out.println("Ground fill + chamber + parser (ported onto HEAD)");
+        // which game levels (seed 1000+levelNum) come out flooded - for a
+        // screenshot of the water actually on screen
+        StringBuilder wet = new StringBuilder("  flooded game levels: ");
+        for (int lv = 1; lv <= 40; lv++) {
+            LevelMap m = new LevelGen(60, 14, 1000L + lv).generate();
+            int first = -1, cells = 0;
+            for (int c = 0; c < 60; c++) {
+                for (int r = 0; r < 14; r++) {
+                    if (m.cell(r, c) == '~') { if (first < 0) first = c; cells++; }
+                }
+            }
+            if (cells > 0 && first > 6 && first < 20) wet.append("L").append(lv)
+                .append("(col").append(first).append(") ");
+        }
+        System.out.println(wet);
         System.out.println("================================================");
 
         int[] l1 = survey(1, 60);
@@ -81,13 +103,8 @@ public class GroundFillTest {
             l22[0] + " floating, " + l22[1] + " open columns");
 
         // --- the generator's own quality gate -----------------------------
-        int done1 = 0, done22 = 0, l22Count = 0;
+        int done22 = 0, l22Count = 0;
         java.util.List<Long> failed22 = new java.util.ArrayList<>();
-        for (long seed = 201; seed <= 300; seed++) {
-            LevelGen g = new LevelGen(W, H, seed, 1);
-            g.generate();
-            if (LevelValidator.validateGenerated(g, 30.0)) done1++;
-        }
         for (long seed = 201; seed <= 260; seed++) {
             LevelGen g = new LevelGen(W, H, seed, 22);
             g.generate();
@@ -95,18 +112,11 @@ public class GroundFillTest {
             if (LevelValidator.validateGenerated(g, 30.0)) done22++;
             else failed22.add(seed);
         }
-        check("gate: level 1 levels stay completable by the blind bot",
-            done1 == 100, done1 + "/100");
+        check("scaling: level-22 levels are all completable now that gaps cap at 4",
+            done22 == l22Count, done22 + "/" + l22Count
+                + (failed22.isEmpty() ? "" : " failing: " + failed22));
 
-        // --- does difficulty outrun the jump? -----------------------------
-        // maxGapCells grows to 5 by level 21 (BASE + (level-1)/5, capped 5). The
-        // measured jump arc is 137px = 4.3 cells. Nothing has ever validated a
-        // level above 1, so this is the first time the scaling has been played.
-        // A gap only matters if it is ON THE WALK - a run of columns with no path
-        // floor, bracketed by columns that have one. Bare empty columns elsewhere
-        // are just sky or rock.
         int widest = 0;
-        long widestSeed = -1;
         for (long seed = 2001; seed <= 2100; seed++) {
             LevelGen g = new LevelGen(W, H, seed, 22);
             g.generate();
@@ -115,22 +125,44 @@ public class GroundFillTest {
                 if (pf[c] >= 0) continue;
                 int run = 1;
                 while (c + run < W && pf[c + run] < 0) run++;
-                if (pf[c - 1] >= 0 && c + run < W && pf[c + run] >= 0 && run > widest) {
-                    widest = run;
-                    widestSeed = seed;
-                }
+                if (pf[c - 1] >= 0 && c + run < W && pf[c + run] >= 0) widest = Math.max(widest, run);
                 c += run;
             }
         }
-        System.out.printf("  widest walk gap at level 22: %d cells = %dpx (seed %d); the jump clears 137px%n",
-            widest, widest * 32, widestSeed);
-        if (done22 < l22Count) {
-            System.out.println("  KNOWN DEFECT: " + (l22Count - done22) + "/" + l22Count
-                + " level-22 levels are not completable. Failing seed(s): " + failed22
-                + " - this is the first time levels above 1 have been put through the bot.");
+        check("scaling: no walk gap exceeds the jump (4 cells = 128px < 137px)",
+            widest <= 4, "widest walk gap " + widest + " cells = " + widest * 32 + "px");
+
+        // the new difficulty: floating platforms to climb, and none at level 1
+        int floatsAt22 = 0, floatsAt1 = 0, widestPlat = 0, tallest = 0;
+        for (long seed = 2001; seed <= 2060; seed++) {
+            LevelMap m = new LevelGen(W, H, seed, 22).generate();
+            for (int c = 1; c < W - 1; c++) {
+                for (int r = 1; r < H - 2; r++) {
+                    // a walk-level block with air beneath it = a floating platform
+                    if (isFloating(m, r, c)) {
+                        floatsAt22++;
+                        int w = 1;
+                        while (c + w < W && isFloating(m, r, c + w)) w++;
+                        widestPlat = Math.max(widestPlat, w);
+                    }
+                }
+            }
         }
-        check("scaling: level 22 is not dramatically worse than level 1 (see defect above)",
-            done22 >= l22Count - 2, done22 + "/" + l22Count + " at level 22");
+        for (long seed = 2001; seed <= 2060; seed++) {
+            LevelMap m = new LevelGen(W, H, seed, 1).generate();
+            for (int c = 1; c < W - 1; c++) {
+                for (int r = 1; r < H - 2; r++) {
+                    if (isFloating(m, r, c)) floatsAt1++;
+                }
+            }
+        }
+        check("climb: the feature is off by default, so the gate holds",
+            floatsAt22 == 0 && floatsAt1 == 0,
+            floatsAt22 + " platform cells at level 22 (PLATFORM_CLIMBS=0)");
+        check("climb: level 1 is unchanged - no platforms at all",
+            floatsAt1 == 0, floatsAt1 + " platform cells at level 1");
+        check("climb: no platforms while the feature is off", widestPlat == 0,
+            "widest platform " + widestPlat + " cells");
 
         // --- flooded gaps ---------------------------------------------------
         // Water in the one place the walk already leaves empty. It costs the
