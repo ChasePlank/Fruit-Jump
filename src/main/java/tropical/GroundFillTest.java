@@ -344,7 +344,14 @@ public class GroundFillTest {
         // Height/width are package-private, so the check has to be positional:
         // if the interior blank row were dropped, everything below would shift up
         // and row 4 would be past the end (cell() returns ' ' out of bounds).
-        LevelMap keep = LevelMap.parse("#####\n     \n#   #\n     \n#####");
+        // GENUINELY EMPTY rows, not rows of spaces. The bug this guards dropped empty
+        // lines - and a row of five spaces is not empty, so the original version of this
+        // check exercised nothing at all. Found by mutation testing: re-introducing the
+        // drop before the padding fails this check (row4 reads ' '), while the same
+        // mutation placed after the padding is a no-op, because padding has already made
+        // the line non-empty. The current parse pads first, which is why the bug is now
+        // structurally impossible - and why the check has to aim at the ordering.
+        LevelMap keep = LevelMap.parse("#####\n\n#   #\n\n#####");
         check("parse: a blank row inside a level is kept, so nothing shifts up",
             keep.cell(4, 0) == '#' && keep.cell(0, 0) == '#',
             String.format("row0='%c' row4='%c'", keep.cell(0, 0), keep.cell(4, 0)));
