@@ -65,8 +65,30 @@ public class TopDownAITest {
         RoomNav nav = w.nav;
 
         // --- 1. no sight, close by: no chase -------------------------------
-        // The wall sits between them at x=384..416, and the distance is 390px -
-        // inside sight range. Sight is what must stop the chase, not distance.
+        // This test only means anything if two things are true, and neither was checked
+        // before: the wall is genuinely BETWEEN them, and the separation is inside the old
+        // proximity aggro range - otherwise "it did not acquire" would be about distance
+        // rather than about sight, which is the whole claim. (The comment here said 390px
+        // for a while after the bodies were moved closer. Stale geometry in a comment is
+        // the same false confidence as stale geometry in a coordinate.)
+        int ec0 = nav.colOf(e.body.x), er0 = nav.rowOf(e.body.y);
+        int pc0 = nav.colOf(player.x), pr0 = nav.rowOf(player.y);
+        boolean wallBetween = false;
+        for (Physics.AABB a : w.tiles) {
+            if (a.y0 <= e.body.y && a.y1 >= e.body.y
+                    && a.x0 > Math.min(e.body.x, player.x) && a.x1 < Math.max(e.body.x, player.x)) {
+                wallBetween = true;
+            }
+        }
+        check("fixture: the wall actually stands between them on their row", wallBetween,
+            String.format("enemy x=%.0f player x=%.0f", e.body.x, player.x));
+        check("fixture: the separation is inside the old 220px aggro range",
+            Math.abs(player.x - e.body.x) < 220,
+            String.format("%.0fpx apart - so sight, not distance, is the gate",
+                Math.abs(player.x - e.body.x)));
+        check("fixture: line of sight between them is blocked",
+            !nav.eye.lineOfSight(ec0, er0, pc0, pr0));
+
         boolean everTargeted = false;
         boolean everInWall = false;
         for (int i = 0; i < 90; i++) {
@@ -76,8 +98,8 @@ public class TopDownAITest {
         }
         check("blind: an enemy behind a wall never acquires a target",
             !everTargeted,
-            String.format("player %.0fpx away (old aggro range was 220), wall between",
-                Math.hypot(p2x - e.body.x, p2y - e.body.y)));
+            String.format("player %.0fpx away, wall between, old aggro range was 220",
+                Math.abs(player.x - e.body.x)));
         check("blind: it stays in PATROL", e.state == Enemy.AIState.PATROL || !e.hasTarget);
         check("blind: it does not walk into geometry", !everInWall);
 
