@@ -32,6 +32,24 @@ public class VisibilityTest {
         return v;
     }
 
+
+    /**
+     * The narrow form of this suite's old trap, and the mirror image of it.
+     *
+     * A tile asserted NOT visible for a reason - a pillar, a wall, a sealed box - must also
+     * be IN RANGE. Otherwise the check passes because the light never reached it at all,
+     * and the occlusion it claims to test is doing nothing. That is a false green, and this
+     * suite produced exactly that once with a radius that did not reach its target.
+     *
+     * (The visible-direction version of the trap is self-guarding: a radius too small makes
+     * the tile dark, and "it is visible" fails loudly.)
+     */
+    static void fixtureInRange(String label, Visibility v, int cx, int cy, int tx, int ty, int radius) {
+        double d = Math.hypot(tx - cx, ty - cy);
+        check("fixture: " + label + " is inside the radius, so occlusion is what hides it",
+            d <= radius, String.format("distance %.1f vs radius %d", d, radius));
+    }
+
     public static void main(String[] args) {
         System.out.println("Visibility - line of sight and dungeon memory");
         System.out.println("============================================");
@@ -59,6 +77,8 @@ public class VisibilityTest {
         v.setWall(10, 15, true);
         v.compute(5, 15, 12);
         check("pillar: the tile in front of the wall is visible", v.isVisible(9, 15));
+        fixtureInRange("the tile directly behind the pillar", v, 5, 15, 11, 15, 12);
+        fixtureInRange("the tile two tiles behind it", v, 5, 15, 13, 15, 12);
         check("pillar: the tiles directly behind the wall are not",
             !v.isVisible(11, 15) && !v.isVisible(13, 15),
             String.format("(11,15)=%b (13,15)=%b", v.isVisible(11, 15), v.isVisible(13, 15)));
@@ -70,6 +90,7 @@ public class VisibilityTest {
         for (int r = 0; r < 21; r++) if (r != 10) v.setWall(20, r, true);
         v.compute(5, 10, 25);
         check("gap: the tile beyond the gap is visible", v.isVisible(25, 10));
+        fixtureInRange("the tile behind the solid wall", v, 5, 10, 25, 4, 25);
         check("gap: the tile beyond the solid wall is not", !v.isVisible(25, 4),
             String.format("(25,4) behind wall row 4"));
 
@@ -79,6 +100,9 @@ public class VisibilityTest {
         for (int r = 8; r <= 12; r++) { v.setWall(8, r, true); v.setWall(14, r, true); }
         v.compute(11, 10, 15);
         check("box: the interior is visible", v.isVisible(10, 10) && v.isVisible(13, 10));
+        fixtureInRange("the box's far corner", v, 11, 10, 6, 6, 15);
+        fixtureInRange("the box's other far corner", v, 11, 10, 16, 16, 15);
+        fixtureInRange("the tile above the box", v, 11, 10, 11, 5, 15);
         check("box: nothing outside a sealed box is visible",
             !v.isVisible(6, 6) && !v.isVisible(16, 16) && !v.isVisible(11, 5),
             String.format("(6,6)=%b (16,16)=%b (11,5)=%b",
