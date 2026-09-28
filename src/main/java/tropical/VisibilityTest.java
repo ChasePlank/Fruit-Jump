@@ -134,9 +134,15 @@ public class VisibilityTest {
         check("memory: explored only grows", v.exploredCount() > firstExplored,
             firstExplored + " -> " + v.exploredCount());
         check("memory: the old room is no longer visible", !v.isVisible(4, 10));
-        check("memory: the old room is remembered, dimly",
-            v.displayLight(4, 10) == Visibility.MEMORY_LIGHT,
-            String.format("%.2f", v.displayLight(4, 10)));
+        // A relationship, not an equality with the constant. The first version compared
+        // displayLight to MEMORY_LIGHT - the constant that defines it - so setting
+        // MEMORY_LIGHT to 1.0 (remembered terrain as bright as live sight, which is the whole
+        // point of the fog) satisfied it. Mutation found that; it is independent now:
+        // remembered must be dimmer than visible, and still not black.
+        check("memory: remembered terrain is dimmer than sight, and not black",
+            v.displayLight(4, 10) < v.displayLight(30, 10) && v.displayLight(4, 10) > 0.0,
+            String.format("remembered=%.2f visible=%.2f",
+                v.displayLight(4, 10), v.displayLight(30, 10)));
         check("memory: never-seen tiles stay black", v.displayLight(4, 2) == 0.0,
             String.format("%.2f", v.displayLight(4, 2)));
 

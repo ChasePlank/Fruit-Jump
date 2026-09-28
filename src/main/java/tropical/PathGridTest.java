@@ -62,6 +62,14 @@ public class PathGridTest {
         check("open ground: the route starts at the start and ends at the goal",
             path != null && path[0] == g.index(20, 20)
                 && path[path.length - 1] == g.index(28, 26));
+        // The octile helper builds its expectation FROM these constants, so it can never
+        // catch a wrong pair of them - mutation set both to 10 and every cost check still
+        // passed. This asserts the relationship instead: a diagonal step must cost more than
+        // an orthogonal one, or the search prefers cutting corners.
+        check("cost: a diagonal step costs more than a straight one",
+            PathGrid.COST_DIAGONAL > PathGrid.COST_STRAIGHT,
+            PathGrid.COST_DIAGONAL + " vs " + PathGrid.COST_STRAIGHT);
+
         check("open ground: no step passes through a wall or cuts a corner",
             stepsAreLegal(g, path));
 
