@@ -433,8 +433,16 @@ public class World {
      * Slope resolution pass — the height-function approach.
      *
      * For each slope covering the body's foot span:
-     *   - Walking up: feet penetrate the surface → snap up (capped, so
-     *     jumping through a slope from below doesn't teleport you).
+     *   - Walking up: feet penetrate the surface → snap up, guarded by
+     *     VELOCITY rather than by a depth cap. The cap was tried and
+     *     abandoned: it breaks at flat-to-slope seams, where the leading
+     *     foot enters up to span*ratio below a rising surface, so the
+     *     guard refuses the snap only when the body is moving upward
+     *     fast - which is what keeps a jump through a slope from below
+     *     from teleporting you onto it.
+     *     (This comment said "capped" for a while after the cap was
+     *     replaced. SLOPE_SNAP_UP, below, is that abandoned cap's
+     *     leftover and nothing reads it.)
      *   - Walking down: feet leave the surface by less than SNAP_DOWN
      *     while moving roughly horizontally → snap down (no launch off
      *     downhill ramps). Only when already near the surface — a body
