@@ -461,6 +461,21 @@ public class LevelGen {
         return this.lastMap;
     }
 
+    /**
+     * The generator for a given level number: the ONE place the game's construction
+     * convention lives.
+     *
+     * The seed formula (1000 + levelNum) is what makes a level reproducible from its number;
+     * passing levelNum through is what makes difficulty scale. Both were once wrong in the
+     * game - the 3-arg constructor forces levelNum = 1 internally, so gap width, enemy count
+     * and the platform climbs were inert in play, and nothing noticed because no test could
+     * see the call site. A named factory in the engine can be asserted on from a headless
+     * suite; a line inside a JavaFX screen cannot.
+     */
+    public static LevelGen forLevel(int levelNum) {
+        return new LevelGen(60, 14, 1000L + levelNum, levelNum);
+    }
+
     /** Terrain: what counts as ground for grounding purposes. Pickups, enemies,
      *  the spawn/exit markers and one-way platforms are deliberately absent. */
     static boolean isTerrain(char ch) {

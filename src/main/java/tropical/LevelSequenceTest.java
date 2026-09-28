@@ -52,6 +52,26 @@ public class LevelSequenceTest {
         for (int lv = 31; lv <= 40; lv++) latePlat += platforms(new LevelGen(60, 14, 1000L + lv, lv).generate());
         check("sequence: platform climbs increase with the level number", latePlat > earlyPlat,
             String.format("levels 1-10: %d cells, levels 31-40: %d", earlyPlat, latePlat));
+        // The seam the game actually uses. This is the invariant that had no test when it broke:
+        // the game built its levels through the 3-arg constructor, so the level number never
+        // reached the generator and nothing in play scaled. Asserted here against the feature
+        // counts the generator produces, not against the constructor call.
+        // A DIFFERENTIAL over the same seeds: both sides build the same levels, and the only
+        // difference is whether the level number reaches the generator. The first version of
+        // this compared level 1-10 against 31-40 through forLevel alone and passed even with
+        // the level number dropped - because the seed (1000 + levelNum) still varied, and a
+        // per-level enemy count is a random roll, so the sums differed anyway. Measurement
+        // without a control measured nothing.
+        int throughFactory = 0, throughOldCall = 0;
+        for (int lv = 21; lv <= 60; lv++) {
+            throughFactory += LevelGen.forLevel(lv).generate().enemies.size();
+            throughOldCall += new LevelGen(60, 14, 1000L + lv).generate().enemies.size();
+        }
+        check("wiring: forLevel scales difficulty, the 3-arg call it replaced does not",
+            throughFactory > throughOldCall,
+            String.format("same 40 seeds: %d enemies with the level number, %d without",
+                throughFactory, throughOldCall));
+
         check("sequence: level 1 has no climbs (its walk is untouched)", 
             platforms(new LevelGen(60, 14, 1001L, 1).generate()) == 0);
 

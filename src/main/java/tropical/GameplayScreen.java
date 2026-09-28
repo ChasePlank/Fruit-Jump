@@ -90,7 +90,7 @@ public class GameplayScreen extends Screen {
         // setting in LevelGen - gap width, enemy count, the platform climbs - was
         // quietly inert in the actual game. The seed formula is unchanged, so
         // level 1 is still exactly the level it was.
-        LevelGen gen = new LevelGen(60, 14, 1000L + levelNum, levelNum);
+        LevelGen gen = LevelGen.forLevel(levelNum);
         map = gen.generate();
         world = new World();
         map.buildWorld(world);
