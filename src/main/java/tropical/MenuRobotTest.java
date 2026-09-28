@@ -17,7 +17,6 @@ import javafx.scene.paint.Color;
  * A double-fire (native button fire + handleKey fire) would print 2.
  */
 public class MenuRobotTest extends Application {
-    private int newGameFires = 0;
     private int step = 0;
     private ScreenManager screens;
 

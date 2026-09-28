@@ -103,7 +103,6 @@ public class TopDownAITest {
         player.x = 200; player.y = 400;
         double lostAt = -1;
         boolean stillComingImmediately = false;
-        double xWhenLost = e.body.x;
         for (int i = 0; i < 240; i++) {
             w.update(DT);
             if (i == 5 && e.hasTarget) stillComingImmediately = true;

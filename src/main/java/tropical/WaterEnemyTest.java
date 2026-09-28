@@ -63,7 +63,6 @@ public class WaterEnemyTest {
             w.water.water() != null && !w.water.water().isEmpty());
 
         double minFeet = 1e9, maxFeet = -1e9;
-        double firstX = e.body.x;
         double travelled = 0;
         double lastX = e.body.x;
         boolean everSubmerged = false;
