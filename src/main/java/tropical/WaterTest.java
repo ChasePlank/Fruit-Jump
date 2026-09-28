@@ -70,9 +70,38 @@ public class WaterTest {
 
     static final double FLOAT_SUB = 1.0 / WaterSystem.BUOYANCY;
 
+    /**
+     * Fixture assertion: the spawn really is where the test thinks it is.
+     *
+     * Every one of these suites places bodies at hand-typed coordinates, and a coordinate
+     * that misses its pool by a tile fails in the most expensive way there is - silently,
+     * with the check still passing for a different reason. Three geometry fixtures have
+     * already gone wrong this way, so the geometry now asserts itself.
+     */
+    static void fixtureInWater(String what, World w, Physics.Body b, double minDepth) {
+        Water field = w.water.water();
+        boolean inWater = field != null && field.isWater(b.x, b.y);
+        double depth = field == null ? 0 : field.depthUnder(b);
+        check("fixture: " + what + " spawns in water, deep enough to swim",
+            inWater && depth >= minDepth,
+            String.format("inWater=%b depth=%.0f (needs %.0f)", inWater, depth, minDepth));
+    }
+
+
     public static void main(String[] args) {
         System.out.println("Water system (ported onto HEAD)");
         System.out.println("===============================");
+
+        // The level strings are the other half of the fixture, and the same trap: the first
+        // version of the slope test had a ramp level with no slope character in it at all,
+        // which looked fine on the page. Assert the features each level is named for.
+        check("fixture: POOL contains water", POOL.indexOf('~') > 0);
+        check("fixture: SHALLOW contains water", SHALLOW.indexOf('~') > 0);
+        check("fixture: RIVER contains water and a current",
+            RIVER.indexOf('~') > 0 && RIVER.indexOf('>') > 0);
+        check("fixture: CROSSING contains a current long enough to swim across",
+            CROSSING.split("\n")[3].chars().filter(c -> c == '>').count() >= 20,
+            CROSSING.length() + " chars, " + CROSSING.split("\n")[3].chars().filter(c -> c == '>').count() + " of current");
 
         // 1. no water: nothing changes
         World dry = world(FLAT);
@@ -89,6 +118,7 @@ public class WaterTest {
         // 2. buoyancy finds the surface
         World w = world(POOL);
         Physics.Body p = player(w, 384, 106);
+        fixtureInWater("the float test body", w, p, WaterSystem.SWIM_DEPTH);
         run(w, 4.0);
         check("float: settles at the buoyancy equilibrium",
             Math.abs(w.water.submersion(p) - FLOAT_SUB) < 0.08,
@@ -118,6 +148,7 @@ public class WaterTest {
         // 5. breath runs out, then refills
         World bw = world(POOL);
         Physics.Body bp = player(bw, 384, 106);
+        fixtureInWater("the dive test body", bw, bp, WaterSystem.SWIM_DEPTH);
         bw.water.setVerticalInput(1);            // dive and hold
         run(bw, 18.0);
         check("breath: air runs out while held under", bw.water.air(bp) == 0.0);
@@ -133,6 +164,7 @@ public class WaterTest {
         // 6. hysteresis: holding UP gets you out of a pool
         World hw = world(POOL);
         Physics.Body hp = player(hw, 384, 106);
+        fixtureInWater("the climb-out body", hw, hp, WaterSystem.SWIM_DEPTH);
         run(hw, 3.0);
         boolean out = false;
         for (int i = 0; i < 600 && !out; i++) {
