@@ -24,6 +24,7 @@ public class AllTests {
         {"RoomsValidatorTest",   "keys before locks, along the room path"},
         {"WaterTest",            "swimming, breath, currents, the river crossing"},
         {"WaterEnemyTest",       "what water does to enemies, not just the player"},
+        {"SlopeTest",            "the slope pass's own claims about slopes"},
         {"GroundFillTest",       "grounded terrain, the chamber, the parser, climbs"},
         {"JumpFeelTest",         "coyote time, buffering, cut, apex hang"},
         {"VisibilityTest",       "line of sight, falloff, explored memory"},
