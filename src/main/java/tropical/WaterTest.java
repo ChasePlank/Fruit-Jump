@@ -212,9 +212,13 @@ public class WaterTest {
         jw.water.setVerticalInput(1);
         run(jw, 4.0);
         double fromBottom = jw.water.jumpV(jp, -420);
-        check("jump: a jump from the bottom is a paddle, weaker than breaching",
-            Math.abs(fromBottom) < Math.abs(fromDepth),
-            String.format("bottom=%.1f vs surface=%.1f", fromBottom, fromDepth));
+        // Against the PLAIN input value, not just against breaching. Weaker-than-breaching is satisfied
+        // by a jump that is not a paddle at all - the mutation "UNDERWATER_JUMP = 1.0" passed this check
+        // before, which the harness caught. A paddle must be weaker than asking for a jump with nothing
+        // helping, and -420 is what the caller asked for, not a tuned constant.
+        check("jump: a jump from the bottom is a paddle, weaker than the plain jump asked for",
+            Math.abs(fromBottom) < Math.abs(-420),
+            String.format("bottom=%.1f vs plain 420", fromBottom));
 
         // 9. drag is frame-rate independent
         double[] vx = new double[2];

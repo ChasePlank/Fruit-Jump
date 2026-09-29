@@ -49,6 +49,13 @@ MUTATIONS = [
     ("ai: no pursuit memory",           "engine/Enemy.java",       "static final double SIGHT_GIVE_UP = 1.6;", "static final double SIGHT_GIVE_UP = 0.0;", "TopDownAITest"),
     ("jump: no coyote time",            "engine/JumpFeel.java",    "public static final double COYOTE_TIME = 0.10;", "public static final double COYOTE_TIME = 0.0;", "JumpFeelTest"),
     ("jump: release-cut disabled",      "engine/JumpFeel.java",    "public static final double CUT_MULTIPLIER = 0.45;", "public static final double CUT_MULTIPLIER = 1.0;", "JumpFeelTest"),
+    # The ABSENCE cases. These are what the three relational rewrites exist to catch: a feature that is
+    # simply not there, which an equality-to-the-constant check passes happily (0 == 0 * constant).
+    # Values chosen to mean "as if unimplemented", which is why the automatic sweep's deltas cannot
+    # produce them.
+    ("water: the paddle is just a plain jump", "engine/WaterSystem.java", "public static final double UNDERWATER_JUMP = 0.45;", "public static final double UNDERWATER_JUMP = 1.0;", "WaterTest"),
+    ("water: breaching is not a boost",        "engine/WaterSystem.java", "public static final double BREACH_JUMP = 1.25;", "public static final double BREACH_JUMP = 1.0;", "WaterTest"),
+    ("water: river has no current",            "engine/LevelMap.java",    "public static final double CURRENT_SPEED = 85.0;", "public static final double CURRENT_SPEED = 0.0;", "WaterTest"),
 ]
 
 ROOT = pathlib.Path(__file__).parent
@@ -135,10 +142,6 @@ def tautology_sweep(only):
             # exactly once. The first version could print a constant twice - UNCONSTRAINED and then
             # constrained - which made the tally wrong even when the verdicts were right.
             results.append((name, "UNCONSTRAINED", "neither direction failed anything"))
-        if True:
-            finally:
-                shutil.copy(backup, target)
-                backup.unlink()
     print("%-34s %-14s %s" % ("constant a test mentions", "verdict", "suites that noticed"))
     for name, verdict, who in results:
         print("%-34s %-14s %s" % (name, verdict, who))
