@@ -100,23 +100,45 @@ def tautology_sweep(only):
         original = target.read_text()
         if original.count(line) != 1:
             continue
+        # BOTH DIRECTIONS. Mutating only upward is a blind spot: a bigger buffer, a deeper pool or a
+        # roomier threshold never fails a check that asserts something still works, so such constants
+        # read as UNCONSTRAINED when they are merely unconstrained in one direction. JUMP_BUFFER
+        # reported unconstrained for exactly that reason - its check is behavioural and its message
+        # merely quotes the constant - and SWIM_DEPTH for the opposite one.
         is_int = "." not in value
-        new_value = str(int(value) + 7) if is_int else ("%.4f" % (float(value) + 7.3))
-        backup = pathlib.Path(tempfile.mkstemp(suffix=".java")[1])
-        shutil.copy(target, backup)
-        try:
-            target.write_text(original.replace(line, line.replace(value, new_value)))
-            if compile_tree().returncode != 0:
-                results.append((name, "DID NOT COMPILE", ""))
+        if is_int:
+            v = int(value)
+            candidates = [v + 7, v - 5 if v - 5 > 0 else v + 3]
+        else:
+            f = float(value)
+            candidates = [f + 7.3, f * 0.35 if f * 0.35 > 0.0001 else f + 11.7]
+        for new_value in ["%d" % c if is_int else "%.4f" % c for c in candidates]:
+            if new_value == value:
                 continue
-            failed = [s for s in SUITES
-                      if subprocess.run([JAVA, "-cp", OUT, "tropical." + s],
-                                        capture_output=True, text=True).returncode != 0]
-            results.append((name, "constrained" if failed else "UNCONSTRAINED",
-                            ",".join(f.replace("Test", "") for f in failed)))
-        finally:
-            shutil.copy(backup, target)
-            backup.unlink()
+            backup = pathlib.Path(tempfile.mkstemp(suffix=".java")[1])
+            shutil.copy(target, backup)
+            try:
+                target.write_text(original.replace(line, line.replace(value, new_value)))
+                if compile_tree().returncode != 0:
+                    continue
+                failed = [s for s in SUITES
+                          if subprocess.run([JAVA, "-cp", OUT, "tropical." + s],
+                                            capture_output=True, text=True).returncode != 0]
+                if failed:
+                    results.append((name, "constrained", ",".join(f.replace("Test", "") for f in failed)))
+                    break
+            finally:
+                shutil.copy(backup, target)
+                backup.unlink()
+        else:
+            # The for-loop's else runs only when no direction caused a failure, so the row is emitted
+            # exactly once. The first version could print a constant twice - UNCONSTRAINED and then
+            # constrained - which made the tally wrong even when the verdicts were right.
+            results.append((name, "UNCONSTRAINED", "neither direction failed anything"))
+        if True:
+            finally:
+                shutil.copy(backup, target)
+                backup.unlink()
     print("%-34s %-14s %s" % ("constant a test mentions", "verdict", "suites that noticed"))
     for name, verdict, who in results:
         print("%-34s %-14s %s" % (name, verdict, who))
