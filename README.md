@@ -57,6 +57,42 @@ Notable bugs the bots found:
 - **Double-fire**: JavaFX buttons fire natively on ENTER when focused + the button's own listener + the screen's key handler = three fire paths for one keypress
 - **The 48px player can't enter a 32px hole** — pockets need two cracked tiles
 
+## Running the checks
+
+Fourteen suites, then the instrument that checks the checks.
+
+```bash
+# compile everything (JavaFX on the module path)
+javac --module-path /path/to/javafx/lib \
+      --add-modules javafx.controls,javafx.graphics,javafx.media,javafx.swing \
+      -d out $(find src/main/java -name '*.java')
+
+java -cp out tropical.AllTests        # 13 headless suites, ~3.5s
+```
+
+The JavaFX robot tests (menus, screenshots, gameplay) need a display; everything else runs headless.
+
+```bash
+python3 mutations.py                  # break the engine on purpose, confirm a suite notices
+python3 mutations.py --list           # what it breaks, and which suite should catch it
+python3 mutations.py water            # label filter
+python3 mutations.py --tautology      # constants a test mentions that nothing fails over
+```
+
+**A check that has never been seen to fail is unverified.** `mutations.py` encodes that: 22 deliberate
+breakages, each reverted from a copy (never `git checkout`, which eats uncommitted work). Current state:
+**22 caught, 0 missed, 0 unusable.**
+
+`--tautology` sweeps every engine constant a test file mentions, mutating it **both directions**, and reports
+which nothing notices. It exists because a check can compare a measurement to the constant that *defines* it,
+which can never fail — four such were found in this codebase and rewritten as relations. Two constants
+remain unconstrained, and both are correct:
+
+- **`GRAVITY`** — a free parameter. Both sides of any relation scale with it, so nothing *can* pin it.
+- **`JUMP_V`** — a genuine leftover, superseded by the `JumpFeel` values. Nothing reads it.
+
+The sweep flags; a person decides which is a broken test and which is a tuning value.
+
 ## Architecture
 
 ```
