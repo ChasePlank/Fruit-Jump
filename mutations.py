@@ -20,7 +20,7 @@ would also revert uncommitted work in the tree (that mistake cost me two finishe
 
 Adding a check? Add a mutation for it here, and confirm it is caught.
 """
-import pathlib, subprocess, sys, shutil, tempfile
+import pathlib, re, subprocess, sys, shutil, tempfile
 
 JAVAC = "/root/jdk-27+35/bin/javac"
 JAVA = "/root/jdk-27+35/bin/java"
@@ -60,8 +60,80 @@ def compile_tree():
     return subprocess.run(cmd, capture_output=True, text=True)
 
 
+SUITES = ["LevelSequenceTest", "RoomsValidatorTest", "WaterTest", "WaterEnemyTest", "GroundFillTest",
+          "JumpFeelTest", "VisibilityTest", "PathGridTest", "RoomNavTest", "SlopeTest", "TopDownAITest",
+          "DoorStressTest", "CrackedPocketTest"]
+
+
+def find_constants():
+    """Numeric constants the ENGINE declares and a TEST file mentions."""
+    engine = (ROOT / "src/main/java/tropical/engine")
+    tests = [p for p in (ROOT / "src/main/java/tropical").glob("*Test*.java")]
+    test_text = "\n".join(t.read_text() for t in tests)
+    decl = re.compile(r'static\s+final\s+(?:double|int)\s+([A-Z][A-Z_0-9]{2,})\s*=\s*(-?[0-9]+(?:\.[0-9]+)?)')
+    out = []
+    for f in engine.rglob("*.java"):
+        src = f.read_text()
+        for m in decl.finditer(src):
+            name, value = m.group(1), m.group(2)
+            if name not in test_text:
+                continue                      # a constant no test mentions is a tuning knob, not a claim
+            if float(value) in (0.0, 1.0):
+                continue                      # nothing safe to change them to
+            out.append((name, str(f.relative_to(ROOT / "src/main/java/tropical")), m.group(0), value))
+    return out
+
+
+def tautology_sweep(only):
+    """For every constant a test mentions: mutate it, run every suite, see whether anything notices.
+
+    A constant that a test file REFERENCES but that no failure follows from is the signature of a
+    self-referential assertion - a check comparing a measurement to the constant that defines it. Two
+    such were found by hand earlier; this is the same finding, mechanised.
+    """
+    pathlib.Path(OUT).mkdir(parents=True, exist_ok=True)
+    results = []
+    for name, rel, line, value in find_constants():
+        if only and only not in name.lower():
+            continue
+        target = ROOT / "src/main/java/tropical" / rel
+        original = target.read_text()
+        if original.count(line) != 1:
+            continue
+        is_int = "." not in value
+        new_value = str(int(value) + 7) if is_int else ("%.4f" % (float(value) + 7.3))
+        backup = pathlib.Path(tempfile.mkstemp(suffix=".java")[1])
+        shutil.copy(target, backup)
+        try:
+            target.write_text(original.replace(line, line.replace(value, new_value)))
+            if compile_tree().returncode != 0:
+                results.append((name, "DID NOT COMPILE", ""))
+                continue
+            failed = [s for s in SUITES
+                      if subprocess.run([JAVA, "-cp", OUT, "tropical." + s],
+                                        capture_output=True, text=True).returncode != 0]
+            results.append((name, "constrained" if failed else "UNCONSTRAINED",
+                            ",".join(f.replace("Test", "") for f in failed)))
+        finally:
+            shutil.copy(backup, target)
+            backup.unlink()
+    print("%-34s %-14s %s" % ("constant a test mentions", "verdict", "suites that noticed"))
+    for name, verdict, who in results:
+        print("%-34s %-14s %s" % (name, verdict, who))
+    loose = [r for r in results if r[1] == "UNCONSTRAINED"]
+    print()
+    print("%d swept, %d UNCONSTRAINED" % (len(results), len(loose)))
+    if loose:
+        print("UNCONSTRAINED means a test file references it and nothing fails when it changes - check "
+              "whether that test compares a measurement to the constant itself (a tautology).")
+    return 0
+
+
 def main():
     args = [a for a in sys.argv[1:]]
+    if "--tautology" in args:
+        rest = [a for a in args if a != "--tautology"]
+        return tautology_sweep(rest[0].lower() if rest else None)
     if "--list" in args:
         for label, path, _, _, suite in MUTATIONS:
             print("%-38s %-22s %s" % (label, path, suite))
