@@ -35,7 +35,7 @@ public class ShotRooms extends Application {
         stage.show();
 
         // level and output path from system properties, so one tool captures any
-        // feature: -Dlevel=4 -Dshot=/root/downloads/climb-shot.png
+        // feature: -Dlevel=N -Dshot=/root/downloads/rooms-shot.png
         final String shotPath = System.getProperty("shot", "/root/downloads/rooms-shot.png");
         screens.push(new RoomsScreen(screens, 1));
         Robot robot = new Robot();
@@ -46,7 +46,7 @@ public class ShotRooms extends Application {
             var img = scene.snapshot(null);
             try {
                 writePng(img, shotPath);
-                System.out.println("PASS: wrote /root/downloads/water-shot.png ("
+                System.out.println("PASS: wrote " + shotPath + " ("
                     + (int) img.getWidth() + "x" + (int) img.getHeight() + ")");
             } catch (Exception ex) {
                 System.out.println("FAIL: " + ex);

@@ -35,7 +35,7 @@ public class ShotAir extends Application {
         stage.show();
 
         // level and output path from system properties, so one tool captures any
-        // feature: -Dlevel=4 -Dshot=/root/downloads/climb-shot.png
+        // feature: -Dlevel=N -Dshot=/root/downloads/air-shot.png
         int level = Integer.getInteger("level", 4);
         final String shotPath = System.getProperty("shot", "/root/downloads/climb-shot.png");
         screens.push(new GameplayScreen(screens, level));
@@ -48,7 +48,7 @@ public class ShotAir extends Application {
             var img = scene.snapshot(null);
             try {
                 writePng(img, shotPath);
-                System.out.println("PASS: wrote /root/downloads/water-shot.png ("
+                System.out.println("PASS: wrote " + shotPath + " ("
                     + (int) img.getWidth() + "x" + (int) img.getHeight() + ")");
             } catch (Exception ex) {
                 System.out.println("FAIL: " + ex);
