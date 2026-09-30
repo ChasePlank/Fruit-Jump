@@ -45,7 +45,10 @@ A complete platformer engine, built and tested layer by layer:
 - **Audio** — event-driven (SFX triggers, music states); headless backend attaches later with zero gameplay changes
 - **AI Director** — L4D-style pacing (BUILD/PEAK/RELAX/RECOVER), intensity signal, mercy window
 - **Save/Load** — player, room, and global state, entity-ID tracking
-- **Boss fights** — multi-phase AI, telegraphed attacks, weak-point windows, wall-stun
+- **Boss fights** — multi-phase AI, telegraphed attacks, weak-point windows, wall-stun. **Built, not yet wired:**
+  nothing constructs a `Boss`, and `Boss.java` is the only file that mentions the type. The save format already
+  carries `bossesDefeated` (written and read but never applied, because `World` has no boss list for `applyState`
+  to walk), so finishing this means instantiating a boss somewhere and consulting that set at creation.
 - **Multiplayer foundation** — authoritative TCP server, client prediction + reconciliation, lag compensation (server rewind), entity interpolation
 
 ## Testing philosophy
