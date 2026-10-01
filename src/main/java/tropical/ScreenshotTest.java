@@ -57,49 +57,21 @@ public class ScreenshotTest extends Application {
                 // Write PNG by hand (no swing module in the JavaFX set):
                 // raw RGBA scanlines + filter byte 0 per row.
                 int w = (int) img.getWidth(), h = (int) img.getHeight();
-                byte[] raw = new byte[(w * 4 + 1) * h];
-                var reader = img.getPixelReader();
-                int ri = 0;
-                for (int y = 0; y < h; y++) {
-                    raw[ri++] = 0; // filter: none
-                    for (int x = 0; x < w; x++) {
-                        int argb = reader.getArgb(x, y);
-                        raw[ri++] = (byte)(argb >> 16);
-                        raw[ri++] = (byte)(argb >> 8);
-                        raw[ri++] = (byte)argb;
-                        raw[ri++] = (byte)(argb >> 24);
-                    }
-                }
                 try {
-                    var out = new java.io.FileOutputStream("/root/downloads/tropical-punch-screenshot.png");
-                    var hdr = new java.io.ByteArrayOutputStream();
-                    hdr.write(new byte[]{(byte)137, 80, 78, 71, 13, 10, 26, 10});
-                    // IHDR
-                    hdr.write(new byte[]{0,0,0,13}); hdr.write("IHDR".getBytes());
-                    var ih = new java.io.ByteArrayOutputStream();
-                    ih.write(intBytes(w));
-                    ih.write(intBytes(h));
-                    ih.write(new byte[]{8, 6, 0, 0, 0});  // 8-bit RGBA
-                    byte[] ihdr = ih.toByteArray();
-                    hdr.write(ihdr); hdr.write(crc(cat("IHDR".getBytes(), ihdr)));
-                    // IDAT
-                    var def = new java.util.zip.Deflater();
-                    def.setInput(raw); def.finish();
-                    var comp = new java.io.ByteArrayOutputStream();
-                    byte[] buf = new byte[65536];
-                    while (!def.finished()) {
-                        int n = def.deflate(buf);
-                        comp.write(buf, 0, n);
-                    }
-                    byte[] idat = comp.toByteArray();
-                    hdr.write(intBytes(idat.length)); hdr.write("IDAT".getBytes());
-                    hdr.write(idat); hdr.write(crc(cat("IDAT".getBytes(), idat)));
-                    // IEND
-                    hdr.write(new byte[]{0,0,0,0}); hdr.write("IEND".getBytes());
-                    hdr.write(crc("IEND".getBytes()));
-                    out.write(hdr.toByteArray());
-                    out.close();
-                    System.out.println("PASS: screenshot saved (" + w + "x" + h + ")");
+                    // Written with ImageIO, like every other capture tool in this project. This block used to hand-roll the
+                // PNG - IHDR, IDAT, IEND, CRCs, a Deflater - and justified it in a comment saying there was no swing
+                // module in the JavaFX set. ShotWater and the rest call ImageIO with the same module set and produce
+                // correct images, so the comment's reason was wrong, and the hand-rolled encoder was producing a
+                // broken one: the game appeared in a quadrant of an otherwise empty frame.
+                //
+                // The render was never at fault. A tree dump proved it: canvas 1600x1200, scale 0.5, no offset,
+                // filling an 800x600 scene. Replacing the encoder with the proven path removes the whole class of
+                // problem rather than hunting whichever byte was wrong in a hand-written format.
+                var bi = new java.awt.image.BufferedImage(w, h, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+                var pr2 = img.getPixelReader();
+                for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) bi.setRGB(x, y, pr2.getArgb(x, y));
+                javax.imageio.ImageIO.write(bi, "png", new java.io.File("/root/downloads/tropical-punch-screenshot.png"));
+                System.out.println("PASS: screenshot saved (" + w + "x" + h + ")");
                 } catch (Exception ex) {
                     System.out.println("FAIL: " + ex.getMessage());
                     Platform.exit(); System.exit(1); return;
