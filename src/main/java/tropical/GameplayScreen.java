@@ -40,6 +40,7 @@ public class GameplayScreen extends Screen {
     private final PlayerInventory inventory;
     private final LevelMap map;
     private final Camera camera;
+    private boolean dumpedCamera = false;
     private final int levelNum;
 
     // View
@@ -352,6 +353,18 @@ public class GameplayScreen extends Screen {
         // worldToScreen returns physical coords; sprites are pre-
         // scaled 2x and drawn at 2x logical size — 1:1, no resampling.
         final double S = SCALE;
+
+        // TEMPORARY: dump the camera once. Four reasoned answers about where the level lands were all wrong;
+        // these three numbers decide it and none had ever been printed. Reflection so names cannot go stale.
+        if (System.getProperty("dumpCamera") != null && !dumpedCamera) {
+            dumpedCamera = true;
+            for (java.lang.reflect.Field f : camera.getClass().getDeclaredFields()) {
+                try { f.setAccessible(true); System.out.println("CAM " + f.getName() + " = " + f.get(camera)); }
+                catch (Exception ignored) {}
+            }
+            System.out.println("CAM VIEW=" + VIEW_W + "x" + VIEW_H + " CANVAS=" + CANVAS_W + "x" + CANVAS_H
+                + " player.x=" + player.x + " player.y=" + player.y);
+        }
 
         // Sky
         gc.setFill(Color.web("#87CEEB"));
