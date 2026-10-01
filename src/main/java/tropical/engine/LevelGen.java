@@ -271,9 +271,12 @@ public class LevelGen {
                 // only if there's room (floor has fill below)
                 if (lastFloorRow < height - 4 && col < width - 5) {
                     g[lastFloorRow + 3][col] = '^';
-                    // leave the column below the path floor empty so the
-                    // pit is visible: replace fill with a small alcove
-                    // (purely cosmetic — the path runs over the top)
+                    // The pit the comment above promises. It was described but never carved, so the spike sat
+                    // inside solid fill and rendered as spikes sitting ON the ground rather than in a hole -
+                    // reported from play as "the spike level had them above ground, not a pit". Clearing the two
+                    // rows between the floor and the spike is what makes it a pit.
+                    g[lastFloorRow + 1][col] = ' ';
+                    g[lastFloorRow + 2][col] = ' ';
                 }
             }
         }

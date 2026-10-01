@@ -582,7 +582,10 @@ public class GameplayScreen extends Screen {
             }
             case F -> {
                 // Arrow: fast projectile in facing direction
-                world.addProjectile(Projectile.arrow(player.x, player.y - 10, facing));
+                // From the middle of the body, not above it. player.y is the CENTRE of the physics box, so -10
+                // fired the arrow from the chest upward and it sailed over anything level with you. Reported from
+                // play: "the arrows shoot from above the player so if you're level with the enemy it'll fly over."
+                world.addProjectile(Projectile.arrow(player.x, player.y, facing));
                 e.consume();
             }
             case G -> {
