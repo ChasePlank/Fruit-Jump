@@ -40,7 +40,7 @@ public class GameplayScreen extends Screen {
     private final PlayerInventory inventory;
     private final LevelMap map;
     private final Camera camera;
-    private boolean dumpedCamera = false;
+    private int dumpedCamera = 0;
     private final int levelNum;
 
     // View
@@ -356,8 +356,7 @@ public class GameplayScreen extends Screen {
 
         // TEMPORARY: dump the camera once. Four reasoned answers about where the level lands were all wrong;
         // these three numbers decide it and none had ever been printed. Reflection so names cannot go stale.
-        if (System.getProperty("dumpCamera") != null && !dumpedCamera) {
-            dumpedCamera = true;
+        if (System.getProperty("dumpCamera") != null && (dumpedCamera++ % 40) == 0) {
             for (java.lang.reflect.Field f : camera.getClass().getDeclaredFields()) {
                 try { f.setAccessible(true); System.out.println("CAM " + f.getName() + " = " + f.get(camera)); }
                 catch (Exception ignored) {}
