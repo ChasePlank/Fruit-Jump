@@ -47,6 +47,12 @@ public class ScreenshotTest extends Application {
                     Platform.exit(); System.exit(1); return;
                 }
                 // capture via the scene
+                // Print the geometry instead of reasoning about it. Last attempt referenced a `canvas`
+                // variable that does not exist here - this test snapshots the scene, not the screen's canvas -
+                // and the two theories before that did not fit the observation either. Walk the tree and report
+                // what is actually there, which is the move that has worked every time this week.
+                System.out.println("DIAG scene=" + scene.getWidth() + "x" + scene.getHeight());
+                dump(scene.getRoot(), "  ");
                 WritableImage img = scene.snapshot(null);
                 // Write PNG by hand (no swing module in the JavaFX set):
                 // raw RGBA scanlines + filter byte 0 per row.
@@ -122,4 +128,17 @@ public class ScreenshotTest extends Application {
     }
 
     public static void main(String[] args) { launch(args); }
+    /** Walk the tree and report what is actually there. Reasoned twice about the quadrant capture and was
+     *  wrong twice; the values are the only thing that settles it. */
+    static void dump(javafx.scene.Node n, String indent) {
+        String extra = "";
+        if (n instanceof javafx.scene.canvas.Canvas c)
+            extra = " canvas=" + c.getWidth() + "x" + c.getHeight()
+                  + " scale=" + c.getScaleX() + " tx=" + c.getTranslateX() + " ty=" + c.getTranslateY();
+        System.out.println("DIAG " + indent + n.getClass().getSimpleName()
+            + " size=" + String.format("%.0fx%.0f", n.getLayoutBounds().getWidth(), n.getLayoutBounds().getHeight())
+            + extra);
+        if (n instanceof javafx.scene.Parent p) for (javafx.scene.Node k : p.getChildrenUnmodifiable()) dump(k, indent + "  ");
+    }
+
 }
