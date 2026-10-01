@@ -163,8 +163,13 @@ public class GameplayScreen extends Screen {
         double scale = Math.min(pw / canvas.getWidth(), ph / canvas.getHeight());
         canvas.setScaleX(scale);
         canvas.setScaleY(scale);
-        canvas.setTranslateX((pw - canvas.getWidth() * scale) / 2);
-        canvas.setTranslateY((ph - canvas.getHeight() * scale) / 2);
+        // JavaFX scales a node about its CENTRE, so the canvas's visual bounds are
+        // [w/2 - w*s/2, w/2 + w*s/2]. Placing that at 0 needs a translate of (pw - w)/2 - the UNSCALED centring -
+        // and the centre-scale does the rest. The previous form subtracted the scaled width, which is correct only
+        // if the scale is applied about the top-left. It is not, so the canvas shrank toward its middle and an
+        // 800x600 scene clipped exactly the bottom-right quadrant. Six attempts to find; one line to fix.
+        canvas.setTranslateX((pw - canvas.getWidth()) / 2);
+        canvas.setTranslateY((ph - canvas.getHeight()) / 2);
     }
 
     /** Snapshot current state and write the autosave file. */
@@ -363,6 +368,12 @@ public class GameplayScreen extends Screen {
             }
             System.out.println("CAM VIEW=" + VIEW_W + "x" + VIEW_H + " CANVAS=" + CANVAS_W + "x" + CANVAS_H
                 + " player.x=" + player.x + " player.y=" + player.y);
+            // The one number that settles it: where a known world point lands on screen. World (0,0) must map to
+            // screen (0,0) for the draw to be right. If it does, the draw is fine and the capture is at fault; if
+            // it does not, the draw is at fault and this says by how much.
+            System.out.println("CAM world(0,0) -> screen(" + camera.worldToScreenX(0) + ", "
+                + camera.worldToScreenY(0) + ")   player -> screen("
+                + camera.worldToScreenX(player.x) + ", " + camera.worldToScreenY(player.y) + ")");
         }
 
         // Sky
