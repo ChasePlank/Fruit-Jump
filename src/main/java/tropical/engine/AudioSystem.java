@@ -47,7 +47,26 @@ public class AudioSystem {
     }
     
     // --- Event log (headless output) ---
+    /**
+     * The event log, bounded.
+     *
+     * <p>Nothing outside this class reads or clears it - it exists so a headless run can say what it would have
+     * played. Unbounded, that is a leak: every jump, landing, pickup and hit appends a string that is never
+     * removed, so a level played for a few minutes holds thousands of entries that nothing will ever look at,
+     * and {@code printLog} would print all of them.
+     *
+     * <p>It keeps the most recent {@link #LOG_LIMIT}. Diagnosis wants the end of a run, not its beginning.
+     */
     public final List<String> eventLog = new ArrayList<>();
+
+    /** How many events to keep. See {@link #eventLog}. */
+    public static final int LOG_LIMIT = 500;
+
+    /** Append an event, dropping the oldest once the log is full. */
+    private void log(String event) {
+        eventLog.add(event);
+        while (eventLog.size() > LOG_LIMIT) eventLog.remove(0);
+    }
     
     // --- Volume ---
     double sfxVolume = 0.8;
@@ -68,7 +87,7 @@ public class AudioSystem {
         if (sfx == Sfx.LAND && landCooldown > 0) return;
         if (sfx == Sfx.LAND) landCooldown = LAND_COOLDOWN_TIME;
         
-        eventLog.add(String.format("SFX %s vol=%.2f", sfx.name, sfxVolume));
+        log(String.format("SFX %s vol=%.2f", sfx.name, sfxVolume));
     }
     
     /** Switch music track. Only logs if the track actually changes. */
@@ -81,7 +100,7 @@ public class AudioSystem {
         
         String from = currentMusic.trackName != null ? currentMusic.trackName : "silence";
         String to = music.trackName != null ? music.trackName : "silence";
-        eventLog.add(String.format("MUSIC %s -> %s vol=%.2f", from, to, musicVolume));
+        log(String.format("MUSIC %s -> %s vol=%.2f", from, to, musicVolume));
         currentMusic = music;
     }
     
@@ -98,7 +117,7 @@ public class AudioSystem {
     /** Toggle mute. */
     public void toggleMute() {
         muted = !muted;
-        eventLog.add(muted ? "MUTED" : "UNMUTED");
+        log(muted ? "MUTED" : "UNMUTED");
     }
     
     /** Update cooldowns. */
