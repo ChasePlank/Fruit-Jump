@@ -135,7 +135,7 @@ public class GameplayScreen extends Screen {
             world.addEnemy(new Enemy(e[0], e[1], 24, 24));
         }
 
-        // Camera: room = full level (60*32 x 14*32). Viewport is the
+        // Camera: room = the full level, whatever size it is. Viewport is the
         // PHYSICAL canvas size — worldToScreen returns physical pixels,
         // so all draw calls (sprites at 2x, tiles at 2x) land 1:1 on
         // screen with no resampling.

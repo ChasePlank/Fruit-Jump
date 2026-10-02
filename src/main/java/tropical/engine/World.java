@@ -50,6 +50,12 @@ public class World {
     public Physics.Body playerBody;
     /** Level extents in world units. Anything leaving these is culled. Kept on
      *  the World so nothing has to hardcode a level size again. */
+    /**
+     * The level's extent, for culling. These are only a fallback - LevelMap.buildWorld calls setBounds with the
+     * real size, and it should always be called. They are 60x20 cells because that is what the level was when
+     * they were written; the generator now makes 14 rows and the tutorial 20, so a body relying on these would
+     * be relying on a size no level has.
+     */
     public double boundsLeft = 0, boundsTop = 0, boundsRight = 1920, boundsBottom = 640;
 
     /** Set the level extents (called when a map builds into this world). */
