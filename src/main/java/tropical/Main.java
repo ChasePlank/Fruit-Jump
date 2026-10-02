@@ -7,7 +7,7 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 
 /**
- * Tropical Punch - a 2D platformer
+ * Fruit Jump - a 2D platformer
  *
  * Entry point. JavaFX lifecycle:
  * - init() runs before the window appears (load resources here)
@@ -58,7 +58,7 @@ public class Main extends Application {
             else if (top instanceof RoomsScreen r) r.handleKeyReleased(e);
         });
 
-        stage.setTitle("Tropical Punch");
+        stage.setTitle("Fruit Jump");
         stage.setScene(scene);
         stage.setResizable(true);
         stage.setMinWidth(640);

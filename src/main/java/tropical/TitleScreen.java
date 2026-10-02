@@ -11,7 +11,7 @@ import javafx.animation.PauseTransition;
 import javafx.util.Duration;
 
 /**
- * Title screen: "TROPICAL PUNCH" + "Press Start" (blinking).
+ * Title screen: the game's name + "Press Start" (blinking).
  *
  * Any key or click transitions to main menu.
  */
@@ -22,7 +22,12 @@ public class TitleScreen extends Screen {
     public TitleScreen(ScreenManager manager) {
         super(manager);
 
-        Label title = new Label("TROPICAL PUNCH");
+        // NOT "TROPICAL PUNCH". That is the name of a different, unbuilt game, and this file was the last
+        // place still saying it - Sprite.java already carries the note that the radioactive premise belongs
+        // to Tropical Punch "and not to this game (Kinger, Sept 28)", and the repository is called
+        // Fruit-Jump. aside renamed its copy the same day. This is the working title and it is still open;
+        // what it is not is the name of something else.
+        Label title = new Label("FRUIT JUMP");
         title.getStyleClass().add("title-text");
         title.setFont(Font.font("Arial", 80));
 
