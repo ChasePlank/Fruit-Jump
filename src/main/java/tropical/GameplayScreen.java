@@ -54,6 +54,9 @@ public class GameplayScreen extends Screen {
 
     // Input state (held keys)
     private boolean left, right;
+    // Held while the key is down: UP/W is jump on land and the swim-up stroke in water,
+    // DOWN/S dives. The water system reads one of these every frame.
+    private boolean up, down;
 
     // Facing direction (1=right, -1=left). Persists after keys release —
     // weapons fire where you're looking (playtest suggestion).
@@ -235,9 +238,17 @@ public class GameplayScreen extends Screen {
         
         // Player input → velocity (skipped while hookshot pulls)
         if (!pulling) {
-            player.vx = 0;
-            if (left) player.vx -= RUN_SPEED;
-            if (right) player.vx += RUN_SPEED;
+            double desired = 0;
+            if (left) desired -= RUN_SPEED;
+            if (right) desired += RUN_SPEED;
+            // Vertical: the water system reads this every frame and applies it only while the
+            // body is actually in a pool.
+            world.water.setVerticalInput(up ? -1 : (down ? 1 : 0));
+            // Horizontal. On land this is the assignment it always was. In water it goes through
+            // the water system, so a body steers instead of snapping and wading is a multiplier.
+            player.vx = world.water.swimming(player)
+                ? world.water.steerVx(player, desired, dt)
+                : desired * world.water.speedMultiplier(player);
             // Facing persists after keys release — weapons fire where
             // you're LOOKING, not where you're holding (playtest:
             // "bombs default right, shift that to where youre facing")
@@ -319,6 +330,24 @@ public class GameplayScreen extends Screen {
         // Sky
         gc.setFill(Color.web("#87CEEB"));
         gc.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+        // Water: AFTER the sky (before it, the sky paints over the pool) and BEFORE the terrain, so
+        // a pool reads as water in a pit with the tiles as its walls. The engine has generated
+        // flooded gaps since this update and the screens could not show them, which made a pool an
+        // invisible hole - and, because nothing here sent vertical input or allowed a jump out of
+        // water, one a player could not leave. Both are fixed in this file.
+        Water waterField = world.water.water();
+        if (waterField != null && !waterField.isEmpty()) {
+            for (double[] r : waterField.rects) {
+                double sx = camera.worldToScreenX(r[0]), sy = camera.worldToScreenY(r[1]);
+                double w = r[2] - r[0], h = r[3] - r[1];
+                if (sx > CANVAS_W || sy > CANVAS_H || sx + w < 0 || sy + h < 0) continue;
+                gc.setFill(Color.web("#2E86C1", 0.55));
+                gc.fillRect(sx, sy, w, h);
+                gc.setFill(Color.web("#7FD4F0", 0.85));   // surface line
+                gc.fillRect(sx, sy, w, 3);
+            }
+        }
 
         // Facing sprite: mirrored variant when facing left
         // (playtest: "able to look both directions")
@@ -468,8 +497,22 @@ public class GameplayScreen extends Screen {
         switch (e.getCode()) {
             case LEFT, A -> { left = true; e.consume(); }
             case RIGHT, D -> { right = true; e.consume(); }
+            case DOWN, S -> { down = true; e.consume(); }
             case SPACE, UP, W -> {
-                if (player.grounded) player.vy = JUMP_V;
+                // THE LINE THAT WAS A SOFT-LOCK. This was `if (player.grounded)`, and a body
+                // floating in a pool is not grounded - so a player who walked into a flooded gap
+                // could never jump, never touch the bottom, and never leave. The pool is 64px deep
+                // with the surface level with the walk, so buoyancy holds the body at the surface
+                // and the ledge is one cell up and unreachable. Measured before the fix: x=276
+                // feet=135 inWater=true grounded=false, after six seconds of holding right and
+                // pressing jump every frame. STUCK.
+                //
+                // jumpV answers for the water: a breach hop at the surface (how a pool is
+                // escaped), a paddle when fully under, and the plain jump when dry.
+                up = true;
+                if (player.grounded || world.water.swimming(player)) {
+                    player.vy = world.water.jumpV(player, JUMP_V);
+                }
                 e.consume();
             }
             case X -> {
@@ -507,6 +550,8 @@ public class GameplayScreen extends Screen {
         switch (e.getCode()) {
             case LEFT, A -> left = false;
             case RIGHT, D -> right = false;
+            case SPACE, UP, W -> up = false;
+            case DOWN, S -> down = false;
         }
     }
 }
