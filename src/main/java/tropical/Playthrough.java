@@ -43,7 +43,7 @@ import javafx.stage.Stage;
  * <p>Properties: {@code -Dlevel=N} (default 1), {@code -Dshotdir=DIR} (default /tmp/playthrough),
  * {@code -Dseconds=N} (default 30), {@code -Dkill=1} to zero the player's HP partway through so the run
  * reaches the death path - which a bot that plays well never reaches, and which is the screen a player sees
- * most often.
+ * most often - and {@code -Dtutorial=1} to play the hand-built tutorial levels instead of a generated one.
  */
 public class Playthrough extends Application {
 
@@ -64,10 +64,12 @@ public class Playthrough extends Application {
         stage.show();
 
         int level = Integer.getInteger("level", 1);
+        boolean tutorial = System.getProperty("tutorial") != null;
         int frames = Integer.getInteger("seconds", 30) * 60;
         boolean kill = System.getProperty("kill") != null;
-        screens.push(new GameplayScreen(screens, level));
-        System.out.println("level " + level + " for " + (frames / 60) + "s"
+        screens.push(tutorial ? new GameplayScreen(screens, level, true)
+                              : new GameplayScreen(screens, level));
+        System.out.println((tutorial ? "tutorial level " : "level ") + level + " for " + (frames / 60) + "s"
                 + (kill ? ", killing the player at 5s to reach the death path" : ""));
 
         hold(KeyCode.RIGHT);

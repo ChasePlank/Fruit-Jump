@@ -61,9 +61,12 @@ public class MenuSmokeTest extends Application {
                 }
                 case 2 -> {
                     check("ENTER: title -> MainMenu", topIs(MainMenu.class));
-                    key(KeyCode.DOWN); // focus Continue
-                    key(KeyCode.DOWN); // focus Rooms Mode
-                    key(KeyCode.DOWN); // focus Settings
+                    // Navigate by name, not by counting. This was three DOWNs, which was right until the
+                    // menu grew a Tutorial entry and then silently pointed at Rooms Mode.
+                    MainMenu menu = (MainMenu) screens.peek();
+                    check("the menu lists Tutorial", menu.indexOf("Tutorial") >= 0);
+                    int toSettings = menu.indexOf("Settings");
+                    for (int i = 0; i < toSettings; i++) key(KeyCode.DOWN);
                     key(KeyCode.ENTER); // push settings
                 }
                 case 3 -> {
@@ -72,9 +75,8 @@ public class MenuSmokeTest extends Application {
                 }
                 case 4 -> {
                     check("ESC: settings -> back to MainMenu", topIs(MainMenu.class));
-                    key(KeyCode.UP); // back to Rooms Mode
-                    key(KeyCode.UP); // back to Continue
-                    key(KeyCode.UP); // back to New Game
+                    int backToTop = ((MainMenu) screens.peek()).indexOf("Settings");
+                    for (int i = 0; i < backToTop; i++) key(KeyCode.UP);
                     key(KeyCode.ENTER); // New Game -> replaces with GameplayScreen
                 }
                 case 5 -> {

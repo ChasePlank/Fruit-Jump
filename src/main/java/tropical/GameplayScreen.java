@@ -39,6 +39,18 @@ public class GameplayScreen extends Screen {
     private final Physics.Body player;
     private final PlayerInventory inventory;
     private final LevelMap map;
+
+    /**
+     * Floating tutorial words, or null on a generated level.
+     *
+     * <p>TUTORIAL MODE. The engine has had eight hand-built levels since aside grew them, and the release has
+     * never been able to reach them - this screen always generated a level, so Tutorial.java sat here unused.
+     * That is the same half-built shape as the water, the bats and the splash, one layer up: not a feature
+     * nobody drew, a feature nobody could enter.
+     */
+    private final java.util.List<Tutorial.Sign> signs;
+    /** True while playing the tutorial: hand-built levels, no autosave, ends at 8. */
+    private final boolean tutorial;
     private final Camera camera;
     private final int levelNum;
 
@@ -74,19 +86,39 @@ public class GameplayScreen extends Screen {
         this(manager, levelNum, null);
     }
 
+    /** Tutorial mode: the eight hand-built levels rather than the generator. */
+    public GameplayScreen(ScreenManager manager, int levelNum, boolean tutorial) {
+        this(manager, levelNum, null, tutorial);
+    }
+
     /**
      * Full constructor. `resume` = a loaded GameState to restore into the
      * freshly generated level (autosave continuation), or null for a
      * fresh run.
      */
     public GameplayScreen(ScreenManager manager, int levelNum, SaveSystem.GameState resume) {
+        this(manager, levelNum, resume, false);
+    }
+
+    public GameplayScreen(ScreenManager manager, int levelNum, SaveSystem.GameState resume, boolean tutorial) {
         super(manager);
         this.levelNum = levelNum;
+        this.tutorial = tutorial;
 
         // Generate + build level (deterministic seed: same levelNum
         // always makes the same level — saves reference the level number)
-        LevelGen gen = new LevelGen(60, 14, 1000L + levelNum, levelNum);
-        map = gen.generate();
+        //
+        // Tutorial levels are HAND-BUILT and not generated: they have to teach one thing each, in an order,
+        // and a generator cannot be asked for that. Tutorial.map returns the level, Tutorial.signs the words
+        // that float in it.
+        if (tutorial) {
+            map = Tutorial.map(levelNum);
+            signs = Tutorial.signs(levelNum);
+        } else {
+            LevelGen gen = new LevelGen(60, 14, 1000L + levelNum, levelNum);
+            map = gen.generate();
+            signs = null;
+        }
         world = new World();
         map.buildWorld(world);
         combat = new Combat();
@@ -108,7 +140,7 @@ public class GameplayScreen extends Screen {
         // so all draw calls (sprites at 2x, tiles at 2x) land 1:1 on
         // screen with no resampling.
         camera = new Camera(CANVAS_W, CANVAS_H);
-        camera.setRoom(60 * 32, 14 * 32);
+        camera.setRoom(60 * 32, map.heightCells() * 32);
 
         // Weapons
         hookshot = new Hookshot(player);
@@ -163,6 +195,8 @@ public class GameplayScreen extends Screen {
 
     /** Snapshot current state and write the autosave file. */
     private void autosave() {
+        // A tutorial run must never overwrite the save of a real run.
+        if (tutorial) return;
         SaveSystem.GameState state = SaveSystem.GameState.snapshot(
             player, combat, inventory, world, "level" + levelNum, playTime);
         state.levelNum = levelNum;
@@ -285,7 +319,14 @@ public class GameplayScreen extends Screen {
         }
 
         // Death or fell out of world: game over
-        if (combat.playerDead() || player.y > 14 * 32 + 64) {
+        // The level's REAL height, not 14.
+        //
+        // This was `player.y > 14 * 32 + 64`, and 14 is the height the generator happens to make. The tutorial
+        // levels are hand-built at 20 rows with their floor on row 17, so the player spawned at y=528, the
+        // bound was y>512, and every tutorial level ended in GAME OVER on its first frame. It is the same bug
+        // as the `y > 500` projectile cull that used to live in Projectile: a bound hardcoded to one level
+        // size, which is correct until the level size changes and then silently kills you.
+        if (combat.playerDead() || player.y > map.heightCells() * 32 + 64) {
             manager.replace(new GameOverScreen(manager, levelNum, playTime));
             return;
         }
@@ -295,6 +336,11 @@ public class GameplayScreen extends Screen {
         // spawn state (fresh position, carried HP/keys) — Continue
         // resumes at the next level's start, which is the checkpoint.
         if (Math.abs(player.x - map.exitX) < 24 && Math.abs(player.y - map.exitY) < 40) {
+            if (tutorial && Tutorial.endsTheTutorial(levelNum)) {
+                // The tutorial is done - back to the menu, not on to level 9 of a generated run.
+                manager.replace(new MainMenu(manager));
+                return;
+            }
             int nextLevel = levelNum + 1;
             SaveSystem.GameState checkpoint = new SaveSystem.GameState();
             checkpoint.levelNum = nextLevel;
@@ -311,7 +357,7 @@ public class GameplayScreen extends Screen {
             // (playerX=-1) restores stats but spawns at the level start.
             // Previously the next level got a FRESH Combat — full HP
             // every level (playtest: "lives still reset each level").
-            manager.replace(new GameplayScreen(manager, nextLevel, checkpoint));
+            manager.replace(new GameplayScreen(manager, nextLevel, checkpoint, tutorial));
             return;
         }
 
@@ -470,6 +516,21 @@ public class GameplayScreen extends Screen {
             gc.fillOval(ax - 4 * S, ay - 4 * S, 8 * S, 8 * S);
         }
 
+        // Tutorial words, floating where they belong in the world rather than parked at the top of the
+        // screen - the whole point of a sign is that it is next to the thing it is about.
+        if (signs != null) {
+            gc.setFont(Font.font("Arial", 22));
+            for (Tutorial.Sign sign : signs) {
+                double sx = camera.worldToScreenX(sign.x());
+                double sy = camera.worldToScreenY(sign.y());
+                if (sx > CANVAS_W || sx + sign.text().length() * 14 < 0) continue;
+                gc.setFill(Color.web("#1a1a2e"));
+                gc.fillText(sign.text(), sx + 2, sy + 2);
+                gc.setFill(Color.WHITE);
+                gc.fillText(sign.text(), sx, sy);
+            }
+        }
+
         renderHUD();
     }
 
@@ -514,7 +575,8 @@ public class GameplayScreen extends Screen {
         gc.fillText("Key x" + inventory.keys, 40, 120);
         // Level
         gc.setFill(Color.WHITE);
-        gc.fillText("Level " + levelNum, CANVAS_W - 200, 64);
+        gc.fillText(tutorial ? "Tutorial " + levelNum + " / " + Tutorial.LAST : "Level " + levelNum,
+                CANVAS_W - 260, 64);
     }
 
     @Override

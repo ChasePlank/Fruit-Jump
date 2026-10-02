@@ -60,6 +60,12 @@ public class MainMenu extends Screen {
             manager.replace(new RoomsScreen(manager, 1));
         });
 
+        MenuButton tutorial = new MenuButton("Tutorial", () -> {
+            // Eight hand-built levels, one mechanic each, in an order. The engine has had them since aside
+            // grew them and this menu never offered them, so Tutorial.java sat in this repository unused.
+            manager.replace(new GameplayScreen(manager, 1, true));
+        });
+
         MenuButton settings = new MenuButton("Settings", () -> {
             manager.push(new SettingsScreen(manager));
         });
@@ -68,13 +74,35 @@ public class MainMenu extends Screen {
             Platform.exit();
         });
 
-        buttons = new MenuButton[]{newGame, continueBtn, roomsMode, settings, quit};
+        buttons = new MenuButton[]{newGame, continueBtn, tutorial, roomsMode, settings, quit};
 
-        VBox menu = new VBox(20, title, newGame, continueBtn, roomsMode, settings, quit);
+        VBox menu = new VBox(20, title, newGame, continueBtn, tutorial, roomsMode, settings, quit);
         menu.getStyleClass().add("center-column");
 
         root = new StackPane(menu);
         root.getStyleClass().add("screen-bg");
+    }
+
+    /**
+     * The index of the button with this label, or -1.
+     *
+     * <p>For the tests, which used to press a fixed number of DOWNs. That number is correct until the menu
+     * grows, and then it navigates to the wrong button and reports a navigation failure that is really a menu
+     * change - which is exactly what happened when Tutorial was added: five checks went red and the menu was
+     * fine. Navigating by name is robust to the menu growing and still exercises the real UP/DOWN handling.
+     */
+    int indexOf(String label) {
+        for (int i = 0; i < buttons.length; i++) {
+            if (label.equals(buttons[i].getText())) return i;
+        }
+        return -1;
+    }
+
+    /** The labels, in order, so a test can say what it expects the menu to be. */
+    String[] labels() {
+        String[] out = new String[buttons.length];
+        for (int i = 0; i < buttons.length; i++) out[i] = buttons[i].getText();
+        return out;
     }
 
     @Override

@@ -55,10 +55,11 @@ public class MenuRobotTest extends Application {
                     boolean menu = topIs(MainMenu.class);
                     System.out.println("title -> MainMenu: " + (menu ? "PASS" : "FAIL"));
                     if (!menu) { finish(false); return; }
-                    // DOWN twice to Settings, ENTER (real focus routing)
-                    robot.keyType(KeyCode.DOWN);
-                    robot.keyType(KeyCode.DOWN);
-                    robot.keyType(KeyCode.DOWN);
+                    // To Settings, by name rather than by counting - the count was right until the menu
+                    // grew a Tutorial entry. Real key events either way, so the focus routing is still what
+                    // is under test.
+                    int toSettings = ((MainMenu) screens.peek()).indexOf("Settings");
+                    for (int i = 0; i < toSettings; i++) robot.keyType(KeyCode.DOWN);
                     robot.keyType(KeyCode.ENTER);
                 }
                 case 3 -> {
@@ -75,8 +76,8 @@ public class MenuRobotTest extends Application {
                     // If the native path double-fires per press, the
                     // stack behavior will differ; the key signal is
                     // "New Game pressed" printed exactly once per press.
-                    robot.keyType(KeyCode.UP);
-                    robot.keyType(KeyCode.UP);
+                    int backToTop = ((MainMenu) screens.peek()).indexOf("Settings");
+                    for (int i = 0; i < backToTop; i++) robot.keyType(KeyCode.UP);
                     robot.keyType(KeyCode.ENTER);
                 }
                 case 5 -> {
