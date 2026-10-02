@@ -17,6 +17,7 @@ public class WeaponsRobotTest extends Application {
     private ScreenManager screens;
     private int step = 0;
     private int failures = 0;
+    private double arrowX0 = Double.NaN;
     private GameplayScreen game;
 
     @Override
@@ -61,9 +62,25 @@ public class WeaponsRobotTest extends Application {
         return w.projectiles.get(0).x;
     }
 
+    /**
+     * How long to wait before the next step, in ms. 400 by default.
+     *
+     * The arrow needs a shorter one. It flies at 700px/s, so a 400ms step is 280px - and this test's
+     * levels put a step-up well inside that, so the arrow had spawned, flown and hit a wall before the
+     * next step looked for it. The suite then reported "arrow spawned: FAIL" for a bow that works
+     * perfectly, and had done since it was written. Verified against the engine first: an arrow
+     * constructed and stepped five frames goes x=80 -> 138 and stays active.
+     *
+     * A permanently red suite is worse than no suite, because a new failure looks exactly like the old
+     * one - which is the tax this cost today, when checking whether a failure was pre-existing was
+     * itself a task.
+     */
+    private int nextDelayMs = 400;
+
     private void nextStep() {
         javafx.animation.PauseTransition wait = new javafx.animation.PauseTransition(
-                javafx.util.Duration.millis(400));
+                javafx.util.Duration.millis(nextDelayMs));
+        nextDelayMs = 400;
         wait.setOnFinished(e -> {
             step++;
             Robot robot = new Robot();
@@ -73,19 +90,22 @@ public class WeaponsRobotTest extends Application {
                     case 2 -> {
                         game = (GameplayScreen) screens.peek();
                         check("gameplay started", game != null);
-                        // F = arrow
+                        // F = arrow. Look for it 60ms from now, not 400ms.
+                        nextDelayMs = 60;
                         robot.keyType(KeyCode.F);
                     }
                     case 3 -> {
                         int n = projectileCount();
                         check("arrow spawned (1 active)", n == 1);
-                        double x0 = projX();
-                        // wait for flight
+                        arrowX0 = projX();
+                        // sample again shortly, while it is still in the air
+                        nextDelayMs = 120;
                     }
                     case 4 -> {
                         double x = projX();
                         double spawnX = playerX();
-                        check("arrow flew (x advanced)", x > spawnX + 50);
+                        check("arrow flew (x advanced, " + (int) arrowX0 + " -> " + (int) x + ")",
+                                x > arrowX0 && x > spawnX + 50);
                         // G = bomb
                         robot.keyType(KeyCode.G);
                     }
