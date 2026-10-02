@@ -7,7 +7,9 @@ package tropical.engine;
  * and deactivate. Hearts heal 1 HP. Keys add to player inventory.
  */
 public class Pickup {
-    public enum Type { HEART, KEY, COIN }
+    /** JAR = the heart in a jar found in every tenth level's safe room. It
+     *  permanently raises the lives cap by one and tops you back up. */
+    public enum Type { HEART, KEY, COIN, JAR }
 
     static int nextId = 0;
     public final int id;  // unique ID for save system
@@ -21,6 +23,7 @@ public class Pickup {
     static final double HEART_HW = 12, HEART_HH = 10;
     static final double KEY_HW = 8, KEY_HH = 8;
     static final double COIN_HW = 8, COIN_HH = 8;
+    static final double JAR_HW = 11, JAR_HH = 12;
 
     public Pickup(Type type, double x, double y) {
         this.id = nextId++;
@@ -34,6 +37,9 @@ public class Pickup {
         } else if (type == Type.KEY) {
             hw = KEY_HW;
             hh = KEY_HH;
+        } else if (type == Type.JAR) {
+            hw = JAR_HW;
+            hh = JAR_HH;
         } else {
             hw = COIN_HW;
             hh = COIN_HH;
@@ -56,6 +62,10 @@ public class Pickup {
     public static Pickup coin(double x, double y) {
         return new Pickup(Type.COIN, x, y);
     }
+
+    public static Pickup jar(double x, double y) {
+        return new Pickup(Type.JAR, x, y);
+    }
     
     public Physics.AABB aabb() {
         return new Physics.AABB(x - hw, y - hh, x + hw, y + hh);
@@ -70,13 +80,23 @@ public class Pickup {
         
         if (box.overlaps(pbox)) {
             if (type == Type.HEART) {
-                if (combat.playerHP < 3) {  // cap at 3 HP
+                // Cap at the CURRENT maximum, which the jar can raise.
+                if (combat.playerHP < combat.maxHP) {
                     combat.playerHP += 1;
                     combat.events.add("HEART: hp=" + combat.playerHP);
                     if (audio != null) audio.playSfx(AudioSystem.Sfx.PICKUP);
                     active = false;
                     return true;
                 }
+            } else if (type == Type.JAR) {
+                // Raises the ceiling AND fills you to it. This is the whole
+                // reward for reaching a safe room.
+                combat.maxHP += 1;
+                combat.playerHP = combat.maxHP;
+                combat.events.add("JAR: maxHP=" + combat.maxHP);
+                if (audio != null) audio.playSfx(AudioSystem.Sfx.PICKUP);
+                active = false;
+                return true;
             } else if (type == Type.KEY) {
                 inv.keys += 1;
                 combat.events.add("KEY: keys=" + inv.keys);

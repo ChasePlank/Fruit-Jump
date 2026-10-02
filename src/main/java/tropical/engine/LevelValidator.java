@@ -53,7 +53,9 @@ public class LevelValidator {
         map.buildWorld(world);
 
         this.player = new Physics.Body(map.spawnX, map.spawnY, 24, 44);
+        player.oneway = true;
         world.addBody(player);
+        world.playerBody = player;
         this.combat = new Combat();
         combat.playerHP = 3;
         this.inventory = new PlayerInventory();
@@ -136,7 +138,7 @@ public class LevelValidator {
             // Spike damage
             for (Physics.AABB sp : world.spikes) {
                 if (sp.overlaps(player.aabb())) {
-                    combat.hurtPlayer(player, player.x + 1);  // knock left
+                    combat.hurtBySpike(player, player.x + 1);  // knock left
                 }
             }
             if (combat.playerDead()) return false;

@@ -26,12 +26,40 @@ public class Projectile {
     static final double ARROW_HW = 12, ARROW_HH = 3;
     
     // Bomb params
-    static final double BOMB_SPEED = 380;       // fast enough to reach distant walls
+    static final double BOMB_SPEED = 70;        // a short toss: it lands where you are
     static final double BOMB_GRAVITY = 600;
     static final double BOMB_HW = 6, BOMB_HH = 6;
-    static final double FUSE_TIME = 1.2;        // shorter fuse for better range
-    static final double BLAST_RADIUS = 100;     // larger blast for gameplay feel
-    static final double BLAST_DAMAGE_RANGE = 120;
+    /**
+     * How long before it goes off.
+     *
+     * The bomb lands at your feet and drifts forward at BOMB_SPEED, so running
+     * the way you threw it only opens the gap at (RUN_SPEED - BOMB_SPEED) =
+     * 130px/s. At a 1.0s fuse and a 120px damage radius that left TEN PIXELS of
+     * margin for a player running flat out the whole time - and nothing at all
+     * for one who clipped a step, a slope or an enemy on the way. A tester who
+     * never stopped running still got hit, which is the honest description of a
+     * 10px margin (playtest, Oct 2).
+     *
+     * 1.3s gives 169px of separation against a 100px radius: 69px of slack,
+     * about a third of a second of fumbling.
+     */
+    public static final double FUSE_TIME = 1.3;
+
+    /**
+     * The radius the blast DRAWS, and the radius that hurts.
+     *
+     * These two are deliberately different, and this way round:
+     * BLAST_RADIUS (the tiles it breaks) reaches further than the damage does,
+     * so a wall can be opened from just outside the lethal circle. Damage
+     * reaching further than the break would be the wrong way round - it would
+     * mean standing at the edge of what looks like a useful blast and being
+     * killed by it.
+     *
+     * BLAST_DAMAGE_RANGE is the number drawn on screen, because it is the one
+     * the player has to judge.
+     */
+    public static final double BLAST_RADIUS = 115;
+    public static final double BLAST_DAMAGE_RANGE = 100;
     
     public Projectile(Type type, double x, double y, int dir) {
         this.type = type;
@@ -61,10 +89,11 @@ public class Projectile {
         
         if (type == Type.ARROW) {
             vy += ARROW_GRAVITY * dt;
-            // Deactivate if off-screen or stopped
-            if (y > 500 || Math.abs(x) > 1000) {
-                active = false;
-            }
+            // No world-bounds test here. It used to hardcode `y > 500`, written
+            // for a 14-row level; when the level grew to 20 rows the floor moved
+            // to y=544 and every arrow spawned already past the line, so it
+            // deactivated on its first frame and arrows simply vanished.
+            // Culling belongs in World, against the level's REAL bounds.
         } else {
             vy += BOMB_GRAVITY * dt;
             timer -= dt;

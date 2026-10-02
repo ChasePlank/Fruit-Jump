@@ -22,6 +22,8 @@ public class SaveSystem {
         public double playerX, playerY;
         public double playerVX, playerVY;
         public int playerHP;
+        /** Lives cap. Raised by the heart-in-a-jar; defaults to 3 a run. */
+        public int maxHP = 3;
         public int keys;
         public int coins;
         /** Which game the save belongs to: "platformer" or "rooms".
@@ -60,6 +62,7 @@ public class SaveSystem {
             state.playerVX = player.vx;
             state.playerVY = player.vy;
             state.playerHP = (int) combat.playerHP;
+            state.maxHP = (int) combat.maxHP;
             state.keys = inv.keys;
             state.coins = inv.coins;
             
@@ -94,6 +97,7 @@ public class SaveSystem {
             out.println("vx=" + state.playerVX);
             out.println("vy=" + state.playerVY);
             out.println("hp=" + state.playerHP);
+            out.println("maxhp=" + state.maxHP);
             out.println("keys=" + state.keys);
             out.println("coins=" + state.coins);
             out.println("mode=" + state.mode);
@@ -160,6 +164,7 @@ public class SaveSystem {
             case "vx": state.playerVX = Double.parseDouble(value); break;
             case "vy": state.playerVY = Double.parseDouble(value); break;
             case "hp": state.playerHP = Integer.parseInt(value); break;
+            case "maxhp": state.maxHP = Integer.parseInt(value); break;
             case "keys": state.keys = Integer.parseInt(value); break;
             case "coins": state.coins = Integer.parseInt(value); break;
             case "mode": state.mode = value; break;
@@ -229,6 +234,7 @@ public class SaveSystem {
         player.vx = state.playerVX;
         player.vy = state.playerVY;
         combat.playerHP = state.playerHP;
+        combat.maxHP = Math.max(3, state.maxHP);
         inv.keys = state.keys;
         inv.coins = state.coins;
         

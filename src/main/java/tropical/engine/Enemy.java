@@ -63,6 +63,30 @@ public class Enemy {
         this.id = nextId++;
         body = new Physics.Body(x, y, w, h);
     }
+
+    // Which creature this is. Art only for now: spiders and snakes share the
+    // same patrol/chase behaviour. If they should differ mechanically, that is
+    // a design call rather than something to invent here.
+    public static final int KIND_SPIDER = 0, KIND_SNAKE = 1;
+    public int kind = KIND_SPIDER;
+
+    /**
+     * Holds position until it aggros. A snake waits coiled rather than
+     * patrolling - a snake wandering back and forth is not what a snake does,
+     * and it also gives away the ambush (Kinger, Sept 29).
+     */
+    public boolean stationary = false;
+
+    public Enemy(double x, double y, double w, double h, int kind) {
+        this(x, y, w, h);
+        this.kind = kind;
+    }
+
+    /** True while it is actively coming after the player. The snake rests
+     *  coiled and only shows its pursuit pose when this is true. */
+    public boolean isChasing() {
+        return state == AIState.CHASE;
+    }
     
     /**
      * AI update. The World reports hitWall/atLedge for this frame.
@@ -97,6 +121,12 @@ public class Enemy {
 
         switch (state) {
             case PATROL:
+                // A stationary enemy (the coiled snake) does not patrol at all:
+                // it waits. Staying put is the whole tell.
+                if (stationary) {
+                    body.vx = 0;
+                    break;
+                }
                 // Turn at walls
                 if (hitWall) {
                     dir = -dir;

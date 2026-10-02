@@ -28,6 +28,7 @@ public class Emitter {
     double lifetimeMin, lifetimeMax;
     double sizeMin, sizeMax;
     double gravity;
+    double cr = 1.0, cg = 1.0, cb = 1.0;   // particle colour; white unless told otherwise
     
     boolean active = true;
     boolean oneShot = false;  // for BURST: deactivate after first burst
@@ -91,6 +92,11 @@ public class Emitter {
     }
     
     /** Configure gravity. */
+    public Emitter color(double r, double g, double b) {
+        this.cr = r; this.cg = g; this.cb = b;
+        return this;
+    }
+
     public Emitter gravity(double g) {
         this.gravity = g;
         return this;
@@ -144,7 +150,7 @@ public class Emitter {
         double life = random(lifetimeMin, lifetimeMax);
         double sz = random(sizeMin, sizeMax);
         
-        p.init(x, y, vx, vy, life, sz);
+        p.init(x, y, vx, vy, life, sz, cr, cg, cb);
     }
     
     double random(double min, double max) {

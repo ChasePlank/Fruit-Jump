@@ -20,7 +20,7 @@ public class ScreenshotTest extends Application {
         ScreenManager screens = new ScreenManager();
         StackPane root = new StackPane();
         root.getChildren().add(screens.getContainer());
-        Scene scene = new Scene(root, 800, 600, Color.BLACK);
+        Scene scene = new Scene(root, 1600, 1200, Color.BLACK);
         scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
         scene.setOnKeyPressed(e -> screens.handleKey(e));
         scene.setOnKeyReleased(e -> {

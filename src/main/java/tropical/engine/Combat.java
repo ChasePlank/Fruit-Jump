@@ -14,8 +14,25 @@ import java.util.List;
  */
 public class Combat {
     // Player state
+    /** Current lives. Also what the HUD counts ("<3 3x"). Grows via the
+     *  heart-in-a-jar in the every-tenth-level safe room. */
     public double playerHP = 3;
+    /** The cap. Starts at 3 every new run and only the jar raises it. */
+    public double maxHP = 3;
     double invulnTimer = 0;       // seconds of i-frames remaining
+
+    /**
+     * Spikes get their OWN cooldown, much longer than the general i-frames.
+     *
+     * A spike pit is meant to cost a heart and a climb, not the run. At the
+     * old 1s window the player took a hit every second while standing on the
+     * spikes: land in a pit at full health and you were dead in about two
+     * seconds, before you could work out what had happened or jump out
+     * (playtest, Sept 29). Three and a half seconds gives you time to react,
+     * climb, and try again.
+     */
+    public static final double SPIKE_COOLDOWN = 3.5;
+    double spikeTimer = 0;
     
     static final double INVULN_TIME = 1.0;    // i-frames after a hit
     static final double KNOCKBACK_X = 250;
@@ -54,8 +71,18 @@ public class Combat {
         player.vy = KNOCKBACK_Y;
         
         events.add(String.format("HURT: hp=%.0f knockback dir=%.0f", playerHP, dir));
-        if (director != null) director.onPlayerDamaged(1.0 / 3.0);  // 1 HP of 3
+        if (director != null) director.onPlayerDamaged(1.0 / Math.max(1, playerHP + 1));
         if (audio != null) audio.playSfx(AudioSystem.Sfx.HURT);
+    }
+
+    /**
+     * Damage from a spike pit. Separate cooldown from the shared i-frames so
+     * tuning the pit does not also make enemies harmless.
+     */
+    public void hurtBySpike(Physics.Body player, double fromX) {
+        if (spikeTimer > 0) return;
+        spikeTimer = SPIKE_COOLDOWN;
+        hurtPlayer(player, fromX);
     }
     
     /** Stomp check: is this contact a stomp?
@@ -99,6 +126,9 @@ public class Combat {
     public void update(double dt) {
         if (invulnTimer > 0) {
             invulnTimer -= dt;
+        }
+        if (spikeTimer > 0) {
+            spikeTimer -= dt;
         }
     }
     

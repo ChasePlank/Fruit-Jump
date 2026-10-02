@@ -37,8 +37,12 @@ public class LevelMap {
     final List<Physics.AABB> spikes = new ArrayList<>();
     public final List<Physics.AABB> cracked = new ArrayList<>();  // bombable
     public final List<double[]> enemies = new ArrayList<>();   // {x, y}
+    public final List<double[]> bats = new ArrayList<>();      // {x, y}
     public final List<Pickup> pickups = new ArrayList<>();
     public final List<Door> doors = new ArrayList<>();
+    /** Water cells as {row, col, dir}: dir 0 still, 1 right, 2 left, 3 down, 4 up. Water is not solid and
+     *  never enters collision - WaterSystem applies it as forces. Ported from the Fruit-Jump release. */
+    final List<int[]> waterCells = new ArrayList<>();
 
     LevelMap(List<String> rows) {
         this.rows = rows;
@@ -54,6 +58,11 @@ public class LevelMap {
                 double x = c * TILE, y = r * TILE;
 
                 switch (ch) {
+                    case '~': waterCells.add(new int[]{r, c, 0}); break;
+                    case '>': waterCells.add(new int[]{r, c, 1}); break;
+                    case '<': waterCells.add(new int[]{r, c, 2}); break;
+                    case 'V': waterCells.add(new int[]{r, c, 3}); break;
+                    case 'A': waterCells.add(new int[]{r, c, 4}); break;
                     case '#':
                         solidTiles.add(new Physics.AABB(x, y, x + TILE, y + TILE));
                         break;
@@ -80,13 +89,30 @@ public class LevelMap {
                         ex = x + TILE / 2; ey = y + TILE / 2;
                         break;
                     case 'o':
-                        enemies.add(new double[]{x + TILE / 2, y + TILE / 2});
+                        // spider
+                        enemies.add(new double[]{x + TILE / 2, y + TILE / 2,
+                                                 Enemy.KIND_SPIDER});
+                        break;
+                    case 's':
+                        // snake
+                        enemies.add(new double[]{x + TILE / 2, y + TILE / 2,
+                                                 Enemy.KIND_SNAKE});
+                        break;
+                    case 'b':
+                        // Flying enemy anchor. Bats are free to engage over
+                        // gaps - gaps are climbable spike pits, so a mid-air
+                        // knockover is a setback, not a death.
+                        bats.add(new double[]{x + TILE / 2, y + TILE / 2});
                         break;
                     case 'k':
                         pickups.add(Pickup.key(x + TILE / 2, y + TILE / 2));
                         break;
                     case 'h':
                         pickups.add(Pickup.heart(x + TILE / 2, y + TILE / 2));
+                        break;
+                    case 'j':
+                        // Safe-room reward: raises the lives cap and refills.
+                        pickups.add(Pickup.jar(x + TILE / 2, y + TILE / 2));
                         break;
                     case 'D':
                         // Door: VISIBLE sprite is 2 tiles (64px) sitting
@@ -125,27 +151,82 @@ public class LevelMap {
         this.exitX = ex; this.exitY = ey;
     }
 
-    /** Parse from a text block (lines split on \n). */
-    static LevelMap parse(String text) {
+    /** Parse from a text block (lines split on \n). Public so hand-authored
+     *  levels (the tutorial) can build a map without a generator. */
+    public static LevelMap parse(String text) {
+        // Ported from the release, where this was fixed on Sept 27 and never came back.
+        //
+        // The old version dropped empty lines (`if (!line.isEmpty())`), so a blank row anywhere in a
+        // level shifted everything below it up by one. It also left a trailing '\r' on every row from
+        // a CRLF file, which becomes a cell character and makes the row one wider than it is, and it
+        // did not pad short rows.
+        //
+        // None of that is live today - Tutorial.map pads every row with spaces, so its rows are never
+        // empty - but `parse` is public and documented as the way to hand-author a level, and a
+        // hand-authored level is exactly where a blank row or a CRLF shows up. Fixing it costs
+        // nothing and removes a trap from the one entry point a person is meant to use.
+        String[] raw = text.split("\n", -1);
+        for (int i = 0; i < raw.length; i++) {
+            if (raw[i].endsWith("\r")) raw[i] = raw[i].substring(0, raw[i].length() - 1);
+        }
+        int width = 0;
+        for (String line : raw) width = Math.max(width, line.length());
         List<String> rows = new ArrayList<>();
-        for (String line : text.split("\n")) {
-            if (!line.isEmpty()) rows.add(line);
+        for (String line : raw) {
+            if (line.length() < width) line = line + " ".repeat(width - line.length());
+            rows.add(line);
         }
         return new LevelMap(rows);
     }
 
     /** Build the world: geometry into the given World. */
     public void buildWorld(World world) {
+        // Tell the world how big the level is, so projectiles cull against the
+        // real extent instead of a constant that goes stale.
+        world.setBounds(width * (double) TILE, height * (double) TILE);
         for (Physics.AABB t : solidTiles) world.tiles.add(t);
         for (Physics.AABB t : onewayTiles) world.oneways.add(t);
         for (Slope s : slopes) world.slopes.add(s);
         for (Physics.AABB sp : spikes) world.spikes.add(sp);
         for (Physics.AABB c : cracked) world.cracked.add(c);
+
+        // Water: not solid and never in collision - WaterSystem applies it as forces. Set after the geometry so a
+        // level with no water pays nothing, since the system is a no-op with no field.
+        Water w = buildWater();
+        if (!w.isEmpty()) world.setWater(w);
         for (Pickup p : pickups) world.addPickup(p);
+        for (int i = 0; i < bats.size(); i++) {
+            double[] b = bats.get(i);
+            world.addBat(new Bat(b[0], b[1], (long) (b[0] * 31 + b[1] * 17 + i)));
+        }
         for (Door d : doors) {
             world.doors.add(d);
             world.tiles.add(d.aabb());
         }
+    }
+
+    public static final double CURRENT_SPEED = 85.0;
+    public static final double CURRENT_UP_SPEED = 70.0;
+
+    public Water buildWater() {
+        Water w = new Water(width, height);
+        for (int[] wc : waterCells) w.set(wc[0], wc[1]);
+        if (w.isEmpty()) return w;
+        w.buildRects();
+        for (int[] wc : waterCells) {
+            int dir = wc[2];
+            if (dir == 0) continue;
+            double x0 = wc[1] * (double) TILE, y0 = wc[0] * (double) TILE;
+            double vx = 0, vy = 0;
+            switch (dir) {
+                case 1: vx = CURRENT_SPEED; break;
+                case 2: vx = -CURRENT_SPEED; break;
+                case 3: vy = CURRENT_SPEED; break;
+                case 4: vy = -CURRENT_UP_SPEED; break;
+            }
+            w.addCurrent(x0, y0, x0 + TILE, y0 + TILE, vx, vy);
+        }
+        return w;
     }
 
     /** The character at a cell, or ' ' if out of bounds. */
@@ -153,5 +234,15 @@ public class LevelMap {
         if (r < 0 || r >= height || c < 0) return ' ';
         String row = rows.get(r);
         return (c < row.length()) ? row.charAt(c) : ' ';
+    }
+
+    /** Grid height in cells (the view needs it to size the letterbox). */
+    public int heightCells() {
+        return height;
+    }
+
+    /** Grid width in cells. */
+    public int widthCells() {
+        return width;
     }
 }
