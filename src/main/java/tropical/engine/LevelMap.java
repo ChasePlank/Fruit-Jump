@@ -166,6 +166,14 @@ public class LevelMap {
         // hand-authored level is exactly where a blank row or a CRLF shows up. Fixing it costs
         // nothing and removes a trap from the one entry point a person is meant to use.
         String[] raw = text.split("\n", -1);
+        // A trailing newline is a line terminator, not a line. `split(..., -1)` keeps the empty string after
+        // it, and the padding below then turns it into a real row - so every level assembled by joining rows
+        // with '\n' came out ONE ROW TALLER than it is. Tutorial.map builds a 20-row level and the map
+        // reported 21. Interior blank rows are still kept; only the last one is dropped, and only when it is
+        // empty, which is exactly the case a file ending in a newline produces.
+        if (raw.length > 1 && raw[raw.length - 1].isEmpty()) {
+            raw = java.util.Arrays.copyOf(raw, raw.length - 1);
+        }
         for (int i = 0; i < raw.length; i++) {
             if (raw[i].endsWith("\r")) raw[i] = raw[i].substring(0, raw[i].length() - 1);
         }

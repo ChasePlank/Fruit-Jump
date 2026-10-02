@@ -212,6 +212,26 @@ public class GameplayScreen extends Screen {
         return root;
     }
 
+    // --- read-only accessors, for the tests ---------------------------------
+    // The tutorial wiring is easy to remove by accident and nothing could see it happen: the menu test checks
+    // the label is in the list, and no test opened the screen.
+
+    /** True while playing the hand-built tutorial levels. */
+    boolean isTutorial() { return tutorial; }
+
+    int levelNumber() { return levelNum; }
+
+    int mapHeightCells() { return map.heightCells(); }
+
+    /** Is the player standing on something? The tutorial levels are 20 rows with the floor on row 17, so a
+     *  screen that still assumed a 14-row level would have killed them on the first frame. */
+    boolean playerIsSupported() {
+        for (Physics.AABB t : world.tiles) {
+            if (t.overlaps(player.aabb())) return true;
+        }
+        return player.grounded;
+    }
+
     @Override
     public void enter() {
         if (timer == null) {
