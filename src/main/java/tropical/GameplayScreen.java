@@ -412,6 +412,20 @@ public class GameplayScreen extends Screen {
             gc.drawImage(Sprites.bat2x, bx, by, bat.body.hw * 2 * S, bat.body.hh * 2 * S);
         }
 
+        // Particles, on top. The engine spawns a droplet burst on every surface crossing and nothing
+        // has ever drawn one - the same shape as the bats and the water, and the third instance of it
+        // in this update. Squares rather than circles: at 2-5 physical pixels they are the same
+        // handful of pixels and the rect is one call.
+        for (Particle p : world.particles().getAll()) {
+            if (!p.isActive()) continue;
+            double px = camera.worldToScreenX(p.px()) - p.psize() * S / 2;
+            double py = camera.worldToScreenY(p.py()) - p.psize() * S / 2;
+            double size = p.psize() * S;
+            if (px > CANVAS_W || py > CANVAS_H || px + size < 0 || py + size < 0) continue;
+            gc.setFill(new Color(p.pr(), p.pg(), p.pb(), p.palpha()));
+            gc.fillRect(px, py, size, size);
+        }
+
         // Exit flag (16x24 logical → 32x48 physical)
         double ex = camera.worldToScreenX(map.exitX - 12), ey = camera.worldToScreenY(map.exitY - 20);
         if (ex > -64 && ex < CANVAS_W) gc.drawImage(Sprites.exit2x, ex, ey, 16 * S, 24 * S);
