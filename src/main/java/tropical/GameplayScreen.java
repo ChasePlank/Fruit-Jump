@@ -401,6 +401,17 @@ public class GameplayScreen extends Screen {
             gc.drawImage(Sprites.enemy2x, sx, sy, e.body.hw * 2 * S, e.body.hh * 2 * S);
         }
 
+        // Bats. The engine has placed them, flown them and stunned the player with them since the
+        // engine came over from aside, and NOTHING DREW THEM - an invisible enemy that knocks you
+        // flat is worse than no enemy at all, because there is no way to learn it is there. Found by
+        // looking at a level rather than by a test: the level-15 screenshot had three bats in it
+        // according to the generator and an empty sky on screen.
+        for (Bat bat : world.bats) {
+            double bx = camera.worldToScreenX(bat.body.x - bat.body.hw),
+                   by = camera.worldToScreenY(bat.body.y - bat.body.hh);
+            gc.drawImage(Sprites.bat2x, bx, by, bat.body.hw * 2 * S, bat.body.hh * 2 * S);
+        }
+
         // Exit flag (16x24 logical → 32x48 physical)
         double ex = camera.worldToScreenX(map.exitX - 12), ey = camera.worldToScreenY(map.exitY - 20);
         if (ex > -64 && ex < CANVAS_W) gc.drawImage(Sprites.exit2x, ex, ey, 16 * S, 24 * S);
