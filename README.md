@@ -15,7 +15,8 @@ release should let users play it immediately. Bound to be overhauled later
 
 **Controls:**
 - Arrow keys / WASD — move
-- Space / W — jump
+- Space / W — jump, and swim upward in water
+- Down / S — dive (water only)
 - X — hookshot (Shift+X fires upward)
 - F — arrow
 - G — bomb
@@ -34,6 +35,8 @@ A complete platformer engine, built and tested layer by layer:
 
 - **Physics** — fixed timestep (1/60), swept AABB collision (slab method), iterative multi-collision resolution, slopes (45°/30° walkable, 63°+ slides)
 - **Movement** — run, jump, one-way platforms, moving platforms with carry
+- **Water** — flooded gaps, buoyancy, a breath meter, a breach hop out of a pool, and a splash on entry
+- **Bats** — they follow you, and a knock-down clears the swarm rather than pinning you
 - **Combat** — contact damage, stomp (positional check), knockback, i-frames
 - **Weapons** — hookshot (instant raycast, pull physics), arrows (fast, light gravity), bombs (thrown arc, 1.2s fuse, blast radius, destroy cracked terrain)
 - **Enemies** — PATROL/CHASE AI with hysteresis, wall/ledge sensors
