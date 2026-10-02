@@ -43,7 +43,9 @@ import javafx.stage.Stage;
  * <p>Properties: {@code -Dlevel=N} (default 1), {@code -Dshotdir=DIR} (default /tmp/playthrough),
  * {@code -Dseconds=N} (default 30), {@code -Dkill=1} to zero the player's HP partway through so the run
  * reaches the death path - which a bot that plays well never reaches, and which is the screen a player sees
- * most often - and {@code -Dtutorial=1} to play the hand-built tutorial levels instead of a generated one.
+ * most often - {@code -Dtutorial=1} to play the hand-built tutorial levels instead of a generated one, and
+ * {@code -DjumpEvery=N} (default 45 frames) because a bot that jumps every 0.75s falls into every pit and dies
+ * before it can show you what comes after them.
  */
 public class Playthrough extends Application {
 
@@ -82,7 +84,12 @@ public class Playthrough extends Application {
                 // you test the water: no jumping means the climber walks off the lip and into the pool,
                 // and then jumping is the only way out.
                 int jumpAfter = Integer.getInteger("jumpAfter", 0) * 60;
-                if (frame % 45 == 0 && frame >= jumpAfter) tap(KeyCode.SPACE);
+                // A bot that jumps every 0.75s falls into every pit and dies before it can show you what
+                // comes after them - which is exactly what happened testing the tutorial's end: level 8 is
+                // the spike lesson, and the run ended in GAME OVER every time. Jumping every 0.25s clears
+                // them and the run finishes.
+                int jumpEvery = Integer.getInteger("jumpEvery", 45);
+                if (frame % jumpEvery == 0 && frame >= jumpAfter) tap(KeyCode.SPACE);
                 if (kill && frame == 300) zeroHealth();
                 if (frame % 180 == 0) capture("f" + frame);
                 if (frame >= frames) {
