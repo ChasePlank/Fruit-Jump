@@ -48,6 +48,8 @@ public class GameplayScreen extends Screen {
      * That is the same half-built shape as the water, the bats and the splash, one layer up: not a feature
      * nobody drew, a feature nobody could enter.
      */
+    private final AudioSystem audio;
+    private final Sound sound;
     private final java.util.List<Tutorial.Sign> signs;
     /** True while playing the tutorial: hand-built levels, no autosave, ends at 8. */
     private final boolean tutorial;
@@ -122,7 +124,11 @@ public class GameplayScreen extends Screen {
         world = new World();
         map.buildWorld(world);
         combat = new Combat();
-        world.setAudio(new AudioSystem());  // headless: logs only
+        // The engine posts cue names; Sound plays them. Kept here rather than inside World because the
+        // engine must stay JavaFX-free - it runs headless in the suites and on machines with no sound device.
+        audio = new AudioSystem();
+        world.setAudio(audio);
+        sound = Sound.load(".");
         inventory = new PlayerInventory();
 
         // Player
@@ -312,6 +318,7 @@ public class GameplayScreen extends Screen {
 
         // Engine step
         world.update(dt);
+        sound.drain(audio);
         combat.update(dt);
 
         // Enemy contact (stomp or hurt — Combat decides)

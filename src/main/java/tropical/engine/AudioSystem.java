@@ -33,6 +33,20 @@ public class AudioSystem {
         final String name;
         Sfx(String name) { this.name = name; }
     }
+
+    /**
+     * Every cue name this system can post.
+     *
+     * <p>For a check that every one of them has a file. The gate asks for cues by NAME, so it needs the list,
+     * and deriving it from the enum means a cue added here cannot be added without the check seeing it. The
+     * alternative - a second list in the test - is a list that goes stale the first time someone adds a sound.
+     */
+    public static String[] sfxNames() {
+        Sfx[] values = Sfx.values();
+        String[] out = new String[values.length];
+        for (int i = 0; i < values.length; i++) out[i] = values[i].name;
+        return out;
+    }
     
     // --- Music states ---
     enum Music {
@@ -82,7 +96,31 @@ public class AudioSystem {
     static final double LAND_COOLDOWN_TIME = 0.1;  // 100ms between land sounds
     
     /** Post a sound effect event. */
+    /**
+     * Cue names posted since the last drain, for a backend to play.
+     *
+     * <p>The event log is prose - "SFX jump vol=1.00" - which is right for a person reading a headless run and
+     * wrong for a machine. A backend wants the NAME. Bounded the same way the log is: a backend that stops
+     * being called must not grow a queue forever.
+     */
+    public final java.util.ArrayDeque<String> pending = new java.util.ArrayDeque<>();
+
+    /** Take everything posted since the last call. The caller plays it; this class still knows nothing about
+     *  JavaFX, which is the whole point of the split. */
+    public java.util.List<String> drainPending() {
+        java.util.List<String> out = new java.util.ArrayList<>(pending);
+        pending.clear();
+        return out;
+    }
+
+    private void post(String cue) {
+        if (cue == null) return;
+        pending.add(cue);
+        while (pending.size() > LOG_LIMIT) pending.removeFirst();
+    }
+
     public void playSfx(Sfx sfx) {
+        post(sfx.name);
         if (muted) return;
         if (sfx == Sfx.LAND && landCooldown > 0) return;
         if (sfx == Sfx.LAND) landCooldown = LAND_COOLDOWN_TIME;
