@@ -194,11 +194,20 @@ public class GameplayScreen extends Screen {
     static void fitCanvas(javafx.scene.layout.StackPane parent, Canvas canvas) {
         double pw = parent.getWidth(), ph = parent.getHeight();
         if (pw <= 0 || ph <= 0) return;
-        double scale = Math.min(pw / canvas.getWidth(), ph / canvas.getHeight());
-        canvas.setScaleX(scale);
-        canvas.setScaleY(scale);
-        canvas.setTranslateX((pw - canvas.getWidth() * scale) / 2);
-        canvas.setTranslateY((ph - canvas.getHeight() * scale) / 2);
+        // Scale pivots at the NODE CENTRE, not the top-left, so scaling already keeps the centre in place.
+        // The translate therefore only has to centre the UNSCALED canvas - centring the scaled one as well
+        // double-counts the shift and pushes the image off-centre.
+        //
+        // THIS WAS LIVE HERE AND INVISIBLE. The only canvas screen in this repository sized its canvas to the
+        // window's maximum, so the scale was always exactly 1 and the pivot did not matter. The first screen
+        // with a different canvas size - the customiser, at 1280x720 in a 1600x1200 window - came out with its
+        // left edge cut off: "HE CLIMBER" instead of "THE CLIMBER". aside's copy has had this fix and this
+        // comment for days; the release's did not.
+        double s = Math.min(pw / canvas.getWidth(), ph / canvas.getHeight());
+        canvas.setScaleX(s);
+        canvas.setScaleY(s);
+        canvas.setTranslateX((pw - canvas.getWidth()) / 2);
+        canvas.setTranslateY((ph - canvas.getHeight()) / 2);
     }
 
     /** Snapshot current state and write the autosave file. */

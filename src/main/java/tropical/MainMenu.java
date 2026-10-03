@@ -53,6 +53,12 @@ public class MainMenu extends Screen {
             }
         });
 
+        MenuButton climber = new MenuButton("The Climber", () -> {
+            // Hair and pack are this character's whole identity - it has no face - and the gameplay screen
+            // reads the config back, so this is not decoration.
+            manager.replace(new CustomizeScreen(manager, CharacterConfig.load(), this));
+        });
+
         MenuButton roomsMode = new MenuButton("Rooms Mode (prototype)", () -> {
             // Zelda-style screen transitions — the design Kinger's Scratch
             // project is built around. One grid of rooms, camera fixed
@@ -74,9 +80,9 @@ public class MainMenu extends Screen {
             Platform.exit();
         });
 
-        buttons = new MenuButton[]{newGame, continueBtn, tutorial, roomsMode, settings, quit};
+        buttons = new MenuButton[]{newGame, continueBtn, tutorial, climber, roomsMode, settings, quit};
 
-        VBox menu = new VBox(20, title, newGame, continueBtn, tutorial, roomsMode, settings, quit);
+        VBox menu = new VBox(20, title, newGame, continueBtn, tutorial, climber, roomsMode, settings, quit);
         menu.getStyleClass().add("center-column");
 
         root = new StackPane(menu);
