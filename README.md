@@ -58,13 +58,25 @@ A complete platformer engine, built and tested layer by layer:
 These are written and tested, and **nothing in the game constructs them.** They are listed here rather than in
 the section above because a reader should not have to run `grep` to find out whether a boss fight is coming.
 
+Each one also says what wiring it would take, so the decision is a read rather than a project.
+
 - **Boss fights** — `Boss` is 326 lines of multi-phase AI, telegraphed attacks, weak-point windows and wall-stun.
-  Nothing builds one.
+  Nothing builds one. **To wire:** `new Boss(x, y, w, h)` in a level; the screen calling `boss.update(dt, player)`
+  each frame and `boss.hit(damage)` when the player's weapons connect; `setVolleyCallback` is the hook where the
+  boss's own projectiles get spawned into the world; and a draw call. Nothing calls any of it today. **Needs a
+  level to have one**, which is the real work.
 - **AI Director** — `AIDirector` is L4D-style pacing (BUILD/PEAK/RELAX/RECOVER) with an intensity signal and a
-  mercy window. Nothing builds one, *and* nothing reads its output — `Combat` reports into it and no code asks
-  it anything.
-- **Moving platforms** — `World` has `movers` and `addMover`; no level places one.
+  mercy window. Nothing builds one, *and* nothing reads its output — `Combat` reports into it and no code asks it
+  anything. **To wire:** `new AIDirector()`, `combat.setDirector(director)` (that hook exists), and
+  `director.update(dt)` each frame — **and then something has to consult `getSpawnMultiplier()` and
+  `isMercyActive()`**, which is the part that does not exist: the generator would have to ask it when placing
+  enemies. So this one is a design decision about how much it steers, not just a wire.
+- **Moving platforms** — `World` has `movers` and `addMover`, and `World.update` already moves and carries them;
+  no level places one. **To wire:** `new MovingPlatform(PathType, x0, y0, w, h, ...)` and `world.addMover(...)`.
+  **This is the smallest of the four** — the physics half is done and nothing else is missing.
 - **Parallax** — `Camera.parallaxOffset` and `ParallaxLayer` exist; no layer is drawn, so the sky is flat.
+  **To wire:** `new ParallaxLayer(scrollFactor, offsetY)` and a draw call using `getOffsetX(camera)` — and the
+  layers need something to draw, so this one comes with art or with a procedural shape standing in for it.
 
 ## Not in this repository
 
