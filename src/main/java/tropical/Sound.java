@@ -28,22 +28,58 @@ public class Sound {
     private final Map<String, String> missing = new LinkedHashMap<>();
     private boolean enabled = true;
 
-    /** Load every cue the engine can post from {@code root/audio}. */
+    /**
+     * Load every cue the engine can post, from {@code root/audio} or from the jar.
+     *
+     * <p>Two places, and the second is not a fallback for tidiness. The README's instruction is
+     * {@code java -jar tropical-punch.jar}, and a jar someone downloaded on its own sits next to no audio
+     * folder at all - so a folder-only loader means the published jar is silent while the checkout is not, and
+     * nothing would say which. The cues are 216KB together, which is nothing beside the JavaFX runtime the jar
+     * already carries. Folder first, so a checkout can still override a cue by dropping a file in.
+     */
     public static Sound load(String root) {
         Sound s = new Sound();
         File dir = new File(root, "audio");
         for (String cue : AudioSystem.sfxNames()) {
-            File f = new File(dir, cue + ".wav");
-            if (!f.isFile()) f = new File(dir, cue + ".mp3");
-            if (!f.isFile()) { s.missing.put(cue, "no file"); continue; }
+            String source = null;
+            for (String ext : new String[]{".wav", ".mp3"}) {
+                File f = new File(dir, cue + ext);
+                if (f.isFile()) { source = f.toURI().toString(); break; }
+            }
+            if (source == null) {
+                var res = Sound.class.getResource("/audio/" + cue + ".wav");
+                if (res == null) res = Sound.class.getResource("/audio/" + cue + ".mp3");
+                if (res != null) source = res.toExternalForm();
+            }
+            if (source == null) { s.missing.put(cue, "no file"); continue; }
             try {
-                s.clips.put(cue, new AudioClip(f.toURI().toString()));
+                s.clips.put(cue, new AudioClip(source));
             } catch (Exception ex) {
                 // A file that exists is not a file that plays - the same distinction AudioTest exists for.
                 s.missing.put(cue, String.valueOf(ex.getMessage()));
             }
         }
         return s;
+    }
+
+    /**
+     * Is the audio where the game can find it?
+     *
+     * <pre>
+     *   java -cp out tropical.Sound
+     *   java -jar tropical-punch.jar   # then it is reported on the first frame anyway
+     * </pre>
+     *
+     * <p>A diagnostic rather than a test: it needs a JavaFX toolkit and a display, so it cannot live in the
+     * gate, and the question it answers - "is this build's audio present" - is exactly the one that is silent
+     * when the answer is no.
+     */
+    public static void main(String[] args) {
+        javafx.application.Platform.startup(() -> { });
+        Sound s = Sound.load(args.length > 0 ? args[0] : ".");
+        System.out.println("cues loaded: " + s.loaded() + " of " + AudioSystem.sfxNames().length);
+        if (!s.missing().isEmpty()) System.out.println("missing: " + s.missing());
+        javafx.application.Platform.exit();
     }
 
     /** Play everything posted since the last call. Call this once a frame. */
