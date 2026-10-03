@@ -1,8 +1,10 @@
 # Fruit jump
 
-A 2D action-adventure platformer in Java 17 + JavaFX — a radioactive banana on a floating island. Screen-transition based with hookshot, bombs, bow, and procedurally generated levels.
+A 2D action-adventure platformer in Java 17 + JavaFX — a climber on a floating island. Screen-transition based
+with hookshot, bombs, bow, and procedurally generated levels.
 
-This is the Java engine + playable game.
+This is the Java engine + playable game. The climber has no face, so hair and pack are the identity:
+**The Climber** in the menu picks them, and the game draws what you chose.
 
 ## Run
 
@@ -10,8 +12,9 @@ This is the Java engine + playable game.
 java -jar tropical-punch.jar
 ```
 
-Requires Java 17+ with JavaFX 17+ on the module path (the shaded jar bundles JavaFX for Linux; on Windows/Mac use the source build below).
-release should let users play it immediately. Bound to be overhauled later
+Requires Java 17+ with JavaFX 17+ on the module path (the shaded jar bundles JavaFX for Linux; on Windows/Mac
+use the source build below). The jar carries its own sound files as well as JavaFX, so it is playable on its own
+with nothing beside it.
 
 **Controls:**
 - Arrow keys / WASD — move
@@ -41,15 +44,34 @@ A complete platformer engine, built and tested layer by layer:
 - **Weapons** — hookshot (instant raycast, pull physics), arrows (fast, light gravity), bombs (thrown arc, 1.2s fuse, blast radius, destroy cracked terrain)
 - **Enemies** — PATROL/CHASE AI with hysteresis, wall/ledge sensors
 - **Items** — hearts, keys, locked doors, cracked tiles (bombable)
-- **Level generation** — procedural ground walk with guaranteed traversability: gaps ≤3 cells, climbs ≤2 cells, landing runways in both directions, spike pits off the path, locked doors with keys on flat stretches, bombable pockets hiding hearts
+- **Level generation** — procedural ground walk with guaranteed traversability: gaps from 3 cells widening to a hard cap of 4 as levels go on, climbs ≤2 cells, landing runways in both directions, spike pits off the path, locked doors with keys on flat stretches, bombable pockets hiding hearts
 - **Level validation** — a bot plays every generated level through the real physics engine before it ships; 100/100 fresh seeds pass
 - **Camera** — smooth follow, look-ahead, room clamping, parallax
 - **Particles** — burst/stream/trail emitters, object pooling
-- **Audio** — event-driven (SFX triggers, music states); headless backend attaches later with zero gameplay changes
-- **AI Director** — L4D-style pacing (BUILD/PEAK/RELAX/RECOVER), intensity signal, mercy window
+- **Audio** — event-driven cues, posted by the engine and played by `Sound`. Twelve sound effects, generated
+  from source by `tools/fruitjump-audio.py` rather than committed as opaque assets, and bundled in the jar
 - **Save/Load** — player, room, and global state, entity-ID tracking
-- **Boss fights** — multi-phase AI, telegraphed attacks, weak-point windows, wall-stun
-- **Multiplayer foundation** — authoritative TCP server, client prediction + reconciliation, lag compensation (server rewind), entity interpolation
+- **The tutorial** — eight hand-built levels, and the only place the game explains itself
+
+## In the engine, not in the game
+
+These are written and tested, and **nothing in the game constructs them.** They are listed here rather than in
+the section above because a reader should not have to run `grep` to find out whether a boss fight is coming.
+
+- **Boss fights** — `Boss` is 326 lines of multi-phase AI, telegraphed attacks, weak-point windows and wall-stun.
+  Nothing builds one.
+- **AI Director** — `AIDirector` is L4D-style pacing (BUILD/PEAK/RELAX/RECOVER) with an intensity signal and a
+  mercy window. Nothing builds one, *and* nothing reads its output — `Combat` reports into it and no code asks
+  it anything.
+- **Moving platforms** — `World` has `movers` and `addMover`; no level places one.
+- **Parallax** — `Camera.parallaxOffset` and `ParallaxLayer` exist; no layer is drawn, so the sky is flat.
+
+## Not in this repository
+
+**Multiplayer.** This README used to claim an authoritative TCP server, client prediction and reconciliation,
+lag compensation and entity interpolation. **No file for any of it has ever been committed on any branch.** It is
+not a feature that regressed or was removed; it is a claim that was written and never backed. If it was built, it
+was built somewhere that was not saved.
 
 ## Testing philosophy
 
@@ -64,7 +86,7 @@ Notable bugs the bots found:
 
 ```
 src/main/java/tropical/        — the game (screens, menus, tests)
-src/main/java/tropical/engine/ — the engine (25 classes, display-agnostic)
+src/main/java/tropical/engine/ — the engine (35 classes, display-agnostic)
 src/main/resources/style.css   — UI styling
 ```
 
