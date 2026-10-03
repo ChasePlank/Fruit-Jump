@@ -37,7 +37,8 @@ public class WaterProbe {
         StringBuilder faults = new StringBuilder();
 
         for (int level = 1; level <= 40; level++) {
-            LevelMap m = new LevelGen(width, height, 1000L + level, level).generate();
+            LevelGen gen = new LevelGen(width, height, 1000L + level, level);
+            LevelMap m = gen.generate();
             int n = 0;
             for (int r = 0; r < m.height; r++)
                 for (int c = 0; c < m.width; c++)
@@ -54,6 +55,17 @@ public class WaterProbe {
                     while (r < m.height && m.cell(r, c) == '~') r++;
                     int len = r - start;
                     pools++;
+                    // A FLOODED WALK IS ONE ROW AND THAT IS CORRECT. It sits ankle-deep on the walk's own floor,
+                    // so the ground under it is the floor the generator carved and the player crosses at walking
+                    // height. A pool in a GAP is two rows, because there the water is the penalty for a missed
+                    // jump. The two are told apart by the walk's floor data - the same distinction the gap check
+                    // needed, for the same reason: once a level could be flooded end to end, "how deep is the
+                    // water" stopped being one question.
+                    boolean wade = len == 1
+                            && c < gen.lastPathFloor.length
+                            && gen.lastPathFloor[c] == start + 1
+                            && m.cell(start + 1, c) == '#';
+                    if (wade) continue;
                     if (len != POOL_ROWS) {
                         bad++;
                         faults.append("\n  level ").append(level).append(" column ").append(c)
@@ -81,7 +93,7 @@ public class WaterProbe {
         System.out.println("levels with water: " + withWater + " of 40, " + total + " cells");
         System.out.println("  " + list);
         System.out.println("pools: " + pools + ", each expected to be " + POOL_ROWS
-                + " rows with a floor under it");
+                + " rows with a floor under it (a flooded WALK is one row, ankle-deep, and is not a pool)");
         System.out.println(bad == 0
                 ? "SHAPE OK: every pool is " + POOL_ROWS + " rows deep with a floor, none sitting on spikes"
                 : "SHAPE FAILURES: " + bad + faults);

@@ -267,6 +267,10 @@ public class LevelValidator {
         int footRow = -1;
         for (int r = feetRow; r < map.height; r++) {
             char ch = map.cell(r, standCol);
+            // WATER IS TRANSPARENT HERE. The bot stands on the floor UNDER the water, not on its surface -
+            // "water is floor" was tried and it wedged the bot against the dry bank: the surface row is the same
+            // row the dry ground is solid on, so standing there put a wall at the bot's own level. Skipping '~'
+            // finds the pool floor below, and the 2-cell climb out is within the bot's step limit.
             if (ch == '#' || ch == '/' || ch == '\\' || ch == '=') { footRow = r; break; }
         }
         if (footRow == -1) footRow = feetRow;  // void below: treat as gap
@@ -303,8 +307,16 @@ public class LevelValidator {
             }
             int climb = footRow - wallTopRow;
             char aboveTop = map.cell(wallTopRow - 1, curCol + 1);
+            // 'f' IS NOT A WALL. This is where the bot actually stopped - not at the water, and not from the air
+            // bar, and not from the fish biting it: a piranha sat in the cell the bot wanted to step into, and
+            // the headroom test did not list it as passable, so the bot refused to move. The trace showed it
+            // frozen at x=372, column 11, which is the last water cell before dry ground.
+            //
+            // A fish is an enemy. Enemies belong in this list for the same reason 'o' (a ground enemy) already
+            // does: the bot is allowed to walk into one and take the hit.
             boolean clearAbove = aboveTop == ' ' || aboveTop == 'P' || aboveTop == 'E'
-                || aboveTop == 'o' || aboveTop == 'h' || aboveTop == 'k';
+                || aboveTop == 'o' || aboveTop == 'h' || aboveTop == 'k' || aboveTop == 'f'
+                || aboveTop == '~';
             stepAhead = climb >= 1 && climb <= 2 && clearAbove;
         }
 

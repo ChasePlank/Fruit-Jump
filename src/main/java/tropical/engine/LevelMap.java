@@ -38,6 +38,7 @@ public class LevelMap {
     public final List<Physics.AABB> cracked = new ArrayList<>();  // bombable
     public final List<double[]> enemies = new ArrayList<>();   // {x, y}
     public final List<double[]> bats = new ArrayList<>();      // {x, y}
+    public final List<double[]> piranhas = new ArrayList<>();  // {x, y}, always in groups
     public final List<Pickup> pickups = new ArrayList<>();
     public final List<Door> doors = new ArrayList<>();
     /** Water cells as {row, col, dir}: dir 0 still, 1 right, 2 left, 3 down, 4 up. Water is not solid and
@@ -103,6 +104,11 @@ public class LevelMap {
                         // gaps - gaps are climbable spike pits, so a mid-air
                         // knockover is a setback, not a death.
                         bats.add(new double[]{x + TILE / 2, y + TILE / 2});
+                        break;
+                    case 'f':
+                        // Piranha anchor. Placed in GROUPS by the generator, because one fish is a nuisance and
+                        // four are a pool you have to think about crossing.
+                        piranhas.add(new double[]{x + TILE / 2, y + TILE / 2});
                         break;
                     case 'k':
                         pickups.add(Pickup.key(x + TILE / 2, y + TILE / 2));
@@ -206,6 +212,10 @@ public class LevelMap {
         for (int i = 0; i < bats.size(); i++) {
             double[] b = bats.get(i);
             world.addBat(new Bat(b[0], b[1], (long) (b[0] * 31 + b[1] * 17 + i)));
+        }
+        for (int i = 0; i < piranhas.size(); i++) {
+            double[] f = piranhas.get(i);
+            world.addPiranha(new Piranha(f[0], f[1], (long) (f[0] * 13 + f[1] * 29 + i)));
         }
         for (Door d : doors) {
             world.doors.add(d);

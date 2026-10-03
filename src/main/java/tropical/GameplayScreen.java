@@ -305,6 +305,12 @@ public class GameplayScreen extends Screen {
         // hookshot.update — meant the pull velocity set at the end of
         // frame N was wiped before frame N+1's physics. The line drew
         // but the player never moved.)
+        // A piranha bit this frame. The engine says what happened; the screen decides what it costs, because
+        // Combat (hearts, i-frames, the hurt sound) lives here and not in World. This is the half the sync
+        // script cannot carry - see its "SCREENS" warning, which is written from the three times a feature
+        // arrived in this repository with nothing to draw or drive it.
+        if (world.piranhaBit) combat.hurtPlayer(player, world.piranhaBitFromX);
+
         boolean pulling = hookshot.update(dt, world);
         
         // Player input → velocity (skipped while hookshot pulls)
@@ -507,6 +513,27 @@ public class GameplayScreen extends Screen {
         // flat is worse than no enemy at all, because there is no way to learn it is there. Found by
         // looking at a level rather than by a test: the level-15 screenshot had three bats in it
         // according to the generator and an empty sky on screen.
+        // Piranhas. Drawn rather than sprited - there is no piranha art in either copy, and a fish that exists
+        // in the engine and is not drawn is the exact bug this repository has fixed three times (bats, water,
+        // splash). A body, a tail, an eye and a tooth line reads as a fish at this size.
+        for (Piranha f : world.piranhas) {
+            double fx = camera.worldToScreenX(f.body.x), fy = camera.worldToScreenY(f.body.y);
+            if (fx < -60 || fx > CANVAS_W + 60) continue;
+            boolean lunging = f.state == Piranha.State.BITE;
+            double w = 26 * S, h = 16 * S;
+            gc.setFill(lunging ? Color.web("#c0392b") : Color.web("#7d3c3c"));
+            gc.fillOval(fx - w / 2, fy - h / 2, w, h);
+            gc.setFill(Color.web("#5a2a2a"));
+            gc.fillPolygon(new double[]{fx - w / 2, fx - w / 2 - 8 * S, fx - w / 2},
+                           new double[]{fy - h / 4, fy, fy + h / 4}, 3);
+            gc.setFill(Color.web("#f5e6c8"));
+            gc.fillOval(fx + w / 6, fy - h / 5, 5 * S, 5 * S);
+            gc.setFill(Color.BLACK);
+            gc.fillOval(fx + w / 6 + 1.5 * S, fy - h / 5 + 1.5 * S, 2 * S, 2 * S);
+            gc.setFill(Color.WHITE);
+            gc.fillRect(fx + w / 5, fy + h / 8, w / 4, 3 * S);
+        }
+
         for (Bat bat : world.bats) {
             double bx = camera.worldToScreenX(bat.body.x - bat.body.hw),
                    by = camera.worldToScreenY(bat.body.y - bat.body.hh);

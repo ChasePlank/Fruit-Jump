@@ -34,6 +34,18 @@ public class World {
     /** Flying pursuers. They cannot hurt the player - a hit only knocks
      *  them flat for a moment and makes the bat disengage. */
     public final List<Bat> bats = new ArrayList<>();
+    public final List<Piranha> piranhas = new ArrayList<>();
+
+    /**
+     * Set for one frame when a piranha bites, and where from.
+     *
+     * <p>A signal rather than a call, because <b>World has no Combat</b> - the screen owns it, and the bat does
+     * the same thing by setting {@code stunTimer} on the body and letting the screen notice. Damage needs more
+     * than a body field (hearts, i-frames, the sound), so the engine says what happened and the screen decides
+     * what it costs. That split is why this is not simply {@code combat.hurtPlayer(...)} here.
+     */
+    public boolean piranhaBit = false;
+    public double piranhaBitFromX = 0;
     /** Raised when the player is inside a blast. The view consumes it and
      *  applies the HP loss, so the damage RULE lives in the engine and the HP
      *  write stays in one place. */
@@ -131,6 +143,7 @@ public class World {
         oneways.clear();
         enemies.clear();
         bats.clear();
+        piranhas.clear();
         projectiles.clear();
         pickups.clear();
         doors.clear();
@@ -143,6 +156,11 @@ public class World {
     }
 
     /** Add a bat (flying, no gravity, but still collides with terrain). */
+    public void addPiranha(Piranha p) {
+        piranhas.add(p);
+        bodies.add(p.body);
+    }
+
     public void addBat(Bat b) {
         bats.add(b);
         bodies.add(b.body);
@@ -211,6 +229,7 @@ public class World {
     
     /** Physics step. */
     public void update(double dt) {
+        piranhaBit = false;   // one frame only; the screen reads it and decides what it costs
         // Update kinematic platforms and carry riders.
         // Carry BEFORE physics: a resting player generates no collision
         // (tEntry=0 is rejected), so collision-response carry never fires.
@@ -290,7 +309,38 @@ public class World {
                 // flew straight through one (playtest: the bat reads as
                 // invincible).
                 if (p.active) {
-                    for (int bi = bats.size() - 1; bi >= 0; bi--) {
+                    // --- Piranhas ---
+        //
+        // Mirrors the bat loop with the one difference that matters: a bat knocks you down and you get up, a
+        // piranha takes a heart. It is also the only thing in the game that damages you for being IN water, which
+        // is what turns a flooded level from a free crossing into a decision.
+        for (int pi = piranhas.size() - 1; pi >= 0; pi--) {
+            Piranha fish = piranhas.get(pi);
+            if (playerBody == null) continue;
+            boolean bit = fish.update(dt, playerBody, water);
+            if (!fish.body.aabb().overlaps(playerBody.aabb())) continue;
+            boolean stomped = playerBody.vy > 0 && (playerBody.y + playerBody.hh) < fish.body.y;
+            if (stomped) {
+                piranhas.remove(pi);
+                bodies.remove(fish.body);
+                playerBody.vy = -400;
+                if (audio != null) audio.playSfx(AudioSystem.Sfx.STOMP);
+            } else if (bit) {
+                // A signal, not a stun: this is the whole point of the enemy. The screen applies it through
+                // Combat, which is where the i-frames live, so a group cannot take three hearts in three frames.
+                piranhaBit = true;
+                piranhaBitFromX = fish.body.x;
+                // EVERY fish in range breaks off, the same reason the bats do: a group that relays its bites is
+                // a stun-lock with extra steps.
+                for (Piranha other : piranhas) {
+                    if (Math.hypot(other.body.x - playerBody.x, other.body.y - playerBody.y) < Piranha.AGGRO_RANGE) {
+                        other.flee();
+                    }
+                }
+            }
+        }
+
+        for (int bi = bats.size() - 1; bi >= 0; bi--) {
                         Bat bat = bats.get(bi);
                         if (pbox.overlaps(bat.body.aabb())) {
                             bats.remove(bi);
