@@ -19,14 +19,14 @@ import java.util.List;
  * have to be right because they are the first thing anyone plays.
  */
 public class Tutorial {
-    public static final int LAST = 8;
+    public static final int LAST = 9;
     static final int W = 60, H = 20, FLOOR = 17;
 
     public static boolean isTutorial(int level) {
         return level >= 1 && level <= LAST;
     }
 
-    /** Level 8 sends the player back to the menu instead of level 9. */
+    /** The last tutorial level sends the player back to the menu instead of level 10. */
     public static boolean endsTheTutorial(int level) {
         return level == LAST;
     }
@@ -103,6 +103,18 @@ public class Tutorial {
                 for (int c = 18; c <= 19; c++) { g[FLOOR - 1][c] = ' '; g[FLOOR][c] = '^'; }
                 for (int c = 30; c <= 31; c++) { g[FLOOR - 1][c] = ' '; g[FLOOR][c] = '^'; }
             }
+            case 9 -> {
+                // WATER. The tutorial taught the spider, the bomb, the arrow, the bat, the pickups and the
+                // spikes, and then water became common and piranhas arrived - so a player met both for the
+                // first time in a generated level with nothing to tell them what they were.
+                //
+                // The water is ONE ROW at FLOOR - 1: ankle-deep, on the walk's own floor, which is exactly how
+                // a flooded level is built (see LevelGen). The floor is untouched, so walking through it is
+                // walking. The piranhas sit at FLOOR - 2, at the surface, where you can see them coming.
+                for (int c = 16; c <= 34; c++) g[FLOOR - 1][c] = '~';
+                for (int c = 22; c <= 24; c++) g[FLOOR - 2][c] = 'f';   // a group, because they come in groups
+                put(g, 40, FLOOR - 1, '~');                             // and one on its own, to show the difference
+            }
             default -> { }
         }
 
@@ -172,7 +184,14 @@ public class Tutorial {
             case 8 -> {
                 s.add(new Sign(10 * 32, y, "SPIKES"));
                 s.add(new Sign(10 * 32, y + 26, "a pit costs you a heart, not the run - climb out"));
-                s.add(new Sign(38 * 32, y, "that is everything. good luck"));
+            }
+            case 9 -> {
+                s.add(new Sign(8 * 32, y, "WATER"));
+                s.add(new Sign(8 * 32, y + 26, "you walk through it. it does not slow you down"));
+                s.add(new Sign(20 * 32, y - 60, "PIRANHA"));
+                s.add(new Sign(20 * 32, y - 34, "unlike a bat, this one takes a HEART"));
+                s.add(new Sign(20 * 32, y - 8, "they come in groups. get out and they lose you"));
+                s.add(new Sign(44 * 32, y, "that is everything. good luck"));
             }
             default -> { }
         }
