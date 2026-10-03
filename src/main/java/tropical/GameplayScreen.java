@@ -48,6 +48,7 @@ public class GameplayScreen extends Screen {
      * That is the same half-built shape as the water, the bats and the splash, one layer up: not a feature
      * nobody drew, a feature nobody could enter.
      */
+    private final Sprites.Look look;
     private final AudioSystem audio;
     private final Sound sound;
     private final java.util.List<Tutorial.Sign> signs;
@@ -129,6 +130,7 @@ public class GameplayScreen extends Screen {
         audio = new AudioSystem();
         world.setAudio(audio);
         sound = Sound.load(".");
+        look = Sprites.buildLook(CharacterConfig.load());
         inventory = new PlayerInventory();
 
         // Player
@@ -425,7 +427,7 @@ public class GameplayScreen extends Screen {
         // Facing sprite: mirrored variant when facing left
         // (playtest: "able to look both directions")
         javafx.scene.image.Image playerSprite =
-                facing < 0 ? Sprites.bananaL2x : Sprites.banana2x;
+                facing < 0 ? look.left2x : look.right2x;
 
         // Solid tiles: grass-topped dirt (rect base + grass strip)
         for (Physics.AABB t : world.tiles) drawGroundTile(t);
@@ -503,12 +505,17 @@ public class GameplayScreen extends Screen {
         double ex = camera.worldToScreenX(map.exitX - 12), ey = camera.worldToScreenY(map.exitY - 20);
         if (ex > -64 && ex < CANVAS_W) gc.drawImage(Sprites.exit2x, ex, ey, 16 * S, 24 * S);
 
-        // Player: radioactive banana sprite (facing-aware). Drawn at its
+        // Player: the climber, in whatever colours CharacterConfig says. Drawn at its
         // OWN aspect, centered on the body — the 14x22 grid stretched
         // into the 24x44 body box read as a pencil (playtest).
+        //
+        // The sprite comes from `look` rather than a fixed BANANA grid, because hair and pack ARE this
+        // character's identity — it has no face — and the customiser screen would be decoration if the game
+        // did not read the config back. The geometry is unchanged: this screen centres on the body where
+        // aside's bottom-aligns on the feet, and that is a separate difference, not one to fold in here.
         {
             double ph = player.hh * 2 * S;
-            double pw = ph * (Sprite.BANANA[0].length() / (double) Sprite.BANANA.length);
+            double pw = ph * (look.gridW / (double) look.gridH);
             double px = camera.worldToScreenX(player.x) - pw / 2;
             double py = camera.worldToScreenY(player.y) - ph / 2;
             gc.drawImage(playerSprite, px, py, pw, ph);
