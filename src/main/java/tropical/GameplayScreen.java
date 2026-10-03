@@ -439,7 +439,24 @@ public class GameplayScreen extends Screen {
                 facing < 0 ? look.left2x : look.right2x;
 
         // Solid tiles: grass-topped dirt (rect base + grass strip)
-        for (Physics.AABB t : world.tiles) drawGroundTile(t);
+        // Two things happen here that are not obvious, and neither was true of this file until it was carried
+        // across from aside:
+        //
+        // 1. Door AABBs live in world.tiles because PHYSICS needs them solid, but they are not terrain.
+        //    Drawing them painted the door's invisible anti-jump wall as a floating dirt block hovering a tile
+        //    above every door.
+        //
+        // 2. The grass test ("is anything solid directly above me") was a nested loop over world.tiles -
+        //    O(tiles^2). With the terrain now a solid mass instead of a one-cell strip that is a few hundred
+        //    thousand comparisons per frame on a Celeron. One hash set per frame makes it O(tiles).
+        java.util.HashSet<Long> solidCells = new java.util.HashSet<>();
+        for (Physics.AABB t : world.tiles) {
+            if (!isDoorBox(t)) solidCells.add(cellKey(t.x0, t.y0));
+        }
+        for (Physics.AABB t : world.tiles) {
+            if (isDoorBox(t)) continue;
+            drawGroundTile(t, solidCells);
+        }
         // Cracked tiles: crack overlay on top of ground
         for (Physics.AABB t : world.cracked) drawCrackedTile(t);
         // One-ways: wooden platform
@@ -510,9 +527,18 @@ public class GameplayScreen extends Screen {
             gc.fillRect(px, py, size, size);
         }
 
-        // Exit flag (16x24 logical → 32x48 physical)
-        double ex = camera.worldToScreenX(map.exitX - 12), ey = camera.worldToScreenY(map.exitY - 20);
-        if (ex > -64 && ex < CANVAS_W) gc.drawImage(Sprites.exit2x, ex, ey, 16 * S, 24 * S);
+        // Exit portal. Sized and anchored FROM THE SPRITE, not from numbers written for the sprite it used to
+        // be: the grid is 22 wide, and this drew it at 16 - squashed by a third - with an anchor two pixels
+        // off. The old comment said "16x24 logical" and had been wrong since the art changed.
+        //
+        // Bottom-aligned on the platform under the 'E' cell: exitY is the cell centre, so the floor the portal
+        // stands on is one half-cell below it.
+        double exitW = Sprite.EXIT[0].length(), exitH = Sprite.EXIT.length;
+        double ex = camera.worldToScreenX(map.exitX - exitW / 2);
+        double ey = camera.worldToScreenY(map.exitY + 16 - exitH);
+        if (ex > -exitW * S && ex < CANVAS_W) {
+            gc.drawImage(Sprites.exit2x, ex, ey, exitW * S, exitH * S);
+        }
 
         // Player: the climber, in whatever colours CharacterConfig says. Drawn at its
         // OWN aspect, centered on the body — the 14x22 grid stretched
@@ -577,7 +603,20 @@ public class GameplayScreen extends Screen {
         renderHUD();
     }
 
-    private void drawGroundTile(Physics.AABB t) {
+    /** Grid-cell key for the solid-cell set. Cell-aligned coords only. */
+    private static long cellKey(double x, double y) {
+        return ((long) (x / 32) << 20) ^ (long) (y / 32);
+    }
+
+    /** Is this AABB a door's collision box rather than terrain? */
+    private boolean isDoorBox(Physics.AABB t) {
+        for (Door d : world.doors) {
+            if (d.aabb() == t) return true;
+        }
+        return false;
+    }
+
+    private void drawGroundTile(Physics.AABB t, java.util.HashSet<Long> solidCells) {
         final double S = SCALE;
         double sx = camera.worldToScreenX(t.x0), sy = camera.worldToScreenY(t.y0);
         double w = (t.x1 - t.x0) * S, h = (t.y1 - t.y0) * S;
@@ -589,10 +628,7 @@ public class GameplayScreen extends Screen {
         // column of tiles shouldn't have grass bands mid-pillar —
         // visible in the first screenshot as stripes on every segment)
         gc.setFill(Color.web("#228B22"));
-        boolean above = false;
-        for (Physics.AABB o : world.tiles) {
-            if (o.x0 == t.x0 && o.y1 == t.y0) { above = true; break; }
-        }
+        boolean above = solidCells.contains(cellKey(t.x0, t.y0 - 32));
         if (!above) gc.fillRect(sx, sy, w, Math.min(16, h));
     }
 
