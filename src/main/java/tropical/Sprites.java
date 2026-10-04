@@ -31,6 +31,7 @@ public class Sprites {
 
     // Flying enemy.
     static final WritableImage bat, bat2x;
+    static final WritableImage piranha, piranha2x;
 
     // World pickup (was the heart).
     static final WritableImage snack, snack2x;
@@ -107,6 +108,8 @@ public class Sprites {
         playerL2x = Sprite.buildScaled(Sprite.flipX(Sprite.PLAYER), pal, Sprite.PLAYER[0].length() * SCALE, Sprite.PLAYER.length * SCALE);
 
         bat2x     = Sprite.buildScaled(Sprite.BAT, pal, Sprite.BAT[0].length() * SCALE, Sprite.BAT.length * SCALE);
+        piranha   = Sprite.build(Sprite.PIRANHA, pal);
+        piranha2x = Sprite.buildScaled(Sprite.PIRANHA, pal, Sprite.PIRANHA[0].length() * SCALE, Sprite.PIRANHA.length * SCALE);
         snack2x   = Sprite.buildScaled(Sprite.SNACK, pal, Sprite.SNACK[0].length() * SCALE, Sprite.SNACK.length * SCALE);
         jar2x     = Sprite.buildScaled(Sprite.JAR, pal, Sprite.JAR[0].length() * SCALE, Sprite.JAR.length * SCALE);
         spider2x  = Sprite.buildScaled(Sprite.SPIDER, pal, Sprite.SPIDER[0].length() * SCALE, Sprite.SPIDER.length * SCALE);

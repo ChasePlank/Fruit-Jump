@@ -516,23 +516,16 @@ public class GameplayScreen extends Screen {
         // Piranhas. Drawn rather than sprited - there is no piranha art in either copy, and a fish that exists
         // in the engine and is not drawn is the exact bug this repository has fixed three times (bats, water,
         // splash). A body, a tail, an eye and a tooth line reads as a fish at this size.
+        // Piranhas, drawn from a pixel grid like every other creature here. Was canvas ovals while there was no
+        // piranha art; Sprite.PIRANHA is a hand-drawn grid in the same style as the bat and the banana.
         for (Piranha f : world.piranhas) {
-            double fx = camera.worldToScreenX(f.body.x), fy = camera.worldToScreenY(f.body.y);
-            if (fx < -60 || fx > CANVAS_W + 60) continue;
-            boolean lunging = f.state == Piranha.State.BITE;
-            double w = 26 * S, h = 16 * S;
-            gc.setFill(lunging ? Color.web("#c0392b") : Color.web("#7d3c3c"));
-            gc.fillOval(fx - w / 2, fy - h / 2, w, h);
-            gc.setFill(Color.web("#5a2a2a"));
-            gc.fillPolygon(new double[]{fx - w / 2, fx - w / 2 - 8 * S, fx - w / 2},
-                           new double[]{fy - h / 4, fy, fy + h / 4}, 3);
-            gc.setFill(Color.web("#f5e6c8"));
-            gc.fillOval(fx + w / 6, fy - h / 5, 5 * S, 5 * S);
-            gc.setFill(Color.BLACK);
-            gc.fillOval(fx + w / 6 + 1.5 * S, fy - h / 5 + 1.5 * S, 2 * S, 2 * S);
-            gc.setFill(Color.WHITE);
-            gc.fillRect(fx + w / 5, fy + h / 8, w / 4, 3 * S);
+            double pw = Sprite.PIRANHA[0].length() * S, ph = Sprite.PIRANHA.length * S;
+            double px = camera.worldToScreenX(f.body.x) - pw / 2;
+            double py = camera.worldToScreenY(f.body.y) - ph / 2;
+            if (px > CANVAS_W || px + pw < 0) continue;
+            gc.drawImage(f.state == Piranha.State.BITE ? Sprites.piranha2x : Sprites.piranha, px, py, pw, ph);
         }
+
 
         for (Bat bat : world.bats) {
             double bx = camera.worldToScreenX(bat.body.x - bat.body.hw),

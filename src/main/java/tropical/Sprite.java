@@ -611,6 +611,26 @@ public class Sprite {
         "              ",
     };
 
+    /**
+     * A piranha, facing right: tail on the left, body and head on the right, a white eye and a tooth line.
+     *
+     * <p>Hand-drawn in the same 8-bit style as the bat and the banana rather than generated, because every other
+     * creature in this game is a pixel grid and a fish drawn with canvas ovals was the odd one out. The `W` run
+     * along the front is the teeth - at this size that is what makes it read as a piranha rather than a fish.
+     */
+    static String[] PIRANHA = {
+        "                ",
+        "   KK     KKKK  ",
+        " KKRRK   KRRRRK ",
+        "KRRRRRK KRRRRRRK",
+        "KRRRRRKRRWWRRRRK",
+        "KRRRRRKRRRRWWWWK",
+        "KRRRRRK KRRRRRRK",
+        " KKRRK   KRRRRK ",
+        "   KK     KKKK  ",
+        "                ",
+    };
+
     static String[] BOMB = {
         "  KK  ",
         " KOOK ",
