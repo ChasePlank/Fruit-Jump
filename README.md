@@ -38,12 +38,13 @@ A complete platformer engine, built and tested layer by layer:
 
 - **Physics** — fixed timestep (1/60), swept AABB collision (slab method), iterative multi-collision resolution, slopes (45°/30° walkable, 63°+ slides)
 - **Movement** — run, jump, one-way platforms, moving platforms with carry
-- **Water** — flooded gaps, buoyancy, a breath meter, a breach hop out of a pool, and a splash on entry
+- **Water** — flooded gaps, buoyancy, a breath meter, a breach hop out of a pool, and a splash on entry. **A quarter of levels roll FLOODED** (5 of the first 40 come out wet enough to read as one): the walk itself under water in runs with dry ground between them, so the level is a different shape rather than a wetter version of the same one
+- **Piranhas** — a water enemy in groups of three to five. Unlike a bat, it takes a **heart** rather than knocking you down. It moves only when you are in the water, so getting out loses it, and it is slower than you swim, so it corners you rather than running you down
 - **Bats** — they follow you, and a knock-down clears the swarm rather than pinning you
 - **Combat** — contact damage, stomp (positional check), knockback, i-frames
 - **Weapons** — hookshot (instant raycast, pull physics), arrows (fast, light gravity), bombs (thrown arc, 1.2s fuse, blast radius, destroy cracked terrain)
 - **Enemies** — PATROL/CHASE AI with hysteresis, wall/ledge sensors
-- **Items** — hearts, keys, locked doors, cracked tiles (bombable)
+- **Items** — hearts, keys, locked doors, cracked tiles (bombable). Heals get **rarer as levels go on** (0.55 falling to a floor of 0.12), because a late heal is worth more than an early one
 - **Level generation** — procedural ground walk with guaranteed traversability: gaps from 3 cells widening to a hard cap of 4 as levels go on, climbs ≤2 cells, landing runways in both directions, spike pits off the path, locked doors with keys on flat stretches, bombable pockets hiding hearts
 - **Level validation** — a bot plays every generated level through the real physics engine before it ships; 100/100 fresh seeds pass
 - **Camera** — smooth follow, look-ahead, room clamping, parallax
