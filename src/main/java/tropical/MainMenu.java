@@ -3,6 +3,8 @@ package tropical;
 import javafx.scene.Parent;
 import javafx.scene.layout.VBox;
 import javafx.scene.layout.StackPane;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.paint.Color;
 import javafx.scene.control.Label;
 import javafx.scene.text.Font;
 import javafx.scene.input.KeyEvent;
@@ -87,6 +89,32 @@ public class MainMenu extends Screen {
 
         root = new StackPane(menu);
         root.getStyleClass().add("screen-bg");
+
+        // THE SAME HORIZON AS THE TITLE SCREEN, at the same time of day. The title got the sunset and this - the
+        // SECOND screen a player sees, and the one they come back to - was still flat. Four screens now read as
+        // one world: this menu and the title at dusk with the climber on the rock, the pause the same afternoon
+        // held, and game over after the sun with the rock empty.
+        //
+        // No dim here, unlike the pause. The menu is not interrupting anything, so it gets the sky as it is.
+        Canvas sky = new Canvas();
+        root.widthProperty().addListener((o, a, b) -> paintSky(sky));
+        root.heightProperty().addListener((o, a, b) -> paintSky(sky));
+        root.getChildren().add(0, sky);
+        paintSky(sky);
+
+        // The words sit on a sky, so they get a shadow rather than a panel over the art.
+        javafx.scene.effect.DropShadow shadow =
+                new javafx.scene.effect.DropShadow(18, 0, 4, Color.rgb(0, 0, 0, 0.8));
+        for (javafx.scene.Node n : menu.getChildren()) n.setEffect(shadow);
+    }
+
+    /** The horizon, drawn proportionally to whatever size the window is. */
+    private void paintSky(Canvas c) {
+        double w = root.getWidth(), h = root.getHeight();
+        if (w <= 0 || h <= 0) return;
+        c.setWidth(w);
+        c.setHeight(h);
+        Skyline.paint(c.getGraphicsContext2D(), w, h, Skyline.Mood.DUSK, true);
     }
 
     /**
