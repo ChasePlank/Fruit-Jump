@@ -726,6 +726,16 @@ public class LevelGen {
         List<String> rows = new ArrayList<>();
         for (char[] row : g) rows.add(new String(row));
         this.lastMap = new LevelMap(rows);
+        // AND THE WALK'S FLOORS, which this path filled into `pathFloor` and then never published.
+        //
+        // Every tenth level comes through here, so `lastPathFloor` was NULL for a safe room on a fresh
+        // generator and - worse - the PREVIOUS level's floors on a reused one, because the field is only
+        // written by the other path. A stale answer rather than a missing one, which is the harder kind to
+        // notice.
+        //
+        // Found in the Aside edition by a difficulty-curve probe that walked levels 1 to 40 and died on level
+        // 10, and ported here because the two copies of this file are meant to be the same.
+        this.lastPathFloor = pathFloor.clone();
         return this.lastMap;
     }
 }
