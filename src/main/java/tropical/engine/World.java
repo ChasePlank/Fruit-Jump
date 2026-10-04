@@ -309,36 +309,6 @@ public class World {
                 // flew straight through one (playtest: the bat reads as
                 // invincible).
                 if (p.active) {
-                    // --- Piranhas ---
-        //
-        // Mirrors the bat loop with the one difference that matters: a bat knocks you down and you get up, a
-        // piranha takes a heart. It is also the only thing in the game that damages you for being IN water, which
-        // is what turns a flooded level from a free crossing into a decision.
-        for (int pi = piranhas.size() - 1; pi >= 0; pi--) {
-            Piranha fish = piranhas.get(pi);
-            if (playerBody == null) continue;
-            boolean bit = fish.update(dt, playerBody, water);
-            if (!fish.body.aabb().overlaps(playerBody.aabb())) continue;
-            boolean stomped = playerBody.vy > 0 && (playerBody.y + playerBody.hh) < fish.body.y;
-            if (stomped) {
-                piranhas.remove(pi);
-                bodies.remove(fish.body);
-                playerBody.vy = -400;
-                if (audio != null) audio.playSfx(AudioSystem.Sfx.STOMP);
-            } else if (bit) {
-                // A signal, not a stun: this is the whole point of the enemy. The screen applies it through
-                // Combat, which is where the i-frames live, so a group cannot take three hearts in three frames.
-                piranhaBit = true;
-                piranhaBitFromX = fish.body.x;
-                // EVERY fish in range breaks off, the same reason the bats do: a group that relays its bites is
-                // a stun-lock with extra steps.
-                for (Piranha other : piranhas) {
-                    if (Math.hypot(other.body.x - playerBody.x, other.body.y - playerBody.y) < Piranha.AGGRO_RANGE) {
-                        other.flee();
-                    }
-                }
-            }
-        }
 
         for (int bi = bats.size() - 1; bi >= 0; bi--) {
                         Bat bat = bats.get(bi);
@@ -399,6 +369,45 @@ public class World {
         // from a gap or bait its dive, so the bat is positioning play rather
         // than a timed jump. PURSUE_SPEED is deliberately below the player's
         // run speed, because you cannot lead something that outruns you.
+
+                    // --- Piranhas ---
+        //
+        // Mirrors the bat loop with the one difference that matters: a bat knocks you down and you get up, a
+        // piranha takes a heart. It is also the only thing in the game that damages you for being IN water, which
+        // is what turns a flooded level from a free crossing into a decision.
+        for (int pi = piranhas.size() - 1; pi >= 0; pi--) {
+            Piranha fish = piranhas.get(pi);
+            if (playerBody == null) continue;
+            boolean bit = fish.update(dt, playerBody, water);
+            // THE BITE IS NOT CONDITIONAL ON THE BODIES TOUCHING. This used to `continue` when the AABBs did
+            // not overlap, and then check `bit` below - so a bite was thrown away whenever the fish lunged from
+            // BITE_RANGE (24px, centre to centre) without the boxes also intersecting, which is most of them:
+            // the fish is 22 wide and the player 24, so they only overlap inside ~23px. The debug print showed
+            // the fish reaching state=BITE and `piranhaBit` never being set.
+            //
+            // The overlap test belongs to the STOMP - you have to land on it to squash it - and not to the bite.
+            boolean touching = fish.body.aabb().overlaps(playerBody.aabb());
+            boolean stomped = touching && playerBody.vy > 0 && (playerBody.y + playerBody.hh) < fish.body.y;
+            if (stomped) {
+                piranhas.remove(pi);
+                bodies.remove(fish.body);
+                playerBody.vy = -400;
+                if (audio != null) audio.playSfx(AudioSystem.Sfx.STOMP);
+            } else if (bit) {
+                // A signal, not a stun: this is the whole point of the enemy. The screen applies it through
+                // Combat, which is where the i-frames live, so a group cannot take three hearts in three frames.
+                piranhaBit = true;
+                piranhaBitFromX = fish.body.x;
+                // EVERY fish in range breaks off, the same reason the bats do: a group that relays its bites is
+                // a stun-lock with extra steps.
+                for (Piranha other : piranhas) {
+                    if (Math.hypot(other.body.x - playerBody.x, other.body.y - playerBody.y) < Piranha.AGGRO_RANGE) {
+                        other.flee();
+                    }
+                }
+            }
+        }
+
         for (int bi = bats.size() - 1; bi >= 0; bi--) {
             Bat bat = bats.get(bi);
             if (playerBody == null) continue;

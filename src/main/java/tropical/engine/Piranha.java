@@ -39,8 +39,14 @@ public class Piranha {
     public static final double REAGGRO_DELAY = 2.5;
     public static final double HIT_COOLDOWN = 0.6;
 
-    /** How much a bite costs. One heart, the same as a spike - it is a hazard, not a boss. */
-    public static final double DAMAGE = 1.0;
+    // NO DAMAGE CONSTANT HERE. This had `DAMAGE = 1.0` with a docstring saying "one heart, the same as a spike",
+    // and nothing read it: the bite is a SIGNAL and the screen turns it into damage through Combat, which owns
+    // the amount. So the constant was a second, unread copy of a number that lives in one place - the same class
+    // as the other dead knobs the engine audit found (Boss.maxHP's twin, Hookshot.HOOK_SPEED).
+    //
+    // What made it worth removing rather than wiring: the mutation sweep caught `DAMAGE = 0.0` NOWHERE, because
+    // a constant nothing reads cannot change any behaviour. A dead knob that also looks load-bearing is worse
+    // than an obvious one.
 
     double timer = 0;
     double hitCooldown = 0;
