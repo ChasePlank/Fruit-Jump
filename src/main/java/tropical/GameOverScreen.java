@@ -3,6 +3,8 @@ package tropical;
 import javafx.scene.Parent;
 import javafx.scene.layout.VBox;
 import javafx.scene.layout.StackPane;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.paint.Color;
 import javafx.scene.control.Label;
 import javafx.scene.text.Font;
 import javafx.scene.input.KeyEvent;
@@ -46,7 +48,36 @@ public class GameOverScreen extends Screen {
         
         root = new StackPane(content);
         root.getStyleClass().add("screen-bg");
-        root.setStyle("-fx-background-color: #1a1a2e;");
+
+        // THE SAME HORIZON AS THE TITLE SCREEN, later in the day. This screen was a flat #1a1a2e with a red
+        // heading, and it is the screen a player sees MOST - dying is what a platformer does.
+        //
+        // THE ROCK IS EMPTY. The climber is not standing on it. That is the entire difference between this screen
+        // and the title, and it needs no words: "a climber, a sunset, and a way home", and then not this time.
+        //
+        // No -fx-background-color here any more: it would paint over the canvas.
+        Canvas sky = new Canvas();
+        root.widthProperty().addListener((o, a, b) -> paintSky(sky));
+        root.heightProperty().addListener((o, a, b) -> paintSky(sky));
+        root.getChildren().add(0, sky);
+        paintSky(sky);
+
+        // The words sit on a sky rather than on flat paint, so they get a shadow instead of a panel over the art.
+        javafx.scene.effect.DropShadow shadow =
+                new javafx.scene.effect.DropShadow(18, 0, 4, Color.rgb(0, 0, 0, 0.8));
+        title.setEffect(shadow);
+        stats.setEffect(shadow);
+        retry.setEffect(shadow);
+        menu.setEffect(shadow);
+    }
+
+    /** The horizon, drawn proportionally to whatever size the window is. */
+    private void paintSky(Canvas c) {
+        double w = root.getWidth(), h = root.getHeight();
+        if (w <= 0 || h <= 0) return;
+        c.setWidth(w);
+        c.setHeight(h);
+        Skyline.paint(c.getGraphicsContext2D(), w, h, Skyline.Mood.NIGHT, false);
     }
     
     @Override

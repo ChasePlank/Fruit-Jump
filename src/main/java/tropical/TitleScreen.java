@@ -99,52 +99,15 @@ public class TitleScreen extends Screen {
     }
 
     /**
-     * Paint the sunset: sky, sun, ridge, ground, and the climber - all placed as fractions of the canvas so the
-     * scene is the same picture at any window size.
+     * Paint the horizon behind the words. The geometry lives in Skyline so this screen and the game-over screen
+     * are the same place rather than two drawings that drift apart.
      */
     private void paintSky(Canvas c) {
         double w = root.getWidth(), h = root.getHeight();
         if (w <= 0 || h <= 0) return;
         c.setWidth(w);
         c.setHeight(h);
-        GraphicsContext gc = c.getGraphicsContext2D();
-        double horizon = h * 0.72;
-
-        // Sky, dark blue at the top warming down to gold.
-        javafx.scene.paint.Color[] sky = {Color.web("#0d1526"), Color.web("#1d3b5c"), Color.web("#7a5a54"),
-                                          Color.web("#c9723c"), Color.web("#f5a623")};
-        for (int y = 0; y < horizon; y++) {
-            double t = y / horizon * (sky.length - 1);
-            int i = Math.min((int) t, sky.length - 2);
-            gc.setFill(sky[i].interpolate(sky[i + 1], t - i));
-            gc.fillRect(0, y, w, 1);
-        }
-
-        // The sun, going down behind the ridge.
-        double sunX = w * 0.30, sunY = horizon - h * 0.030, r = h * 0.078;
-        gc.setFill(Color.web("#f5a623", 0.20));
-        gc.fillOval(sunX - r * 1.9, sunY - r * 1.9, r * 3.8, r * 3.8);
-        gc.setFill(Color.web("#f5c46a", 0.35));
-        gc.fillOval(sunX - r * 1.35, sunY - r * 1.35, r * 2.7, r * 2.7);
-        gc.setFill(Color.web("#ffe0a3"));
-        gc.fillOval(sunX - r, sunY - r, r * 2, r * 2);
-
-        // Ridge, ground, and the block the climber stands on.
-        gc.setFill(Color.web("#2a1c16"));
-        gc.fillPolygon(new double[]{0, w * 0.16, w * 0.34, w * 0.55, w * 0.77, w, w, 0},
-                       new double[]{horizon - h * 0.055, horizon - h * 0.13, horizon - h * 0.04,
-                                    horizon - h * 0.10, horizon - h * 0.03, horizon - h * 0.08, horizon, horizon}, 8);
-        gc.setFill(Color.web("#16100c"));
-        gc.fillRect(0, horizon, w, h - horizon);
-        gc.setFill(Color.web("#0d0a09"));
-        gc.fillRect(0, horizon + h * 0.018, w, h - horizon - h * 0.018);
-        gc.setFill(Color.web("#2a1c16"));
-        gc.fillRect(w * 0.655, horizon - h * 0.115, w * 0.115, h * 0.125);
-
-        // The climber, on top of it - the real sprite, from the same grid the game plays.
-        javafx.scene.image.WritableImage img =
-                Sprite.buildScaled(Sprite.PLAYER, Sprite.PAL(), Sprite.PLAYER[0].length() * 4,
-                                   Sprite.PLAYER.length * 4);
-        gc.drawImage(img, w * 0.685, horizon - h * 0.115 - Sprite.PLAYER.length * 4);
+        Skyline.paint(c.getGraphicsContext2D(), w, h, Skyline.Mood.DUSK, true);
     }
+
 }

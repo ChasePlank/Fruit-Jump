@@ -22,6 +22,15 @@
     -fx-text-fill: #ffffff;
 }
 
+/* Menu/hint items. THIS CLASS WAS USED AND NEVER DEFINED - GameOverScreen puts it on four labels and the
+   stylesheet had no rule for it, so they fell back to the default text colour, which is near-black. On the old
+   flat #1a1a2e background that was already almost unreadable; against the sunset and night skies added on
+   2026-10-04 it became clearly wrong. Found by looking at a screenshot, which is the only way this class of
+   thing gets found. */
+.menu-item {
+    -fx-text-fill: #c9c9d6;
+}
+
 /* Menu title (main menu, settings) */
 .menu-title {
     -fx-text-fill: #ffffff;
