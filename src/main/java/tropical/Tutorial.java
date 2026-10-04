@@ -160,7 +160,10 @@ public class Tutorial {
                 s.add(new Sign(29 * 32, y, "STAND BACK. the blast hurts you too"));
             }
             case 4 -> {
-                s.add(new Sign(12 * 32, y, "ARROWS   F"));
+                // WAS JUST "ARROWS   F", the only sign in the tutorial that named a key without saying what it
+                // does, when every other one follows "BOMB  G  -  it drops at your feet".
+                s.add(new Sign(12 * 32, y, "ARROWS   F   -   hits what you face"));
+                s.add(new Sign(30 * 32, y, "the spiders are out of reach. shoot them"));
             }
             case 5 -> {
                 s.add(new Sign(10 * 32, y, "BATS KNOCK YOU DOWN"));
