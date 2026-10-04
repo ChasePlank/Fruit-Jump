@@ -27,7 +27,9 @@ public class TitleScreen extends Screen {
         // to Tropical Punch "and not to this game (Kinger, Sept 28)", and the repository is called
         // Fruit-Jump. aside renamed its copy the same day. This is the working title and it is still open;
         // what it is not is the name of something else.
-        Label title = new Label("FRUIT JUMP");
+        // RENAMED 2026-10-04. "Fruit Jump" was the working title; the game is Holdfast. The same rename
+        // happened once before here, when this said TROPICAL PUNCH - the wrong game entirely.
+        Label title = new Label("HOLDFAST");
         title.getStyleClass().add("title-text");
         title.setFont(Font.font("Arial", 80));
 
