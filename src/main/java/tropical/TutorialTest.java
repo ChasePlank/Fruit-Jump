@@ -3,6 +3,7 @@ package tropical;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Scene;
+import javafx.scene.text.Font;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
@@ -30,7 +31,71 @@ public class TutorialTest extends Application {
         if (!ok) failures++;
     }
 
+    /**
+     * NO TWO SIGNS MAY OVERLAP. This is a static check with no screen involved, so it runs for all nine levels.
+     *
+     * <p>It exists because two signs on tutorial 6 WERE overlapping and neither could be read: "JAR - a life
+     * FOREVER, and a full refill" is 41 characters, wrapSign wraps it to a 34-character line, and at the 12px a
+     * character this is drawn in that spans roughly 408px from x=704 - ending near 1112. The KEY sign started at
+     * 960, inside it. wrapSign keeps a sign ON THE SCREEN and the clamp keeps it NEAR its object, and neither
+     * knows about the sign next to it.
+     *
+     * <p>12px a character is the same figure the renderer's own clamp comment uses, so this measures what the
+     * player sees rather than a guess. Two signs collide when their horizontal spans overlap AND their rows do -
+     * a sign wraps onto its own second row 26px down, which is why a three-line sign can reach a sign below it.
+     */
+    private void checkSignsDoNotOverlap() {
+        // MEASURED WITH THE REAL FONT, not estimated. The first version of this check assumed 12px a character -
+        // the figure the renderer's own clamp comment quotes - and reported THREE collisions that are not there,
+        // including two signs on tutorial 3 that have a clear gap between them on screen. An estimate that is a
+        // shade over the renderer's metric is a shade under someone else's, and a check built on a guess reports
+        // its own error as a fault in the game.
+        //
+        // So: the same font the renderer draws with, the same wrapSign it wraps with, and JavaFX's own layout
+        // bounds for the width. The only thing still assumed is the 26px line height, which is in the draw loop.
+        final Font FONT = Font.font("Arial", 22);
+        final double LINE_H = 26;
+        int checked = 0, collisions = 0;
+
+        java.util.List<Tutorial.Sign> all = new java.util.ArrayList<>();
+        for (int level = 1; level <= 9; level++) {
+            java.util.List<Tutorial.Sign> signs = Tutorial.signs(level);
+            for (int i = 0; i < signs.size(); i++) {
+                for (int j = i + 1; j < signs.size(); j++) {
+                    Tutorial.Sign a = signs.get(i), b = signs.get(j);
+                    double[] ra = spanOf(a, FONT, LINE_H);
+                    double[] rb = spanOf(b, FONT, LINE_H);
+                    boolean overlapX = ra[0] < rb[1] && rb[0] < ra[1];
+                    boolean overlapY = ra[2] < rb[3] && rb[2] < ra[3];
+                    checked++;
+                    if (overlapX && overlapY) {
+                        collisions++;
+                        System.out.printf("  tutorial %d: \"%s\" overlaps \"%s\"%n", level, shorten(a.text()), shorten(b.text()));
+                    }
+                }
+            }
+        }
+        check("no two tutorial signs overlap (" + checked + " pair(s) checked)", collisions == 0);
+    }
+
+    /** {x0, x1, y0, y1} for a sign, using the renderer's font and wrap. */
+    private static double[] spanOf(Tutorial.Sign s, Font font, double lineH) {
+        java.util.List<String> lines = GameplayScreen.wrapSign(s.text());
+        double widest = 0;
+        for (String line : lines) {
+            javafx.scene.text.Text t = new javafx.scene.text.Text(line);
+            t.setFont(font);
+            widest = Math.max(widest, t.getLayoutBounds().getWidth());
+        }
+        return new double[] { s.x(), s.x() + widest, s.y(), s.y() + lines.size() * lineH };
+    }
+
+    private static String shorten(String t) {
+        return t.length() > 30 ? t.substring(0, 30) + "..." : t;
+    }
+
     @Override public void start(Stage stage) {
+        checkSignsDoNotOverlap();
         screens = new ScreenManager();
         StackPane root = new StackPane();
         root.getChildren().add(screens.getContainer());
