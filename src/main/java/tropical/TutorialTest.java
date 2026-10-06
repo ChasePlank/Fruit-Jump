@@ -12,7 +12,7 @@ import javafx.stage.Stage;
 /**
  * The Tutorial menu entry actually opens the tutorial.
  *
- * <p>It is wired - menu entry, hand-built levels instead of the generator, no autosave, ends at 8 back to the
+ * <p>It is wired - menu entry, hand-built levels instead of the generator, no autosave, and it ends back at the
  * menu - and NOTHING TESTED IT. The menu test checks the label is in the list and nothing more, so the wiring
  * could be removed and every suite would still pass. That is the same shape as the tutorial being unreachable
  * in the first place: present, and no one checking it could be reached.

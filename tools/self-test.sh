@@ -135,6 +135,23 @@ else
   bad "readme-counts notices a feature not in the game" "no movement line to change"
 fi
 
+# ---- readme-counts.sh must notice a comment stating a stale tutorial end ----------------------------------------
+# The original fault, and there were THREE of them: both copies of GameplayScreen and TutorialTest itself all said
+# the tutorial "ends at 8" while Tutorial.LAST was 9. The check found the third one, which I had not seen.
+if grep -q "ends at 8 back to the" src/main/java/tropical/TutorialTest.java; then
+  bad "readme-counts notices a stale tutorial end" "the fixture is already stale"
+else
+  ST_BAK=$(mktemp); cp src/main/java/tropical/TutorialTest.java "$ST_BAK"
+  sed -i 's/and it ends back at the/ends at 8 back to the/' src/main/java/tropical/TutorialTest.java
+  out=$(tools/readme-counts.sh 2>&1); rc=$?
+  if [ $rc -ne 0 ] && echo "$out" | grep -q "a comment says the tutorial ends at 8"; then
+    ok "readme-counts notices a stale tutorial end" "$(echo "$out" | grep 'a comment says' | tr -s ' ')"
+  else
+    bad "readme-counts notices a stale tutorial end" "reported clean with a comment saying 8"
+  fi
+  cp "$ST_BAK" src/main/java/tropical/TutorialTest.java; rm -f "$ST_BAK"
+fi
+
 # ---- TutorialTest must notice water the climber cannot swim in --------------------------------------------------
 # THE ORIGINAL FAULT, inverted: the pool was made one row deep, which is a flooded WALK, and a walk is not `deep`
 # even at the same submersion - both measure about 0.73. So the sign saying "SPACE swims up" would sit above water

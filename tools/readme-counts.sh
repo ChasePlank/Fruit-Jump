@@ -78,6 +78,14 @@ echo "  gaps: base ${GAP0:-?} cap ${GAPC:-?}   README claims: 3 widening to a ca
 if [ "${GAP0:-}" = "3" ] && [ "${GAPC:-}" = "4" ]; then echo "  ok"; else
   echo "  MISMATCH - the README's gap numbers no longer match LevelGen" >&2; fails=$((fails + 1)); fi
 
+# AND THAT NO COMMENT STATES A TUTORIAL COUNT THAT DISAGREES WITH Tutorial.LAST. GameplayScreen said "ends at 8"
+# while Tutorial.LAST was 9, in both copies, and nothing was looking - the same shape as the README's tutorial
+# count, one layer down. A comment that names a value is a claim.
+STALE=$(grep -rhoE "ends at [0-9]+" src/main/java/ 2>/dev/null | grep -oE "[0-9]+" | sort -u | grep -v "^${TUT}$" | tr '\n' ' ')
+echo "  comments stating a tutorial end: ${STALE:-none}   Tutorial.LAST: ${TUT:-?}"
+if [ -z "$STALE" ]; then echo "  ok"; else
+  echo "  MISMATCH - a comment says the tutorial ends at $STALE; Tutorial.LAST is $TUT" >&2; fails=$((fails + 1)); fi
+
 # AND THAT THE ENGINE STILL DOES NOT KNOW JAVAFX EXISTS. The README states it as a property - "the engine never
 # knows JavaFX exists - the same property that lets the validator bot and the engine suites drive it headless" -
 # and everything headless depends on it. It is true today: none of the 36 files in the engine package mentions

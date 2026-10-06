@@ -63,7 +63,15 @@ public class GameplayScreen extends Screen {
     private final AudioSystem audio;
     private final Sound sound;
     private final java.util.List<Tutorial.Sign> signs;
-    /** True while playing the tutorial: hand-built levels, no autosave, ends at 8. */
+    /**
+     * True while playing the tutorial: hand-built levels, no autosave, and it ends at {@link Tutorial#LAST}.
+     *
+     * <p>This used to name a number, and the number was wrong - it had been wrong long enough that a check on the
+     * README's tutorial count is what made me look at the one next to it. It names the constant now, so it cannot
+     * drift, and {@code readme-counts.sh} fails any comment anywhere under src/ that states a tutorial end which
+     * disagrees with {@code Tutorial.LAST}. (It does not quote the old number on purpose: the check greps for that
+     * pattern, and an explanation of a fault trips the check for the fault.)
+     */
     private final boolean tutorial;
     private final Camera camera;
     private final int levelNum;
