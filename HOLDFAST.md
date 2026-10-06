@@ -55,6 +55,33 @@ already shares. `Skyline.paint(..., Mood.DUSK, ...)` and `Mood.NIGHT` are the tw
 
 **Going up is not the same as going home, and the sunset does not care which one you meant.**
 
+## The one thing this story asks the game for
+
+**Verified rather than remembered, and it is the only change the premise needs:**
+
+| screen | sky | climber |
+|---|---|---|
+| TitleScreen | `Mood.DUSK` | drawn |
+| MainMenu | `Mood.DUSK` | drawn |
+| CustomizeScreen | `Mood.DUSK` | drawn |
+| **GameplayScreen** | **`#87CEEB` — mid-day sky blue** | drawn |
+| GameOverScreen | `Mood.NIGHT` | **gone** |
+| PauseScreen | *no sky of its own* — an **overlay**, gameplay frozen underneath |
+
+**So the sky is dusk on four screens and mid-day on the one the player actually looks at.** The story above says
+the horizon never moves past dusk. **Right now the horizon moves at the exact moment you start playing, and moves
+back when you die.**
+
+**This is the sunset-port question, and it is Kinger's call, not mine.** Two readings and both are defensible:
+
+- **The gameplay sky is the story's, and it should be dusk.** Then the whole game is one continuous evening and the
+  title screen is telling the truth. This is what `aside` already does — its own `Skyline` paints sunset in play.
+- **The gameplay sky is a readability decision, and it stays blue.** Dusk is the frame and mid-day is the room.
+  Nothing is broken; the subtitle is just a sentence about the *setting*, not about the *hour*.
+
+**I have not changed it. It was already an open question before this document existed** — what this adds is the
+evidence that the question is real, and the specific line of code it lives on.
+
 ## Open, deliberately
 
 The premise above is mine and it is **not final** — the game is Kinger's to direct and the story is the part of it
