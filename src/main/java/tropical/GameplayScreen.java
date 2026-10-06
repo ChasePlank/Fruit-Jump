@@ -385,6 +385,14 @@ public class GameplayScreen extends Screen {
             }
         }
 
+        // DROWNING. Air ran out a beat ago. The ticks arrive pre-metered - about one a second - and draining them
+        // is what spends them, so the damage stays on the engine's clock rather than this loop's: a frame that runs
+        // long does not hurt more. Ported from the engine, 6 October 2026 - this screen never spent them, so the
+        // breath meter could run out and nothing happened.
+        for (int i = 0; i < world.water.drainDrownTicks(player); i++) {
+            combat.hurtPlayer(player, player.x + 1);
+        }
+
         // THE PLAYER'S OWN BOMB. World decides - it owns the blast radius - and the view applies the HP loss.
         //
         // PORTED FROM THE ENGINE, 6 October 2026. World has set `playerBlastPending` all along and this screen
@@ -758,6 +766,17 @@ public class GameplayScreen extends Screen {
         // Keys
         gc.setFill(Color.GOLD);
         gc.fillText("Key x" + inventory.keys, 40, 120);
+        // AIR. Drawn only while it is actually draining, so a climber who is not swimming never sees a bar they do
+        // not need - and the bar's arrival is itself the warning that they are under. Blue until it gets low, then
+        // red. Ported from the engine, 6 October 2026; the breath meter has always been there and this screen
+        // never showed it.
+        double air = world.water.airFraction(player);
+        if (air < 1.0) {
+            gc.setFill(Color.web("#0B3D5C"));
+            gc.fillRect(40, 138, 160, 16);
+            gc.setFill(air > 0.35 ? Color.web("#7FD4F0") : Color.web("#E74C3C"));
+            gc.fillRect(40, 138, 160 * air, 16);
+        }
         // Level
         gc.setFill(Color.WHITE);
         gc.fillText(tutorial ? "Tutorial " + levelNum + " / " + Tutorial.LAST : "Level " + levelNum,
