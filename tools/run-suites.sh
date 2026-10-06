@@ -43,8 +43,8 @@ echo "compiling ..."
     $(find src/main/java -name '*.java') 2>&1 | grep "error:" && { echo "  COMPILE FAILED" >&2; exit 1; }
 
 echo "=== the tests ==="
-for t in CustomizeTest GameplayRobotTest MenuRobotTest MenuSmokeTest RoomsTest SaveLoadTest ScreenshotTest \
-         TutorialTest WeaponsRobotTest \
+for t in AudioTest CustomizeTest GameplayRobotTest MenuRobotTest MenuSmokeTest RoomsTest SaveLoadTest \
+         ScreenshotTest TutorialTest WeaponsRobotTest \
          engine.CrackedPocketTest engine.DoorStressTest engine.WaterEnemyTest; do
   out=$(timeout 300 "$JAVA" --module-path "$FX" --add-modules "$MODS" \
         -cp "$OUT:src/main/resources" "tropical.$t" 2>&1)

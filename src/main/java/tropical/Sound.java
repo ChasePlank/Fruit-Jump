@@ -70,9 +70,12 @@ public class Sound {
      *   java -jar tropical-punch.jar   # then it is reported on the first frame anyway
      * </pre>
      *
-     * <p>A diagnostic rather than a test: it needs a JavaFX toolkit and a display, so it cannot live in the
-     * gate, and the question it answers - "is this build's audio present" - is exactly the one that is silent
-     * when the answer is no.
+     * <p>A diagnostic, and NOT the gate check - {@link AudioTest} is that, and it exists because this one exits 0
+     * whether or not anything is missing.
+     *
+     * <p>This paragraph used to say it "needs a JavaFX toolkit and a display, so it cannot live in the gate". That
+     * is not true and the gate has both; the reason it was not in the gate is that nothing put it there, and a
+     * reason that sounds like a constraint is how that goes unnoticed.
      */
     public static void main(String[] args) {
         javafx.application.Platform.startup(() -> { });
