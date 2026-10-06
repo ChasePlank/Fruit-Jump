@@ -57,6 +57,27 @@ else
   fails=$((fails + 1))
 fi
 
+# AND TWO BALANCE NUMBERS THE README STATES IN PROSE. They are accurate today - checked by reading the code and
+# running the validator - and they are exactly the kind of claim that drifts silently when somebody tunes the
+# generator. The README says "0.55 falling to a floor of 0.12" and "gaps from 3 cells widening to a hard cap of 4".
+# BOTH NUMBERS OFF THE SAME LINE, because the first version took the first Math.max( in the FILE - which is not the
+# heal line - and reported "floor ." against a README that says 0.12. It failed rather than passing, which is the
+# right way round, but the pattern was still wrong: the heal line is the one with levelNum in it.
+HEALLINE=$(grep -E "Math\.max\([0-9.]+, [0-9.]+ - levelNum" src/main/java/tropical/engine/LevelGen.java | head -1 || true)
+# JUST THE DECIMALS, IN ORDER. The line is "Math.max(0.12, 0.55 - levelNum * 0.015)": the floor comes first and the
+# starting chance second. Two nested greps with escaped parens returned "." - a match that is not a number, which
+# is worse than no match because it looks like a value.
+HEAL=$(echo "$HEALLINE" | grep -oE "[0-9]+\.[0-9]+" | sed -n 1p || true)
+HEAL0=$(echo "$HEALLINE" | grep -oE "[0-9]+\.[0-9]+" | sed -n 2p || true)
+GAP0=$(grep -oE "BASE_MAX_GAP_CELLS = [0-9]+" src/main/java/tropical/engine/LevelGen.java | grep -oE "[0-9]+" | head -1 || true)
+GAPC=$(grep -oE "Math\.min\([0-9]+, BASE_MAX_GAP_CELLS" src/main/java/tropical/engine/LevelGen.java | grep -oE "[0-9]+" | head -1 || true)
+echo "  heal: ${HEAL0:-?} floor ${HEAL:-?}   README claims: 0.55 floor 0.12"
+if [ "${HEAL0:-}" = "0.55" ] && [ "${HEAL:-}" = "0.12" ]; then echo "  ok"; else
+  echo "  MISMATCH - the README's heal numbers no longer match LevelGen" >&2; fails=$((fails + 1)); fi
+echo "  gaps: base ${GAP0:-?} cap ${GAPC:-?}   README claims: 3 widening to a cap of 4"
+if [ "${GAP0:-}" = "3" ] && [ "${GAPC:-}" = "4" ]; then echo "  ok"; else
+  echo "  MISMATCH - the README's gap numbers no longer match LevelGen" >&2; fails=$((fails + 1)); fi
+
 # AND THAT THE FOUR UNWIRED CLASSES ARE STILL UNWIRED. The README tells a reader they are not in the game; if one
 # gets wired, that sentence becomes the wrong kind of wrong - it would send someone to build something that exists.
 for pair in "Boss:new Boss(" "AIDirector:new AIDirector(" "ParallaxLayer:new ParallaxLayer("; do

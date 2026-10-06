@@ -85,6 +85,39 @@ else
   bad "readme-counts notices a wrong tutorial count" "no 'N hand-built levels' line to break"
 fi
 
+# ---- readme-counts.sh must notice a BALANCE NUMBER that no longer matches the README ---------------------------
+# The patterns for these were wrong twice before they worked - one matched the wrong Math.max in the file and
+# returned "." as a value, which is worse than no match because it looks like a number. An assertion whose pattern
+# is wrong passes on a broken README, so it gets the same injection as the others.
+LG=src/main/java/tropical/engine/LevelGen.java
+if grep -qE "Math\.max\(0\.12, 0\.55 - levelNum" "$LG"; then
+  LG_BAK=$(mktemp); cp "$LG" "$LG_BAK"
+  sed -i -E 's/Math\.max\(0\.12, 0\.55 - levelNum/Math.max(0.20, 0.55 - levelNum/' "$LG"
+  out=$(tools/readme-counts.sh 2>&1); rc=$?
+  if [ $rc -ne 0 ] && echo "$out" | grep -q "heal: 0.55 floor 0.20"; then
+    ok "readme-counts notices a changed heal floor" "$(echo "$out" | grep 'heal:' | tr -s ' ')"
+  else
+    bad "readme-counts notices a changed heal floor" "reported clean with the floor at 0.20"
+  fi
+  cp "$LG_BAK" "$LG"; rm -f "$LG_BAK"
+else
+  bad "readme-counts notices a changed heal floor" "no heal line to change"
+fi
+
+if grep -qE "BASE_MAX_GAP_CELLS = 3" "$LG"; then
+  LG_BAK2=$(mktemp); cp "$LG" "$LG_BAK2"
+  sed -i -E 's/BASE_MAX_GAP_CELLS = 3/BASE_MAX_GAP_CELLS = 5/' "$LG"
+  out=$(tools/readme-counts.sh 2>&1); rc=$?
+  if [ $rc -ne 0 ] && echo "$out" | grep -q "gaps: base 5"; then
+    ok "readme-counts notices a changed gap base" "$(echo "$out" | grep 'gaps:' | tr -s ' ')"
+  else
+    bad "readme-counts notices a changed gap base" "reported clean with the base at 5"
+  fi
+  cp "$LG_BAK2" "$LG"; rm -f "$LG_BAK2"
+else
+  bad "readme-counts notices a changed gap base" "no gap constant to change"
+fi
+
 # ---- check-jar-reproducible.sh must notice a build that is not reproducible ------------------------------------
 # THE ORIGINAL FAULT, injected: the normalizer is what makes the build reproducible, so removing its call puts the
 # two timestamps `jar` writes itself back and the two builds diverge again.
