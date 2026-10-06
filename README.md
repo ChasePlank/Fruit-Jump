@@ -20,7 +20,7 @@ still dry was up.
 dusk because that is the rule rather than an art choice — and the game-over screen shows the same sky with the
 rock empty, because that is what has happened.
 
-The full premise, and the one question it raises about the gameplay sky, is in **[HOLDFAST.md](HOLDFAST.md)**.
+The full premise, and the one question it raises about the gameplay sky, is in **[HOLDFAST.md](HOLDFAST.md)**. That question is answered by looking rather than arguing: **[docs/sky-comparison.png](docs/sky-comparison.png)** is the same level rendered twice, and [the note beside it](docs/sky-comparison.md) says what the picture shows — including the two things the question itself did not mention.
 
 This is the Java engine + playable game. The climber has no face, so hair and pack are the identity:
 **The Climber** in the menu picks them, and the game draws what you chose.
