@@ -133,6 +133,15 @@ jar_out=$(tools/check-jar-current.sh 2>&1); jar_rc=$?
 echo "$jar_out"
 if [ $jar_rc -eq 0 ]; then pass=$((pass+1)); else fail=$((fail+1)); failed_names+=("jar-current"); fi
 
+echo "=== the jar, rebuilt twice ==="
+# A property nobody tests is a property that comes back. The jar was not reproducible until 2026-10-06, which
+# quietly defeated artifact-changed.sh - it compares bytes, and a rebuild always changes them.
+if [ -x tools/check-jar-reproducible.sh ]; then
+  jr_out=$(tools/check-jar-reproducible.sh 2>&1); jr_rc=$?
+  echo "$jr_out" | sed 's/^/  /'
+  if [ $jr_rc -eq 0 ]; then pass=$((pass+1)); else fail=$((fail+1)); failed_names+=("jar-reproducible"); fi
+fi
+
 echo "=== the stylesheet ==="
 # THE CHECK FOR THE BUG THAT HAPPENED HERE. On 2026-10-04 four labels in this repository asked for a style class
 # called `menu-item`, the stylesheet had no rule for it, and two lines of the game-over screen were nearly

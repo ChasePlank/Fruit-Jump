@@ -65,6 +65,29 @@ else
   bad "jar-current notices stale source" "no 'RUN_SPEED = 200' line to break"
 fi
 
+# ---- check-jar-reproducible.sh must notice a build that is not reproducible ------------------------------------
+# THE ORIGINAL FAULT, injected: the normalizer is what makes the build reproducible, so removing its call puts the
+# two timestamps `jar` writes itself back and the two builds diverge again.
+MJ=tools/make-jar.sh
+if grep -q "normalize-jar.py" "$MJ"; then
+  MJ_BAK=$(mktemp); cp "$MJ" "$MJ_BAK"
+  python3 - <<'PY'
+p='tools/make-jar.sh'; s=open(p).read()
+s2 = s.replace('python3 "$(dirname "$0")/normalize-jar.py" "$OUT" >/dev/null', ': normalize-jar.py disabled for the fault injection')
+assert s2 != s, 'the normalizer call did not come out'
+open(p,'w').write(s2)
+PY
+  out=$(tools/check-jar-reproducible.sh 2>&1); rc=$?
+  if [ $rc -ne 0 ] && echo "$out" | grep -q "differ in"; then
+    ok "jar-reproducible notices a lost normalizer" "$(echo "$out" | grep 'differ in' | head -1 | tr -s ' ')"
+  else
+    bad "jar-reproducible notices a lost normalizer" "reported clean with the normalizer disabled"
+  fi
+  cp "$MJ_BAK" "$MJ"; rm -f "$MJ_BAK"
+else
+  bad "jar-reproducible notices a lost normalizer" "no normalize-jar.py call to remove"
+fi
+
 # ---- style-classes.sh must notice a class the code asks for and the stylesheet does not define ------------------
 # THIS IS THE ORIGINAL BUG, injected on purpose. On 2026-10-04 four labels asked for `menu-item`, the stylesheet had
 # no rule for it, and two lines of the game-over screen were nearly unreadable. Deleting the rule reproduces it.
