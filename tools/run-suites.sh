@@ -34,7 +34,18 @@ cd "$(dirname "$0")/.." || exit 2
 
 [ -x "$JAVA" ]  || { echo "run-suites: no java at $JAVA - set JAVA=" >&2; exit 2; }
 [ -d "$FX" ]    || { echo "run-suites: no JavaFX at $FX - set FX=" >&2; exit 2; }
-[ -n "${DISPLAY:-}" ] || echo "  note: DISPLAY is not set; the screen tests will fail to open a window"
+# THE DISPLAY IS CHECKED, NOT ASSUMED PRESENT. Ten of these thirteen suites open a real window. When the Xvfb
+# server died mid-session every one of them failed with a JavaFX stack trace and no verdict line, which reads as
+# ten broken tests rather than one dead display - and I spent a round of this session believing the tests had
+# broken. A missing display is an ENVIRONMENT failure; say so once, at the top, with the thing to run.
+if [ -z "${DISPLAY:-}" ]; then
+  echo "  NOTE: DISPLAY is not set. The screen tests cannot open a window and will fail." >&2
+elif ! command -v xdpyinfo >/dev/null 2>&1; then
+  echo "  note: no xdpyinfo to check \$DISPLAY=$DISPLAY against; carrying on"
+elif ! xdpyinfo -display "$DISPLAY" >/dev/null 2>&1; then
+  echo "  NOTE: \$DISPLAY=$DISPLAY is set but nothing is serving it - start Xvfb, or the screen tests" >&2
+  echo "        will fail for a reason that has nothing to do with the code." >&2
+fi
 
 pass=0; fail=0; failed_names=()
 
@@ -48,16 +59,42 @@ for t in AudioTest CustomizeTest GameplayRobotTest MenuRobotTest MenuSmokeTest R
          engine.CrackedPocketTest engine.DoorStressTest engine.WaterEnemyTest; do
   out=$(timeout 300 "$JAVA" --module-path "$FX" --add-modules "$MODS" \
         -cp "$OUT:src/main/resources" "tropical.$t" 2>&1)
-  # VERDICTS ARE NOT STANDARDISED IN THIS REPOSITORY, and the first version of this runner assumed they were:
-  # it looked for SUCCESS and FAILURE and reported three suites as "no verdict - did it run?" when all three had
-  # printed PASS. ScreenshotTest prints "PASS: screenshot saved", CrackedPocketTest prints "PASS: ..." a line at a
-  # time, and WaterEnemyTest prints "ALL PASS". All three were fine and the runner called them unknown.
+  rc=$?
+
+  # THE EXIT CODE DECIDES. THE TEXT ONLY EXPLAINS.
+  #
+  # This runner spent an hour judging suites by what they PRINTED, and it was wrong twice over. First it looked for
+  # SUCCESS and FAILURE and called three suites unknown, because verdicts here are not standardised - ScreenshotTest
+  # prints "PASS: screenshot saved", CrackedPocketTest one PASS line per check, WaterEnemyTest "ALL PASS".
+  #
+  # Then, with those added, it still said "ok" for this:
+  #
+  #     DoorStressTest with the box-height assertion wrong   ->  prints "Door boxes: 59 with a bottom that does not
+  #                                                              reach the floor, or no sprite"  AND EXITS 1
+  #
+  # A count of 59 faults, a non-zero exit, and the gate reported ok - because "Door boxes: 59" matches none of the
+  # words a failure is spelled with. A suite that reports a NUMBER rather than a verdict is invisible to a parser
+  # looking for verdict words, and the exit code was sitting there the whole time being authoritative.
+  #
+  # So: non-zero exit is a failure, whatever it printed. No matching line at all is also a failure - a suite that
+  # printed nothing recognisable did not demonstrably run.
   last=$(echo "$out" | grep -E 'SUCCESS|FAILURE|ALL PASS|PASS|FAIL|completed|Door boxes' | tail -1)
-  case "$last" in
-    *FAILURE*|*"FAIL "*) printf '  %-20s FAIL   %s\n' "${t##*.}" "$last"; fail=$((fail+1)); failed_names+=("$t") ;;
-    "")                  printf '  %-20s ?      no verdict - did it run?\n' "${t##*.}"; fail=$((fail+1)); failed_names+=("$t") ;;
-    *)                   printf '  %-20s ok     %s\n' "${t##*.}" "$last"; pass=$((pass+1)) ;;
-  esac
+  # WHY IT FAILED, not just that it did. "(no output)" was wrong - a suite that died on a dead display printed a
+  # full JavaFX stack trace. With no verdict line the first exception is the useful thing to show.
+  why="$last"
+  if [ -z "$why" ]; then
+    why=$(echo "$out" | grep -m1 -E 'Exception|Error|Unable to' | cut -c1-70)
+    why="${why:-no verdict line and no exception - did it run?}"
+  fi
+  if [ $rc -ne 0 ]; then
+    printf '  %-20s FAIL   exit %s: %s\n' "${t##*.}" "$rc" "$why"
+    fail=$((fail+1)); failed_names+=("$t")
+  elif [ -z "$last" ]; then
+    printf '  %-20s ?      no verdict - did it run?\n' "${t##*.}"
+    fail=$((fail+1)); failed_names+=("$t")
+  else
+    printf '  %-20s ok     %s\n' "${t##*.}" "$last"; pass=$((pass+1))
+  fi
 done
 
 echo "=== the readme ==="
