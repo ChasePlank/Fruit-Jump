@@ -120,6 +120,9 @@ The tools under `tools/` are each runnable on their own — `check-jar-current.s
 still matches the source, `readme-counts.sh` compares the counts in this file against the files, and
 `self-test.sh` breaks each tool's subject on purpose and requires the tool to notice.
 
+`check-release-notes.sh` is separate, because it needs the network: it asks whether every file the **release notes**
+tell you to download is actually attached to a release. Run it before publishing.
+
 It runs four kinds of check, because they fail differently. **The tests** drive the real JavaFX screens, so they
 need a display. **The README** counts are compared against the files. And **the jar** — `java -jar
 tropical-punch.jar` is what this file tells people to run, so a committed jar built from older source is a silent
