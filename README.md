@@ -108,10 +108,10 @@ was built somewhere that was not saved.
 ## Running the checks
 
 ```bash
-tools/run-suites.sh      # everything: the twelve test classes, the README counts, and the jar
+tools/run-suites.sh      # everything: the test classes, the README counts, and the jar
 ```
 
-One command, and it is the only one this repository has ever had. Until it existed the twelve test classes were
+One command, and it is the only one this repository has ever had. Until it existed the test classes were
 each run by hand and nothing ran them together — so nothing was the thing that failed when this release drifted
 away from the engine it is built from. It did drift: over two days six bugs were found here that the engine had
 already fixed, among them an enemy that did not exist and a player who could not be hurt by their own bomb.
