@@ -150,8 +150,22 @@ public class GameplayScreen extends Screen {
         world.addBody(player);
 
         // Enemies from map
+        //
+        // THE KIND WAS BEING THROWN AWAY HERE. LevelMap records each enemy as {x, y, kind} - KIND_SPIDER or
+        // KIND_SNAKE - and this loop took the first two and dropped the third, so every enemy in the release was
+        // a spider. That costs two things:
+        //
+        //   - the snake never appears. It is art-only in the engine ("Art only for now: spiders and snakes share
+        //     the...") but it is the other half of the bestiary, and the tutorial teaches it as one.
+        //   - `stationary` was never set, so the SNAKE'S WHOLE TELL was missing: "A stationary enemy (the coiled
+        //     snake) does not patrol at all: it waits. Staying put is the whole tell."
+        //
+        // Ported from the engine, 6 October 2026. Found by scanning this file for lines the engine has that have
+        // no counterpart here - the method that found the jar, the damage flash, the bomb and the bat.
         for (double[] e : map.enemies) {
-            world.addEnemy(new Enemy(e[0], e[1], 24, 24));
+            Enemy en = new Enemy(e[0], e[1], 24, 24, (int) e[2]);
+            en.stationary = (en.kind == Enemy.KIND_SNAKE);   // coiled until it sees you
+            world.addEnemy(en);
         }
 
         // Camera: room = the full level, whatever size it is. Viewport is the
@@ -572,11 +586,40 @@ public class GameplayScreen extends Screen {
         }
 
         // Enemies: sprite at 2x
+        //
+        // EVERY ENEMY WAS ONE SPRITE HERE - `Sprites.enemy2x` - so the spider and the snake were the same brown
+        // creature and the snake's two poses did not exist. All six of those images were built in this file's own
+        // Sprites class and drawn by nothing: spider2x, spiderL2x, snake2x, snakeL2x, snakeCoil2x, snakeCoilL2x.
+        //
+        // Tutorial 7 boxes one of each creature as a display case, and with one sprite the "snake" box was a
+        // second spider labelled snake. That is how this was found - by rendering it rather than by reading it.
+        //
+        // Ported from the engine, 6 October 2026.
         for (Enemy e : world.enemies) {
             if (e.dead) continue;
-            double sx = camera.worldToScreenX(e.body.x - e.body.hw),
-                    sy = camera.worldToScreenY(e.body.y - e.body.hh);
-            gc.drawImage(Sprites.enemy2x, sx, sy, e.body.hw * 2 * S, e.body.hh * 2 * S);
+            // Drawn at the SPRITE's own size and bottom-aligned on the body's feet, rather than stretched into the
+            // collision box. A snake is longer than it is tall, and forcing it into a square box would squash it.
+            boolean isSnake = e.kind == Enemy.KIND_SNAKE;
+            // The snake RESTS COILED and only uncoils into its long pursuit pose once it is actually coming for you.
+            boolean coil = isSnake && !e.isChasing();
+            javafx.scene.image.Image img;
+            if (isSnake) {
+                img = coil
+                        ? (e.dir < 0 ? Sprites.snakeCoilL2x : Sprites.snakeCoil2x)
+                        : (e.dir < 0 ? Sprites.snakeL2x : Sprites.snake2x);
+            } else {
+                img = e.dir < 0 ? Sprites.spiderL2x : Sprites.spider2x;
+            }
+            double w = (isSnake
+                    ? (coil ? Sprite.SNAKE_COIL[0].length() : Sprite.SNAKE[0].length())
+                    : Sprite.SPIDER[0].length()) * S;
+            double h = (isSnake
+                    ? (coil ? Sprite.SNAKE_COIL.length : Sprite.SNAKE.length)
+                    : Sprite.SPIDER.length) * S;
+            double sx = camera.worldToScreenX(e.body.x) - w / 2;
+            double sy = camera.worldToScreenY(e.body.y + e.body.hh) - h;
+            if (sx > CANVAS_W || sx + w < 0) continue;
+            gc.drawImage(img, sx, sy, w, h);
         }
 
         // Bats. The engine has placed them, flown them and stunned the player with them since the
