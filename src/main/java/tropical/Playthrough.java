@@ -91,7 +91,12 @@ public class Playthrough extends Application {
                 int jumpEvery = Integer.getInteger("jumpEvery", 45);
                 if (frame % jumpEvery == 0 && frame >= jumpAfter) tap(KeyCode.SPACE);
                 if (kill && frame == 300) zeroHealth();
-                if (frame % 180 == 0) capture("f" + frame);
+                // HOW OFTEN TO CAPTURE, settable. It was hardcoded at 180 frames - three seconds - which is fine
+                // for watching a run but useless for anything SHORT: a damage flash lasts a third of a second, so
+                // a three-second interval has roughly one chance in nine of catching one, and "I did not see it"
+                // would then say nothing about whether it works.
+                int captureEvery = Integer.getInteger("captureEvery", 180);
+                if (captureEvery > 0 && frame % captureEvery == 0) capture("f" + frame);
                 if (frame >= frames) {
                     capture("end");
                     System.out.println("  ended on " + screens.peek().getClass().getSimpleName());

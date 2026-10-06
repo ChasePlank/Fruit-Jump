@@ -39,6 +39,13 @@ public class GameplayScreen extends Screen {
     private final Physics.Body player;
     private final PlayerInventory inventory;
     private final LevelMap map;
+    // DAMAGE FEEDBACK. A red wash over the climber and a flashing heart for a third of a second after a hit.
+    //
+    // Ported from the engine, 6 October 2026. This release had none of it, so taking damage was silent apart from
+    // the heart count going down - no flash on the body, nothing on the HUD. Found by listing the lines the engine
+    // has that have no counterpart here at all.
+    private double hitFlash = 0;
+    private double lastHP = -1;
 
     /**
      * Floating tutorial words, or null on a generated level.
@@ -362,6 +369,12 @@ public class GameplayScreen extends Screen {
             }
         }
 
+        // Notice the drop, hold the flash, fade it. `lastHP` starts at -1 so the first frame - where HP is set for
+        // the first time and would otherwise read as a hit from 0 - does not flash.
+        if (lastHP >= 0 && combat.playerHP < lastHP) hitFlash = 0.35;
+        lastHP = combat.playerHP;
+        if (hitFlash > 0) hitFlash -= dt;
+
         // Death or fell out of world: game over
         // The level's REAL height, not 14.
         //
@@ -590,6 +603,12 @@ public class GameplayScreen extends Screen {
             double px = camera.worldToScreenX(player.x) - pw / 2;
             double py = camera.worldToScreenY(player.y) - ph / 2;
             gc.drawImage(playerSprite, px, py, pw, ph);
+            // A translucent red wash over the body. JavaFX's Canvas cannot tint an image, and one rectangle over
+            // the sprite's own bounds reads as the character flashing red.
+            if (hitFlash > 0) {
+                gc.setFill(Color.web("#ff2b2b", 0.55));
+                gc.fillRect(px, py, pw, ph);
+            }
         }
 
         // Projectiles
@@ -694,6 +713,13 @@ public class GameplayScreen extends Screen {
         gc.setFill(Color.RED);
         for (int i = 0; i < (int) combat.playerHP; i++) {
             gc.fillText("<3", 40 + i * 68, 64);
+        }
+        // And the hearts flash with it, so a hit registers even if the eye is on the HUD rather than the climber.
+        if (hitFlash > 0) {
+            gc.setFill(Color.web("#e94560"));
+            for (int i = 0; i < (int) combat.playerHP; i++) {
+                gc.fillText("<3", 40 + i * 68, 64);
+            }
         }
         // Keys
         gc.setFill(Color.GOLD);
