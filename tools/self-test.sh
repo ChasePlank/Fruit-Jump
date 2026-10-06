@@ -118,6 +118,40 @@ else
   bad "readme-counts notices a changed gap base" "no gap constant to change"
 fi
 
+# ---- TutorialTest must notice a control the README documents and no sign teaches -------------------------------
+# A GAME TEST IN A TOOL SELF-TEST, which needs a word of justification: the rule this file enforces is that every
+# check gets broken on purpose before it is trusted, and TutorialTest now carries the check that would have caught
+# the hookshot. It compares signs to each other for collisions and cannot see a mechanic with no sign at all, so
+# the coverage check is the one that matters and it gets the same treatment as the tools.
+TUT=src/main/java/tropical/Tutorial.java
+if grep -q "HOOKSHOT   X" "$TUT"; then
+  TUT_BAK=$(mktemp); cp "$TUT" "$TUT_BAK"
+  python3 - <<'PY'
+p='src/main/java/tropical/Tutorial.java'; s=open(p).read()
+old = '                s.add(new Sign(44 * 32, y, "HOOKSHOT   X   -   pulls you to a wall"));'
+assert old in s, 'the hookshot sign is not there to remove'
+open(p,'w').write(s.replace(old, '                // removed for the fault injection', 1))
+PY
+  /root/jdk-27+35/bin/javac --module-path /root/javafx-sdk-27/lib \
+      --add-modules javafx.controls,javafx.graphics,javafx.media,javafx.swing -cp out -d out \
+      $(find src/main/java -name '*.java') >/dev/null 2>&1
+  out=$(DISPLAY="${DISPLAY:-:99}" timeout 300 /root/jdk-27+35/bin/java \
+      --module-path /root/javafx-sdk-27/lib \
+      --add-modules javafx.controls,javafx.graphics,javafx.media,javafx.swing \
+      -cp out:src/main/resources tropical.TutorialTest 2>&1)
+  if echo "$out" | grep -q "NO SIGN TEACHES: hookshot"; then
+    ok "TutorialTest notices an untaught control" "NO SIGN TEACHES: hookshot"
+  else
+    bad "TutorialTest notices an untaught control" "reported clean with the hookshot sign removed"
+  fi
+  cp "$TUT_BAK" "$TUT"; rm -f "$TUT_BAK"
+  /root/jdk-27+35/bin/javac --module-path /root/javafx-sdk-27/lib \
+      --add-modules javafx.controls,javafx.graphics,javafx.media,javafx.swing -cp out -d out \
+      $(find src/main/java -name '*.java') >/dev/null 2>&1
+else
+  bad "TutorialTest notices an untaught control" "no hookshot sign to remove"
+fi
+
 # ---- check-jar-reproducible.sh must notice a build that is not reproducible ------------------------------------
 # THE ORIGINAL FAULT, injected: the normalizer is what makes the build reproducible, so removing its call puts the
 # two timestamps `jar` writes itself back and the two builds diverge again.

@@ -58,7 +58,9 @@ public class TutorialTest extends Application {
         int checked = 0, collisions = 0;
 
         java.util.List<Tutorial.Sign> all = new java.util.ArrayList<>();
-        for (int level = 1; level <= 9; level++) {
+        // Tutorial.LAST, not a literal 9. The tutorial grew a level once already and a hardcoded bound is how
+        // a new level goes untested - which is the same shape as the README's tutorial count, which was wrong.
+        for (int level = 1; level <= Tutorial.LAST; level++) {
             java.util.List<Tutorial.Sign> signs = Tutorial.signs(level);
             for (int i = 0; i < signs.size(); i++) {
                 for (int j = i + 1; j < signs.size(); j++) {
@@ -76,6 +78,43 @@ public class TutorialTest extends Application {
             }
         }
         check("no two tutorial signs overlap (" + checked + " pair(s) checked)", collisions == 0);
+
+        // AND THAT THE TUTORIAL TEACHES EVERY CONTROL THE README DOCUMENTS.
+        //
+        // This is the check that would have caught the hookshot. The README leads with it - "with hookshot, bombs,
+        // bow" - and documents it as a control, and NONE of the nine levels mentioned it; the tutorial taught
+        // movement, jumping, spiders, bombs, arrows, bats, pickups, spikes and water, and never the game's own
+        // signature mechanic. The collision check above cannot see that: it compares signs to each other, and a
+        // mechanic with no sign at all has nothing to collide with.
+        //
+        // THE LIST COMES FROM THE README, not from here, so it cannot drift from what a player is told. Pause is
+        // excluded on purpose: it is a menu control, not something a level can teach.
+        java.util.List<String> missing = new java.util.ArrayList<>();
+        try {
+            java.util.List<String> lines = java.nio.file.Files.readAllLines(java.nio.file.Path.of("README.md"));
+            boolean inControls = false;
+            for (String line : lines) {
+                if (line.startsWith("**Controls:**")) { inControls = true; continue; }
+                if (inControls && line.startsWith("## ")) break;
+                if (!inControls || !line.startsWith("- ")) continue;
+                int dash = line.indexOf('\u2014');
+                if (dash < 0) continue;
+                String action = line.substring(dash + 1).trim().split("[ ,]")[0].toLowerCase();
+                if (action.equals("pause")) continue;
+                boolean taught = false;
+                for (int level = 1; level <= Tutorial.LAST && !taught; level++) {
+                    for (Tutorial.Sign sg : Tutorial.signs(level)) {
+                        if (sg.text().toLowerCase().contains(action)) { taught = true; break; }
+                    }
+                }
+                if (!taught) missing.add(action);
+            }
+        } catch (Exception e) {
+            check("the README's control list can be read", false);
+        }
+        for (String m : missing) System.out.println("  NO SIGN TEACHES: " + m);
+        check("every control the README documents is taught by a sign (" + missing.size() + " missing)",
+                missing.isEmpty());
     }
 
     /** {x0, x1, y0, y1} for a sign, using the renderer's font and wrap. */

@@ -114,6 +114,14 @@ public class Tutorial {
                 for (int c = 16; c <= 34; c++) g[FLOOR - 1][c] = '~';
                 for (int c = 22; c <= 24; c++) g[FLOOR - 2][c] = 'f';   // a group, because they come in groups
                 put(g, 40, FLOOR - 1, '~');                             // and one on its own, to show the difference
+
+                // AND A POOL, because the water above is ankle-deep ON PURPOSE - it is how a flooded level is
+                // built - and a player who only ever sees this one never meets the water they can SWIM in. The
+                // game has two kinds: a flooded walk, one row, which you wade through; and a pool, two rows with
+                // a floor under it, which you swim in and can dive in. The README documents "Space / W - jump,
+                // and swim upward in water" and "Down / S - dive (water only)", and until now the tutorial taught
+                // neither, because there was nothing deep enough to teach them in.
+                for (int c = 44; c <= 50; c++) { g[FLOOR - 2][c] = '~'; g[FLOOR - 1][c] = '~'; }
             }
             default -> { }
         }
@@ -164,6 +172,14 @@ public class Tutorial {
                 // does, when every other one follows "BOMB  G  -  it drops at your feet".
                 s.add(new Sign(12 * 32, y, "ARROWS   F   -   hits what you face"));
                 s.add(new Sign(30 * 32, y, "the spiders are out of reach. shoot them"));
+                // AND THE HOOKSHOT, which the README leads with - "with hookshot, bombs, bow" - and which the
+                // tutorial never mentioned in any of its nine levels. It fires at a wall and pulls you to it, so
+                // it belongs on the level that is already about reaching what you cannot walk to.
+                // TWO SIGNS, AND THE SECOND IS BELOW THE FIRST'S WRAP. The first is 37 characters and wraps to a
+                // 34-character line, so its second line lands where a sign 26px below would start - which is the
+                // same collision the JAR and KEY signs had on tutorial 6. TutorialTest caught it on the first run.
+                s.add(new Sign(44 * 32, y, "HOOKSHOT   X   -   pulls you to a wall"));
+                s.add(new Sign(44 * 32, y + 52, "Shift + X fires it upward"));
             }
             case 5 -> {
                 s.add(new Sign(10 * 32, y, "BATS KNOCK YOU DOWN"));
@@ -196,6 +212,10 @@ public class Tutorial {
                 s.add(new Sign(8 * 32, y + 26, "you walk through it. it does not slow you down"));
                 s.add(new Sign(20 * 32, y - 60, "PIRANHA"));
                 s.add(new Sign(20 * 32, y - 34, "unlike a bat, this one takes a HEART"));
+                // THE POOL'S OWN SIGN, beside the pool. The water above is wading; this is swimming, and the two
+                // controls the README documents for it - swim up and dive - are only true here.
+                s.add(new Sign(44 * 32, y - 60, "DEEP WATER"));
+                s.add(new Sign(44 * 32, y - 34, "SPACE swims up.   DOWN / S dives"));
                 // MOVED DOWN to y + 26, from y - 8. The sign above it is 36 characters, so it WRAPS ONTO A SECOND
                 // LINE - and that line landed exactly where this one started. A sign that wraps occupies two
                 // rows, and the next sign down has to clear both.
