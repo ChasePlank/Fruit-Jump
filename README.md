@@ -156,7 +156,8 @@ src/main/java/tropical/engine/ — the engine (32 classes, display-agnostic; plu
 src/main/resources/style.css   — UI styling
 ```
 
-The engine never knows JavaFX exists — same property that let the validator bot and netcode tests drive it headless. GameplayScreen is the view; the engine is the model.
+The engine never knows JavaFX exists — the same property that lets the validator bot and the engine suites
+drive it headless. GameplayScreen is the view; the engine is the model.
 
 ## Credits
 
