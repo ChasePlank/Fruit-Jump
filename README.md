@@ -157,7 +157,7 @@ Notable bugs the bots found:
 
 ```
 src/main/java/tropical/        — the game (screens, menus, tests)
-src/main/java/tropical/engine/ — the engine (32 classes, display-agnostic; plus three test files and a probe)
+src/main/java/tropical/engine/ — the engine (31 classes, display-agnostic; plus four test files and a probe)
 src/main/resources/style.css   — UI styling
 ```
 

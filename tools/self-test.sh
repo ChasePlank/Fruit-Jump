@@ -135,6 +135,37 @@ else
   bad "readme-counts notices a feature not in the game" "no movement line to change"
 fi
 
+# ---- readme-counts.sh must notice WaterSuite is a test, not a class ---------------------------------------------
+# THE FAULT IS THE ORIGINAL PATTERN. Matching only "Test.java$" counted WaterSuite as an engine class, and because
+# the README's number had been computed the same way, the check reported "actually: 32, claims: 32, ok" for a count
+# that is 31. A tool sharing the mistake it was written to catch is the quietest kind of check that cannot fail.
+RC=tools/readme-counts.sh
+if grep -q '(Test|Suite)\\.java\$' "$RC"; then
+  RC_BAK=$(mktemp); cp "$RC" "$RC_BAK"
+  # PYTHON, NOT SED. The pattern contains ( and |, which sed's basic regex treats as literals, so the
+  # substitution silently did nothing and the injection reported "the old pattern did not reproduce the
+  # fault" - a failure, but the wrong one. Third time this week sed's escaping has cost a round.
+  python3 - "$RC" <<'PY'
+import sys
+p = sys.argv[1]; s = open(p).read()
+old = '(Test|Suite)' + chr(92) + '.java$'
+assert old in s, 'the pattern is not there to change'
+open(p, 'w').write(s.replace(old, '(Test)' + chr(92) + '.java$', 1))
+PY
+  out=$(tools/readme-counts.sh 2>&1); rc=$?
+  # THE TEST IS THE NUMBER, NOT THE EXIT CODE. With the old pattern the count comes out 32 - which is what the
+  # README used to say and what the check used to agree with. Now that the README says 31, the old pattern FAILS
+  # rather than passing, so requiring rc=0 tested the wrong thing.
+  if echo "$out" | grep -q "engine classes actually: 32"; then
+    ok "readme-counts notices WaterSuite is a test" "with the old pattern it counts 32 classes instead of 31"
+  else
+    bad "readme-counts notices WaterSuite is a test" "the old pattern did not reproduce the fault"
+  fi
+  cp "$RC_BAK" "$RC"; rm -f "$RC_BAK"
+else
+  bad "readme-counts notices WaterSuite is a test" "the pattern is not what was expected"
+fi
+
 # ---- readme-counts.sh must notice a comment stating a stale tutorial end ----------------------------------------
 # The original fault, and there were THREE of them: both copies of GameplayScreen and TutorialTest itself all said
 # the tutorial "ends at 8" while Tutorial.LAST was 9. The check found the third one, which I had not seen.

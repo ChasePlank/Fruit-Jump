@@ -15,7 +15,13 @@ cd "$(dirname "$0")/.." || exit 2
 fails=0
 
 TOTAL=$(ls src/main/java/tropical/engine/*.java 2>/dev/null | wc -l)
-TESTS=$(ls src/main/java/tropical/engine/ 2>/dev/null | grep -cE "Test\.java$" || true)
+# A TEST IS *Test.java OR *Suite.java. The first version matched only "Test.java$", so WaterSuite counted as an
+# engine CLASS - and because the README's "32 classes" had been computed the same way, THE CHECK AGREED WITH THE
+# WRONG NUMBER. It reported "engine classes actually: 32   README claims: 32   ok" for a count that is 31.
+#
+# That is a check that cannot fail, in its quietest form: not a broken tool, but a tool sharing the mistake it was
+# written to catch. WaterSuite has 28 check() calls and is a test by any reading except the pattern.
+TESTS=$(ls src/main/java/tropical/engine/ 2>/dev/null | grep -cE "(Test|Suite)\.java$" || true)
 PROBE=$(ls src/main/java/tropical/engine/ 2>/dev/null | grep -cE "^WaterProbe\.java$" || true)
 CLASSES=$((TOTAL - TESTS - PROBE))
 
