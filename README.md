@@ -69,7 +69,9 @@ A complete platformer engine, built and tested layer by layer:
 - **Camera** — smooth follow, look-ahead, room clamping, parallax
 - **Particles** — burst/stream/trail emitters, object pooling
 - **Audio** — event-driven cues, posted by the engine and played by `Sound`. Twelve sound effects, generated
-  from source by `tools/fruitjump-audio.py` rather than committed as opaque assets, and bundled in the jar
+  from source rather than committed as opaque assets, and bundled in the jar. **The generator lives in the engine
+  repository** (`aside/tools/fruitjump-audio.py`), not here — this line used to say `tools/fruitjump-audio.py`,
+  which sends a reader of THIS repository looking for a file that is not in it.
 - **Save/Load** — player, room, and global state, entity-ID tracking
 - **The tutorial** — eight hand-built levels, and the only place the game explains itself
 
