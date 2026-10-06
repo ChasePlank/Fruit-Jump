@@ -80,7 +80,7 @@ the section above because a reader should not have to run `grep` to find out whe
 
 Each one also says what wiring it would take, so the decision is a read rather than a project.
 
-- **Boss fights** — `Boss` is 326 lines of multi-phase AI, telegraphed attacks, weak-point windows and wall-stun.
+- **Boss fights** — `Boss` is 339 lines of multi-phase AI, telegraphed attacks, weak-point windows and wall-stun.
   Nothing builds one. **To wire:** `new Boss(x, y, w, h)` in a level; the screen calling `boss.update(dt, player)`
   each frame and `boss.hit(damage)` when the player's weapons connect; `setVolleyCallback` is the hook where the
   boss's own projectiles get spawned into the world; and a draw call. Nothing calls any of it today. **Needs a

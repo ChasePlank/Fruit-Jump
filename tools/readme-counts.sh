@@ -28,6 +28,35 @@ else
   fails=$((fails + 1))
 fi
 
+# AND THE LINE COUNT IN THE UNWIRED SECTION, which drifted the same way - 326 when Boss.java was 326, then 339.
+BOSS=$(wc -l < src/main/java/tropical/engine/Boss.java)
+# No backticks in the pattern. The first version escaped them for the shell AND for grep, which matched nothing and
+# reported "README claims: none" against a README that says the number plainly.
+BCLAIM=$(grep -oE 'Boss. is [0-9]+ lines' README.md | grep -oE '[0-9]+' | head -1 || true)
+echo "  Boss.java lines actually: $BOSS   README claims: ${BCLAIM:-none}"
+if [ "${BCLAIM:-}" = "$BOSS" ]; then
+  echo "  ok"
+else
+  echo "  MISMATCH - update the README, or this check" >&2
+  fails=$((fails + 1))
+fi
+
+# AND THAT THE FOUR UNWIRED CLASSES ARE STILL UNWIRED. The README tells a reader they are not in the game; if one
+# gets wired, that sentence becomes the wrong kind of wrong - it would send someone to build something that exists.
+for pair in "Boss:new Boss(" "AIDirector:new AIDirector(" "ParallaxLayer:new ParallaxLayer("; do
+  cls="${pair%%:*}"; call="${pair#*:}"
+  # BY BASENAME, not by a pattern built from $cls. The first version interpolated the class name into a regex and
+  # every file failed to match its own exclusion, so ParallaxLayer.java counted as a caller of itself.
+  n=0
+  while IFS= read -r f; do
+    [ "$(basename "$f")" = "$cls.java" ] && continue
+    case "$f" in *Test.java) continue;; esac
+    n=$((n + 1))
+  done < <(grep -rl -- "$call" src/main/java/ 2>/dev/null)
+  if [ "$n" -eq 0 ]; then echo "  ok       $cls is still not constructed outside itself"
+  else echo "  WIRED?   $cls is constructed in $n main-source file(s) - the README says nothing builds one" >&2; fails=$((fails + 1)); fi
+done
+
 echo
-if [ "$fails" = 0 ]; then echo "=== README counts agree with the files ==="
-else echo "=== $fails README count(s) are stale ==="; exit 1; fi
+if [ "$fails" = 0 ]; then echo "=== README counts and unwired claims agree with the files ==="
+else echo "=== $fails README claim(s) are stale ==="; exit 1; fi
