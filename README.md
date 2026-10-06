@@ -1,7 +1,26 @@
-# Fruit jump
+# Holdfast
 
-A 2D action-adventure platformer in Java 17 + JavaFX — a climber on a floating island. Screen-transition based
-with hookshot, bombs, bow, and procedurally generated levels.
+*a climber, a sunset, and a way home*
+
+A 2D action-adventure platformer in Java 17 + JavaFX. Screen-transition based, with hookshot, bombs, bow, and
+procedurally generated levels.
+
+> **The repository is still called `Fruit-Jump` and the jar is still `tropical-punch.jar`.** Those are Kinger's to
+> rename and have deliberately not been. The **game** has been called Holdfast since 4 October 2026.
+
+## The story
+
+The valley flooded. Not all at once: the water came up over years, the way it does, and everyone left. **You did
+not, and then you did** — and by then the road out was under sixty feet of water, so the only direction that was
+still dry was up.
+
+**So the way home is above you**, which is the wrong direction for home to be and the only one left.
+
+**And the sunset is a clock, not a decoration.** You climb while there is light. The horizon never moves past
+dusk because that is the rule rather than an art choice — and the game-over screen shows the same sky with the
+rock empty, because that is what has happened.
+
+The full premise, and the one question it raises about the gameplay sky, is in **[HOLDFAST.md](HOLDFAST.md)**.
 
 This is the Java engine + playable game. The climber has no face, so hair and pack are the identity:
 **The Climber** in the menu picks them, and the game draws what you chose.
