@@ -65,6 +65,30 @@ else
   bad "jar-current notices stale source" "no 'RUN_SPEED = 200' line to break"
 fi
 
+# ---- style-classes.sh must notice a class the code asks for and the stylesheet does not define ------------------
+# THIS IS THE ORIGINAL BUG, injected on purpose. On 2026-10-04 four labels asked for `menu-item`, the stylesheet had
+# no rule for it, and two lines of the game-over screen were nearly unreadable. Deleting the rule reproduces it.
+CSS=src/main/resources/style.css
+if grep -q '^\.menu-item' "$CSS"; then
+  CSS_BAK=$(mktemp); cp "$CSS" "$CSS_BAK"
+  python3 - <<'PY'
+import re
+p='src/main/resources/style.css'; s=open(p).read()
+s2 = re.sub(r'\.menu-item\s*\{[^}]*\}', '', s, count=1)
+assert s2 != s, 'the rule did not come out'
+open(p,'w').write(s2)
+PY
+  out=$(tools/style-classes.sh . 2>&1); rc=$?
+  if [ $rc -ne 0 ] && echo "$out" | grep -q "menu-item"; then
+    ok "style-classes notices a missing rule" "$(echo "$out" | grep -i missing | head -1 | tr -s ' ')"
+  else
+    bad "style-classes notices a missing rule" "reported clean with .menu-item deleted"
+  fi
+  cp "$CSS_BAK" "$CSS"; rm -f "$CSS_BAK"
+else
+  bad "style-classes notices a missing rule" "no .menu-item rule to delete"
+fi
+
 # ---- and both must be CLEAN once restored, or the injections above proved nothing -----------------------------
 if tools/readme-counts.sh >/dev/null 2>&1; then ok "readme-counts clean after restore" "exit 0"
 else bad "readme-counts clean after restore" "still failing once restored"; fi

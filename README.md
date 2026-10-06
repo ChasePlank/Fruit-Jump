@@ -120,7 +120,10 @@ already fixed, among them an enemy that did not exist and a player who could not
 
 The tools under `tools/` are each runnable on their own — `check-jar-current.sh` asks whether the committed jar
 still matches the source, `readme-counts.sh` compares the counts in this file against the files, and
-`self-test.sh` breaks each tool's subject on purpose and requires the tool to notice.
+`self-test.sh` breaks each tool's subject on purpose and requires the tool to notice. `style-classes.sh`
+asks whether every style class the code names is actually defined in the stylesheet — the bug that made two
+lines of the game-over screen nearly unreadable on 2026-10-04, which the engine's tools could catch and
+nothing ran here, which is the repository where it happened.
 
 `check-release-notes.sh` is separate, because it needs the network: it asks whether every file the **release notes**
 tell you to download is actually attached to a release. Run it before publishing.

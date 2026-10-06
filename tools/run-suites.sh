@@ -133,6 +133,18 @@ jar_out=$(tools/check-jar-current.sh 2>&1); jar_rc=$?
 echo "$jar_out"
 if [ $jar_rc -eq 0 ]; then pass=$((pass+1)); else fail=$((fail+1)); failed_names+=("jar-current"); fi
 
+echo "=== the stylesheet ==="
+# THE CHECK FOR THE BUG THAT HAPPENED HERE. On 2026-10-04 four labels in this repository asked for a style class
+# called `menu-item`, the stylesheet had no rule for it, and two lines of the game-over screen were nearly
+# unreadable. The check that catches that existed in the ENGINE's tools and was never run here - which is the
+# repository where it happened. It is here now, and in self-test.sh below, which deletes the rule and requires
+# this to notice.
+if [ -x tools/style-classes.sh ]; then
+  sc_out=$(tools/style-classes.sh . 2>&1); sc_rc=$?
+  echo "$sc_out" | grep -E "MISSING|every class" | sed 's/^/  /'
+  if [ $sc_rc -eq 0 ]; then pass=$((pass+1)); else fail=$((fail+1)); failed_names+=("style-classes"); fi
+fi
+
 echo "=== the tools themselves ==="
 # Every tool in this directory is a check, and a check that cannot fail is worse than no check because it is
 # believed. self-test.sh breaks each one's subject and requires it to notice. Its output is filtered to the one
