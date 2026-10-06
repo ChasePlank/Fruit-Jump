@@ -56,7 +56,7 @@ java -jar target/tropical-punch-1.0.0.jar
 A complete platformer engine, built and tested layer by layer:
 
 - **Physics** — fixed timestep (1/60), swept AABB collision (slab method), iterative multi-collision resolution, slopes (45°/30° walkable, 63°+ slides)
-- **Movement** — run, jump, one-way platforms, moving platforms with carry
+- **Movement** — run, jump, one-way platforms
 - **Water** — flooded gaps, buoyancy, a breath meter, a breach hop out of a pool, and a splash on entry. **A quarter of levels roll FLOODED** (5 of the first 40 come out wet enough to read as one): the walk itself under water in runs with dry ground between them, so the level is a different shape rather than a wetter version of the same one
 - **Piranhas** — a water enemy in groups of three to five. Unlike a bat, it takes a **heart** rather than knocking you down. It moves only when you are in the water, so getting out loses it, and it is slower than you swim, so it corners you rather than running you down
 - **Bats** — they follow you, and a knock-down clears the swarm rather than pinning you
@@ -66,7 +66,7 @@ A complete platformer engine, built and tested layer by layer:
 - **Items** — hearts, keys, locked doors, cracked tiles (bombable). Heals get **rarer as levels go on** (0.55 falling to a floor of 0.12), because a late heal is worth more than an early one
 - **Level generation** — procedural ground walk with guaranteed traversability: gaps from 3 cells widening to a hard cap of 4 as levels go on, climbs ≤2 cells, landing runways in both directions, spike pits off the path, locked doors with keys on flat stretches, bombable pockets hiding hearts
 - **Level validation** — a bot plays every generated level through the real physics engine before it ships; 100/100 fresh seeds pass
-- **Camera** — smooth follow, look-ahead, room clamping, parallax
+- **Camera** — smooth follow, look-ahead, room clamping
 - **Particles** — burst/stream/trail emitters, object pooling
 - **Audio** — event-driven cues, posted by the engine and played by `Sound`. Twelve sound effects, generated
   from source rather than committed as opaque assets, and bundled in the jar. **The generator lives in the engine
@@ -101,6 +101,11 @@ Each one also says what wiring it would take, so the decision is a read rather t
   layers need something to draw, so this one comes with art or with a procedural shape standing in for it.
 
 ## Not in this repository
+
+**Two things this list used to claim.** The feature list above said "moving platforms with carry" and "parallax".
+Neither is in the game: `MovingPlatform` and `ParallaxLayer` are built and nothing constructs or draws them, which
+is what the section below says in detail. A feature list is read first and the detail is read later, so the claim
+was the part that misled - the same shape as the multiplayer claim underneath it.
 
 **Multiplayer.** This README used to claim an authoritative TCP server, client prediction and reconciliation,
 lag compensation and entity interpolation. **No file for any of it has ever been committed on any branch.** It is

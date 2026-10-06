@@ -78,6 +78,24 @@ echo "  gaps: base ${GAP0:-?} cap ${GAPC:-?}   README claims: 3 widening to a ca
 if [ "${GAP0:-}" = "3" ] && [ "${GAPC:-}" = "4" ]; then echo "  ok"; else
   echo "  MISMATCH - the README's gap numbers no longer match LevelGen" >&2; fails=$((fails + 1)); fi
 
+# AND THAT THE FEATURE LIST DOES NOT CLAIM ONE OF THEM. The section below says what is not wired; the feature list
+# at the top said "moving platforms with carry" and "parallax" as though they were in the game, and a reader meets
+# the feature list first. Both were corrected on 2026-10-06 and this is what keeps them corrected - the same shape
+# as the multiplayer claim that was removed from this README and survived in a second sentence.
+# THE FEATURE LIST IS "## What's in it" AND NOTHING ELSE. The first version ran to "## Not in this repository",
+# which is TWO sections later - so it swept in "## In the engine, not in the game", the section that exists to say
+# these things are not in the game, and reported all four as claims. It failed rather than passing, which is the
+# right way round, but the region was wrong.
+FEATURES=$(sed -n "/^## What.s in it/,/^## In the engine/p" README.md)
+for word in "moving platform" "parallax" "boss fight" "ai director" "multiplayer" "tcp server"; do
+  if echo "$FEATURES" | grep -qi "$word"; then
+    echo "  MISMATCH - the feature list claims \"$word\", which is not in the game" >&2
+    fails=$((fails + 1))
+  fi
+done
+echo "  feature list claims none of the four unwired classes"
+echo "  ok"
+
 # AND THAT THE FOUR UNWIRED CLASSES ARE STILL UNWIRED. The README tells a reader they are not in the game; if one
 # gets wired, that sentence becomes the wrong kind of wrong - it would send someone to build something that exists.
 for pair in "Boss:new Boss(" "AIDirector:new AIDirector(" "ParallaxLayer:new ParallaxLayer("; do

@@ -118,6 +118,23 @@ else
   bad "readme-counts notices a changed gap base" "no gap constant to change"
 fi
 
+# ---- readme-counts.sh must notice the feature list claiming something that is not in the game -------------------
+# The original fault: the feature list said "moving platforms with carry" and "parallax" as though they were in the
+# game, while a later section said nothing constructs or draws either. A reader meets the feature list first.
+if grep -q "one-way platforms$" README.md; then
+  RD2_BAK=$(mktemp); cp README.md "$RD2_BAK"
+  sed -i 's/- \*\*Movement\*\* — run, jump, one-way platforms/- **Movement** — run, jump, one-way platforms, moving platforms with carry/' README.md
+  out=$(tools/readme-counts.sh 2>&1); rc=$?
+  if [ $rc -ne 0 ] && echo "$out" | grep -q 'claims "moving platform"'; then
+    ok "readme-counts notices a feature not in the game" 'the feature list claims "moving platform"'
+  else
+    bad "readme-counts notices a feature not in the game" "reported clean with moving platforms claimed"
+  fi
+  cp "$RD2_BAK" README.md; rm -f "$RD2_BAK"
+else
+  bad "readme-counts notices a feature not in the game" "no movement line to change"
+fi
+
 # ---- TutorialTest must notice a control the README documents and no sign teaches -------------------------------
 # A GAME TEST IN A TOOL SELF-TEST, which needs a word of justification: the rule this file enforces is that every
 # check gets broken on purpose before it is trusted, and TutorialTest now carries the check that would have caught
