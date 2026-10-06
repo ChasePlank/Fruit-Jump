@@ -116,11 +116,18 @@ each run by hand and nothing ran them together — so nothing was the thing that
 away from the engine it is built from. It did drift: over two days six bugs were found here that the engine had
 already fixed, among them an enemy that did not exist and a player who could not be hurt by their own bomb.
 
-It runs three kinds of check, because they fail differently. **The tests** drive the real JavaFX screens, so they
+The tools under `tools/` are each runnable on their own — `check-jar-current.sh` asks whether the committed jar
+still matches the source, `readme-counts.sh` compares the counts in this file against the files, and
+`self-test.sh` breaks each tool's subject on purpose and requires the tool to notice.
+
+It runs four kinds of check, because they fail differently. **The tests** drive the real JavaFX screens, so they
 need a display. **The README** counts are compared against the files. And **the jar** — `java -jar
 tropical-punch.jar` is what this file tells people to run, so a committed jar built from older source is a silent
 distribution bug: the fix is in the repository and not in the thing people download. That check compiles the
 source fresh and compares it class by class against the classes inside the committed jar.
+
+And **the tools themselves**: every one of them is a check, and a check that cannot fail is worse than no check
+because it is believed. `self-test.sh` breaks each tool's subject and requires it to complain.
 
 ## Testing philosophy
 

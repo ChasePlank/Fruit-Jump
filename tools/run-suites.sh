@@ -128,38 +128,23 @@ if [ -x tools/readme-counts.sh ]; then
 fi
 
 echo "=== the jar ==="
-if [ -f "$JAR" ]; then
-  # A fresh --release 17 compile, compared against what is actually inside the jar. Class bytes are deterministic
-  # for the same source and flags, so any difference means the jar was built from different source.
-  TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
-  JAR_ABS="$(pwd)/$JAR"
-  "$JAVAC" --release 17 --module-path "$FX" --add-modules "$MODS" -d "$TMP" \
-      $(find src/main/java -name '*.java') 2>/dev/null
-  mkdir -p "$TMP/jar"
-  # AN ABSOLUTE PATH TO THE JAR. The first version used "../../../$JAR" relative to $TMP/jar, which resolves to
-  # /tropical-punch.jar - nothing was extracted, every cmp then failed against a missing file, and the check
-  # reported "92 of 92 class(es) differ". A wholesale result like that is the tool talking about itself.
-  #
-  # AND THE EXTRACTION IS CHECKED. It was piped through `|| true` with the output discarded, which is how a
-  # failure to extract at all became a confident verdict about the source.
-  if ! unzip -qo "$JAR_ABS" 'tropical/*' -d "$TMP/jar"; then
-    printf '  %-20s FAIL   could not read %s\n' "jar-current" "$JAR"; fail=$((fail+1)); failed_names+=("jar-current")
-  else
-  stale=0
-  for f in $(cd "$TMP/tropical" && find . -name '*.class' 2>/dev/null); do
-    cmp -s "$TMP/tropical/$f" "$TMP/jar/tropical/$f" || { stale=$((stale+1)); [ $stale -le 3 ] && echo "      differs: $f"; }
-  done
-  classes=$(cd "$TMP/tropical" && find . -name '*.class' | wc -l)
-  if [ "$stale" -eq 0 ]; then
-    printf '  %-20s ok     %s class(es) in the jar match a fresh build\n' "jar-current" "$classes"; pass=$((pass+1))
-  else
-    printf '  %-20s FAIL   %s of %s class(es) differ - rebuild with tools/make-jar.sh\n' "jar-current" "$stale" "$classes"
-    fail=$((fail+1)); failed_names+=("jar-current")
-  fi
-  fi
-else
-  printf '  %-20s FAIL   no %s\n' "jar-current" "$JAR"; fail=$((fail+1)); failed_names+=("jar-current")
-fi
+# Its own script, so that it can be fault-injected without running the whole gate. See check-jar-current.sh
+jar_out=$(tools/check-jar-current.sh 2>&1); jar_rc=$?
+echo "$jar_out"
+if [ $jar_rc -eq 0 ]; then pass=$((pass+1)); else fail=$((fail+1)); failed_names+=("jar-current"); fi
+
+echo "=== the tools themselves ==="
+# Every tool in this directory is a check, and a check that cannot fail is worse than no check because it is
+# believed. self-test.sh breaks each one's subject and requires it to notice. Its output is filtered to the one
+# summary line, because the rest is a list of things that were broken on purpose and restored.
+st_out=$(tools/self-test.sh 2>&1); st_rc=$?
+# ONLY THE FAILURES, matched in the STATUS COLUMN. Filtering on the word FAIL also matched a message that
+# contained it, so a passing test whose message said "jar-current FAIL 1 of 93" was printed as a failure line.
+# THE SUMMARY LINE, ALWAYS, plus any test whose STATUS is FAIL. Narrowing the filter to a status column also
+# silenced the summary - which starts at column 0, not indented - so a passing run showed an empty section. An
+# empty section is the same defect as a silent check: it looks the same whether it ran or not.
+echo "$st_out" | grep -E '^=== |^ {2}.{0,34}FAIL' | sed 's/^/  /'
+if [ $st_rc -eq 0 ]; then pass=$((pass+1)); else fail=$((fail+1)); failed_names+=("tool-self-tests"); fi
 
 echo
 echo "=== $pass check(s) passed, $fail failed ==="
