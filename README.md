@@ -105,6 +105,23 @@ lag compensation and entity interpolation. **No file for any of it has ever been
 not a feature that regressed or was removed; it is a claim that was written and never backed. If it was built, it
 was built somewhere that was not saved.
 
+## Running the checks
+
+```bash
+tools/run-suites.sh      # everything: the twelve test classes, the README counts, and the jar
+```
+
+One command, and it is the only one this repository has ever had. Until it existed the twelve test classes were
+each run by hand and nothing ran them together — so nothing was the thing that failed when this release drifted
+away from the engine it is built from. It did drift: over two days six bugs were found here that the engine had
+already fixed, among them an enemy that did not exist and a player who could not be hurt by their own bomb.
+
+It runs three kinds of check, because they fail differently. **The tests** drive the real JavaFX screens, so they
+need a display. **The README** counts are compared against the files. And **the jar** — `java -jar
+tropical-punch.jar` is what this file tells people to run, so a committed jar built from older source is a silent
+distribution bug: the fix is in the repository and not in the thing people download. That check compiles the
+source fresh and compares it class by class against the classes inside the committed jar.
+
 ## Testing philosophy
 
 Every system was built headless-first and verified by bots playing the game through the real engine — including a validator bot that walks generated levels blind (it found real bugs in all three layers: engine, bot, and generator). The menu and gameplay screens are verified by JavaFX robot tests under xvfb.
