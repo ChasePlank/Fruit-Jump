@@ -82,6 +82,21 @@ back when you die.**
 **I have not changed it. It was already an open question before this document existed** — what this adds is the
 evidence that the question is real, and the specific line of code it lives on.
 
+## The constraint, checked
+
+**Every system this document names is checked against what the game has:**
+
+| the story mentions | the engine has |
+|---|---|
+| climb | yes |
+| jump | yes |
+| hookshot | yes |
+| keys, doors | yes (`keys`, `door` in the engine) |
+| *"no dialogue"* | the game has none, and this document asks for none |
+
+The engine also has **coins**, which this story does not mention and does not need. **Nothing here asks for an NPC,
+a cutscene, an inventory, or a choice that changes an ending** — so nothing here can fail to be implemented.
+
 ## Open, deliberately
 
 The premise above is mine and it is **not final** — the game is Kinger's to direct and the story is the part of it
