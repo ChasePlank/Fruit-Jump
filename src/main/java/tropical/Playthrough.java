@@ -90,6 +90,11 @@ public class Playthrough extends Application {
                 // them and the run finishes.
                 int jumpEvery = Integer.getInteger("jumpEvery", 45);
                 if (frame % jumpEvery == 0 && frame >= jumpAfter) tap(KeyCode.SPACE);
+                // -DbombEvery=N taps G every N frames. The bot has never used bombs, which is why the tutorial
+                // level that TEACHES the bomb has always been excluded from automated runs - and why nothing
+                // noticed that the blast could not hurt the player it was thrown next to.
+                int bombEvery = Integer.getInteger("bombEvery", 0);
+                if (bombEvery > 0 && frame % bombEvery == 0) tap(KeyCode.G);
                 if (kill && frame == 300) zeroHealth();
                 // HOW OFTEN TO CAPTURE, settable. It was hardcoded at 180 frames - three seconds - which is fine
                 // for watching a run but useless for anything SHORT: a damage flash lasts a third of a second, so

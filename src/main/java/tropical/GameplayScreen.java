@@ -369,6 +369,17 @@ public class GameplayScreen extends Screen {
             }
         }
 
+        // THE PLAYER'S OWN BOMB. World decides - it owns the blast radius - and the view applies the HP loss.
+        //
+        // PORTED FROM THE ENGINE, 6 October 2026. World has set `playerBlastPending` all along and this screen
+        // NEVER READ IT, so the flag was raised and dropped every time and the blast could not hurt the player.
+        // Tutorial 3's sign says "STAND BACK. the blast hurts you too", so the game was teaching a rule it did not
+        // enforce - the same shape as the pickup drawn as a heart under a sign that said SNACK.
+        if (world.playerBlastPending) {
+            world.playerBlastPending = false;
+            combat.hurtPlayer(player, player.x + 1);
+        }
+
         // Notice the drop, hold the flash, fade it. `lastHP` starts at -1 so the first frame - where HP is set for
         // the first time and would otherwise read as a hit from 0 - does not flash.
         if (lastHP >= 0 && combat.playerHP < lastHP) hitFlash = 0.35;
