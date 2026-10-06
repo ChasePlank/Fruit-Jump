@@ -115,6 +115,26 @@ public class TutorialTest extends Application {
         for (String m : missing) System.out.println("  NO SIGN TEACHES: " + m);
         check("every control the README documents is taught by a sign (" + missing.size() + " missing)",
                 missing.isEmpty());
+
+        // AND THAT THE TUTORIAL ACTUALLY HAS WATER YOU CAN SWIM IN.
+        //
+        // The sign on level 9 says "SPACE swims up. DOWN / S dives", and a sign saying that above water you cannot
+        // swim in is the same fault as a sign promising a rule the code does not enforce. MEASURED, because the
+        // first version of this was reasoned from a screenshot and got it wrong: the climber floats at an
+        // equilibrium with most of the body under water, so a still frame reads as standing on the surface.
+        //
+        // What separates the two waters is not submersion - both are about 0.73 - it is `deep`, which is the
+        // water's SHAPE. A flooded walk is one row and is not deep; a pool is two rows with a floor and is.
+        tropical.engine.World w = new tropical.engine.World();
+        Tutorial.map(9).buildWorld(w);
+        tropical.engine.Physics.Body swimmer =
+                new tropical.engine.Physics.Body(47 * 32 + 16, 17 * 32, 24, 44);
+        w.addBody(swimmer);
+        for (int i = 0; i < 180; i++) w.update(1.0 / 60);
+        boolean swims = w.water.swimming(swimmer);
+        System.out.printf("  level 9 pool: submersion=%.3f swimming=%b deep=%b%n",
+                w.water.submersion(swimmer), swims, w.water.deep(swimmer));
+        check("level 9 has water the climber can swim in", swims);
     }
 
     /** {x0, x1, y0, y1} for a sign, using the renderer's font and wrap. */

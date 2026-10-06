@@ -135,6 +135,33 @@ else
   bad "readme-counts notices a feature not in the game" "no movement line to change"
 fi
 
+# ---- TutorialTest must notice water the climber cannot swim in --------------------------------------------------
+# THE ORIGINAL FAULT, inverted: the pool was made one row deep, which is a flooded WALK, and a walk is not `deep`
+# even at the same submersion - both measure about 0.73. So the sign saying "SPACE swims up" would sit above water
+# you cannot swim in, which is a sign promising a rule the code does not enforce.
+if grep -q "g\[FLOOR - 2\]\[c\] = '~'" src/main/java/tropical/Tutorial.java; then
+  TUT2_BAK=$(mktemp); cp src/main/java/tropical/Tutorial.java "$TUT2_BAK"
+  sed -i "s/for (int c = 44; c <= 50; c++) { g\[FLOOR - 2\]\[c\] = '~'; g\[FLOOR - 1\]\[c\] = '~'; }/for (int c = 44; c <= 50; c++) { g[FLOOR - 1][c] = '~'; }/" src/main/java/tropical/Tutorial.java
+  /root/jdk-27+35/bin/javac --module-path /root/javafx-sdk-27/lib \
+      --add-modules javafx.controls,javafx.graphics,javafx.media,javafx.swing -cp out -d out \
+      $(find src/main/java -name '*.java') >/dev/null 2>&1
+  out=$(DISPLAY="${DISPLAY:-:99}" timeout 300 /root/jdk-27+35/bin/java \
+      --module-path /root/javafx-sdk-27/lib \
+      --add-modules javafx.controls,javafx.graphics,javafx.media,javafx.swing \
+      -cp out:src/main/resources tropical.TutorialTest 2>&1)
+  if echo "$out" | grep -q "swim in .*FAIL"; then
+    ok "TutorialTest notices water you cannot swim in" "$(echo "$out" | grep 'level 9 pool:' | tr -s ' ')"
+  else
+    bad "TutorialTest notices water you cannot swim in" "reported clean with a one-row pool"
+  fi
+  cp "$TUT2_BAK" src/main/java/tropical/Tutorial.java; rm -f "$TUT2_BAK"
+  /root/jdk-27+35/bin/javac --module-path /root/javafx-sdk-27/lib \
+      --add-modules javafx.controls,javafx.graphics,javafx.media,javafx.swing -cp out -d out \
+      $(find src/main/java -name '*.java') >/dev/null 2>&1
+else
+  bad "TutorialTest notices water you cannot swim in" "no two-row pool to flatten"
+fi
+
 # ---- readme-counts.sh must notice the engine learning about JavaFX ---------------------------------------------
 # THE FAULT IS ONE IMPORT. The README states the property - "the engine never knows JavaFX exists" - and everything
 # headless depends on it. A headless suite that suddenly needs a display fails as "Unable to open DISPLAY", which
