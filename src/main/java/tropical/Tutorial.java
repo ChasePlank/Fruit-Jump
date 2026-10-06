@@ -172,7 +172,10 @@ public class Tutorial {
             case 6 -> {
                 s.add(new Sign(12 * 32, y, "SNACK  -  one life back"));
                 s.add(new Sign(22 * 32, y, "JAR  -  a life FOREVER, and a full refill"));
-                s.add(new Sign(30 * 32, y, "KEY  -  opens the door"));
+                // MOVED RIGHT, from 30 * 32. The JAR sign to its left is 41 characters and wraps to a 34-character
+                // line, so it reaches past x = 1000. The KEY sign started at 960 and sat INSIDE it, and the two
+                // overlaid so that neither could be read - visible on tutorial 6 since October.
+                s.add(new Sign(38 * 32, y, "KEY  -  opens the door"));
             }
             case 7 -> {
                 s.add(new Sign(20 * 32, y - 60, "WHAT IS OUT THERE"));
@@ -193,7 +196,10 @@ public class Tutorial {
                 s.add(new Sign(8 * 32, y + 26, "you walk through it. it does not slow you down"));
                 s.add(new Sign(20 * 32, y - 60, "PIRANHA"));
                 s.add(new Sign(20 * 32, y - 34, "unlike a bat, this one takes a HEART"));
-                s.add(new Sign(20 * 32, y - 8, "they come in groups. get out and they lose you"));
+                // MOVED DOWN to y + 26, from y - 8. The sign above it is 36 characters, so it WRAPS ONTO A SECOND
+                // LINE - and that line landed exactly where this one started. A sign that wraps occupies two
+                // rows, and the next sign down has to clear both.
+                s.add(new Sign(20 * 32, y + 26, "they come in groups. get out and they lose you"));
                 s.add(new Sign(44 * 32, y, "that is everything. good luck"));
             }
             default -> { }

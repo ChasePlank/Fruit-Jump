@@ -496,7 +496,14 @@ public class GameplayScreen extends Screen {
         for (Pickup p : world.pickups) {
             if (!p.active) continue;
             double sx = camera.worldToScreenX(p.x - 8), sy = camera.worldToScreenY(p.y - 8);
-            if (p.type == Pickup.Type.HEART) gc.drawImage(Sprites.heart2x, sx, sy, 16 * S, 16 * S);
+            // SNACK, not heart. The engine re-themed this pickup in its "sunset look, the climber, the bat"
+            // rework - sprite and sign together - and the TUTORIAL SIGN travelled here while the sprite did not.
+            // So this release has been drawing a red heart under a sign that says "SNACK - one life back", and
+            // the two have disagreed in plain sight on tutorial 6 since 1 October.
+            //
+            // Found by comparing every line of this file against the engine's copy and reading the ones that
+            // nearly matched: this was one word different in an otherwise identical line.
+            if (p.type == Pickup.Type.HEART) gc.drawImage(Sprites.snack2x, sx, sy, 16 * S, 16 * S);
             else gc.drawImage(Sprites.key2x, sx, sy, 16 * S, 16 * S);
         }
 
