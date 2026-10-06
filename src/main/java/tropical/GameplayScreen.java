@@ -30,6 +30,10 @@ public class GameplayScreen extends Screen {
     // The engine (physics, world coords) is untouched — only the VIEW
     // scales. Nearest-neighbor smoothing keeps pixel art crisp at 2x.
     private static final double SCALE = 2.0;
+    // How long before the end of a stun the climber gets up onto one knee. Below this the prone sprite gives way
+    // to the kneeling one, so being knocked down is a SEQUENCE rather than one frozen pose - which read as a
+    // glitch. Ported from the engine, 6 October 2026.
+    private static final double KNEEL_UNTIL = 0.38;
     private static final int VIEW_W = 800, VIEW_H = 600;
     private static final int CANVAS_W = (int) (VIEW_W * SCALE), CANVAS_H = (int) (VIEW_H * SCALE);
 
@@ -318,10 +322,22 @@ public class GameplayScreen extends Screen {
         // arrived in this repository with nothing to draw or drive it.
         if (world.piranhaBit) combat.hurtPlayer(player, world.piranhaBitFromX);
 
-        boolean pulling = hookshot.update(dt, world);
-        
+        // KNOCKED DOWN. World sets `stunTimer` when a bat hits the climber - it owns the hit, the timer and the
+        // ticking down, and it keeps gravity running so an airborne climber still falls. What the timer MEANS is
+        // this screen's business, and this screen never read it: the bat set a timer that nothing consulted, so a
+        // knock-down did nothing at all and the prone and kneeling sprites were built in Sprites and never drawn.
+        // Tutorial 5's sign says "BATS KNOCK YOU DOWN".
+        //
+        // PORTED FROM THE ENGINE, 6 October 2026. While stunned the climber cannot walk, cannot fire the hookshot,
+        // and cannot stroke in water - "a climber flat on the ground does not stroke".
+        boolean stunned = player.stunTimer > 0;
+        boolean pulling = !stunned && hookshot.update(dt, world);
+
         // Player input → velocity (skipped while hookshot pulls)
-        if (!pulling) {
+        if (stunned) {
+            player.vx = 0;
+            world.water.setVerticalInput(0);
+        } else if (!pulling) {
             double desired = 0;
             if (left) desired -= RUN_SPEED;
             if (right) desired += RUN_SPEED;
@@ -465,8 +481,15 @@ public class GameplayScreen extends Screen {
 
         // Facing sprite: mirrored variant when facing left
         // (playtest: "able to look both directions")
-        javafx.scene.image.Image playerSprite =
-                facing < 0 ? look.left2x : look.right2x;
+        // Getting up is a SEQUENCE, not one frozen pose: flat on the ground, then up onto one knee, then
+        // standing. A single pose held for the whole stun read as a glitch rather than as being knocked over.
+        boolean prone = player.stunTimer > 0;
+        boolean kneeling = prone && player.stunTimer <= KNEEL_UNTIL;
+        javafx.scene.image.Image playerSprite = !prone
+                ? (facing < 0 ? look.left2x : look.right2x)
+                : kneeling
+                        ? (facing < 0 ? look.kneelLeft2x : look.kneelRight2x)
+                        : (facing < 0 ? look.downLeft2x : look.downRight2x);
 
         // Solid tiles: grass-topped dirt (rect base + grass strip)
         // Two things happen here that are not obvious, and neither was true of this file until it was carried
