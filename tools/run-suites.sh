@@ -53,12 +53,30 @@ echo "compiling ..."
 "$JAVAC" --module-path "$FX" --add-modules "$MODS" -cp "$OUT" -d "$OUT" \
     $(find src/main/java -name '*.java') 2>&1 | grep "error:" && { echo "  COMPILE FAILED" >&2; exit 1; }
 
+# THE SUITE LIST IS DISCOVERED, NOT WRITTEN DOWN.
+#
+# The sibling gate in `aside` has said for weeks: "a list in this file would be stale the first time someone forgot
+# it." Mine WAS such a list - thirteen names typed out - so the first test class anyone adds to this repository
+# would simply not run, and the gate would report a smaller number and pass. It is the same defect as a check that
+# cannot fail, one level up: a gate that cannot notice an addition.
+#
+# Everything with a `main` is discovered, and the few files that are tools rather than tests are named below AND
+# PRINTED, so a new one is visible rather than silently absent.
+TOOLS="Main Playthrough Sound"
 echo "=== the tests ==="
-for t in AudioTest CustomizeTest GameplayRobotTest MenuRobotTest MenuSmokeTest RoomsTest SaveLoadTest \
-         ScreenshotTest TutorialTest WeaponsRobotTest \
-         engine.CrackedPocketTest engine.DoorStressTest engine.WaterEnemyTest; do
+suites=()
+while IFS= read -r f; do
+  base=$(basename "$f" .java)
+  case " $TOOLS " in *" $base "*) continue ;; esac
+  pkg=$(sed -n 's/^package \(.*\);/\1/p' "$f" | head -1)
+  suites+=("$pkg.$base")
+done < <(grep -rl "public static void main" src/main/java --include='*.java' | sort)
+echo "  (${#suites[@]} discovered; not run here: $TOOLS)"
+
+for full in "${suites[@]}"; do
+  t="$full"
   out=$(timeout 300 "$JAVA" --module-path "$FX" --add-modules "$MODS" \
-        -cp "$OUT:src/main/resources" "tropical.$t" 2>&1)
+        -cp "$OUT:src/main/resources" "$t" 2>&1)
   rc=$?
 
   # THE EXIT CODE DECIDES. THE TEXT ONLY EXPLAINS.
@@ -78,7 +96,15 @@ for t in AudioTest CustomizeTest GameplayRobotTest MenuRobotTest MenuSmokeTest R
   #
   # So: non-zero exit is a failure, whatever it printed. No matching line at all is also a failure - a suite that
   # printed nothing recognisable did not demonstrably run.
-  last=$(echo "$out" | grep -E 'SUCCESS|FAILURE|ALL PASS|PASS|FAIL|completed|Door boxes' | tail -1)
+  # THE EXIT CODE DECIDES; THE TEXT ONLY EXPLAINS. This is the rule `aside`'s gate has used for
+  # weeks, and I did not read it before writing this one. I had added a third rule - "no recognisable
+  # verdict line is a failure" - and it has only ever produced FALSE failures: three suites that print
+  # PASS, and WaterProbe, which asserts water shape and exits 1 on a fault but prints
+  # "SHAPE OK: every pool is 2 rows deep..." and no verdict word my pattern knew.
+  # A suite that exits 0 has passed. Asking it to also spell that in a word the parser recognises is
+  # asking it to talk to the parser rather than to a person.
+  last=$(echo "$out" | grep -E 'SUCCESS|FAILURE|ALL PASS|PASS|FAIL|completed|Door boxes|OK' | tail -1)
+  [ -z "$last" ] && last=$(echo "$out" | grep -vE '^WARNING|^[[:space:]]*at |^$' | tail -1)
   # WHY IT FAILED, not just that it did. "(no output)" was wrong - a suite that died on a dead display printed a
   # full JavaFX stack trace. With no verdict line the first exception is the useful thing to show.
   why="$last"
@@ -88,9 +114,6 @@ for t in AudioTest CustomizeTest GameplayRobotTest MenuRobotTest MenuSmokeTest R
   fi
   if [ $rc -ne 0 ]; then
     printf '  %-20s FAIL   exit %s: %s\n' "${t##*.}" "$rc" "$why"
-    fail=$((fail+1)); failed_names+=("$t")
-  elif [ -z "$last" ]; then
-    printf '  %-20s ?      no verdict - did it run?\n' "${t##*.}"
     fail=$((fail+1)); failed_names+=("$t")
   else
     printf '  %-20s ok     %s\n' "${t##*.}" "$last"; pass=$((pass+1))
