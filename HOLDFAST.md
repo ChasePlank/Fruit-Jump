@@ -1,0 +1,62 @@
+# Holdfast — the story
+
+*Holdfast* is a side-scrolling climber. Its own subtitle is the premise: **a climber, a sunset, and a way home.**
+This is the story behind that sentence. It is written to fit the game that already exists — five screens, one
+sunset, no cutscenes — rather than to ask for systems that are not there.
+
+## The sentence
+
+The valley flooded. Not all at once and not dramatically: the water came up over years, the way it does in the
+story the engine already tells in *The Water Line* — what is above the line goes up, what is below it stays, and
+the water is not sentimental.
+
+Everyone left. **You did not, and then you did**, and by then the road out was under sixty feet of water and the
+only direction that was still dry was up.
+
+So you climb. **The way home is above you**, which is the wrong direction for home to be and the only one left.
+
+## Why the sunset matters
+
+**The sunset is a clock, not a decoration.** You climb while there is light. The horizon in this game never moves
+past dusk — that is not an art choice, it is the rule: **the sun stops at the same place every time, and the game
+ends when it finishes setting.**
+
+That is what the five screens are already telling:
+
+| screen | what it is, in story terms |
+|---|---|
+| Title | dusk, the climber on the rock, the way home not yet started |
+| Main menu | the same afternoon, one breath before |
+| Customise | the last time you are standing still |
+| Pause | the same place, held — nothing moves while you decide |
+| **Game over** | **after the sun. The rock is empty.** |
+
+The game-over screen already shows the same sky with the climber gone. **Nobody had to be told what that meant;
+the story just has to agree with it.**
+
+## What the climber is carrying
+
+Not equipment. **The thing worth carrying out is the reason to come back down**, and the reason has to be small
+enough to fit in a pocket: a key to a door that is underwater, a photograph, a name.
+
+**The best version of this is the one with the least in it.** The climber does not speak and nothing is explained,
+because the game has no dialogue and should not get one.
+
+## The rule the story has to obey
+
+**Nothing in this story may require a system the game does not have.** No NPCs, no items to collect, no dialogue,
+no cutscenes, no ending that plays differently because of a choice made in scene three. The story is a *reason* for
+the mechanics — jump, hookshot, keep moving up, do not fall — and the mechanics are already built.
+
+If a later version wants to say more, it says it with **the sky**, because the sky is the one thing every screen
+already shares. `Skyline.paint(..., Mood.DUSK, ...)` and `Mood.NIGHT` are the two words this story has.
+
+## What it is about, in one line
+
+**Going up is not the same as going home, and the sunset does not care which one you meant.**
+
+## Open, deliberately
+
+The premise above is mine and it is **not final** — the game is Kinger's to direct and the story is the part of it
+that was left open. What is *settled* is the constraint: whatever the story becomes, it fits the game that exists
+and it lives in the sky.
