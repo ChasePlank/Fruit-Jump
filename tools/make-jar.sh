@@ -53,8 +53,28 @@ echo "compiling ..."
 cp src/main/resources/style.css "$TMP/style.css"
 cp -r audio "$TMP/audio"
 
+# A FIXED TIMESTAMP ON EVERY ENTRY, so that the same source produces the same bytes.
+#
+# Without this the jar is NOT reproducible: two consecutive builds from identical source came out with different
+# MD5s - 971477d88b335ad873c1870f94abdade against e1ef0e647a8a6f1da64595ad833c70cf - while every class inside was
+# byte-identical. The difference is only the entry timestamps, and it costs two things:
+#
+#   - `artifact-changed.sh` compares BYTES and refuses a release identical to the published one. Rebuilding always
+#     changes the bytes, so that guard can be defeated by simply building again - it catches a re-uploaded file and
+#     not a rebuilt one, which is the case it was written for.
+#   - every rebuild leaves the committed jar dirty in git even when nothing changed, which trains you to ignore
+#     the one file that matters.
+#
+# `jar` has no --date on this JDK, so the mtimes are set on the extracted tree instead and `jar` records those.
+find "$TMP" -exec touch -t 202601010000 {} + 2>/dev/null
+
 echo "packing $OUT ..."
 "$JAR_TOOL" --create --file "$OUT" --main-class tropical.Main -C "$TMP" . >/dev/null || { echo "jar failed" >&2; exit 1; }
+
+# AND THE TWO ENTRIES `jar` WRITES ITSELF. It stamps META-INF/ and META-INF/MANIFEST.MF with the current time after
+# the mtimes above have been set, so they cannot be fixed from outside. That was the last 4 bytes of a 788-byte
+# difference between two builds of identical source.
+python3 "$(dirname "$0")/normalize-jar.py" "$OUT" >/dev/null || { echo "normalize failed" >&2; exit 1; }
 
 # VERIFY, do not trust. A jar whose main class is missing comes back fine from `jar` and fails only when run.
 SIZE=$(stat -c%s "$OUT")
