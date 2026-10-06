@@ -135,6 +135,25 @@ else
   bad "readme-counts notices a feature not in the game" "no movement line to change"
 fi
 
+# ---- readme-counts.sh must notice the engine learning about JavaFX ---------------------------------------------
+# THE FAULT IS ONE IMPORT. The README states the property - "the engine never knows JavaFX exists" - and everything
+# headless depends on it. A headless suite that suddenly needs a display fails as "Unable to open DISPLAY", which
+# reads as a broken display rather than as the engine having grown a dependency.
+ENG=src/main/java/tropical/engine/GameLoop.java
+if ! grep -q "javafx" "$ENG"; then
+  ENG_BAK=$(mktemp); cp "$ENG" "$ENG_BAK"
+  sed -i '1a import javafx.scene.paint.Color;' "$ENG"
+  out=$(tools/readme-counts.sh 2>&1); rc=$?
+  if [ $rc -ne 0 ] && echo "$out" | grep -q "engine files referencing JavaFX: 1"; then
+    ok "readme-counts notices the engine importing JavaFX" "$(echo "$out" | grep 'referencing JavaFX' | tr -s ' ')"
+  else
+    bad "readme-counts notices the engine importing JavaFX" "reported clean with one import added"
+  fi
+  cp "$ENG_BAK" "$ENG"; rm -f "$ENG_BAK"
+else
+  bad "readme-counts notices the engine importing JavaFX" "GameLoop already references javafx"
+fi
+
 # ---- TutorialTest must notice a control the README documents and no sign teaches -------------------------------
 # A GAME TEST IN A TOOL SELF-TEST, which needs a word of justification: the rule this file enforces is that every
 # check gets broken on purpose before it is trusted, and TutorialTest now carries the check that would have caught

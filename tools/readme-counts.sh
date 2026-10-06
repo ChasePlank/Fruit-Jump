@@ -78,6 +78,16 @@ echo "  gaps: base ${GAP0:-?} cap ${GAPC:-?}   README claims: 3 widening to a ca
 if [ "${GAP0:-}" = "3" ] && [ "${GAPC:-}" = "4" ]; then echo "  ok"; else
   echo "  MISMATCH - the README's gap numbers no longer match LevelGen" >&2; fails=$((fails + 1)); fi
 
+# AND THAT THE ENGINE STILL DOES NOT KNOW JAVAFX EXISTS. The README states it as a property - "the engine never
+# knows JavaFX exists - the same property that lets the validator bot and the engine suites drive it headless" -
+# and everything headless depends on it. It is true today: none of the 36 files in the engine package mentions
+# javafx. One import would end it, and nothing would notice, because a headless suite that suddenly needs a display
+# fails as "Unable to open DISPLAY" rather than as "the engine learned about JavaFX".
+JFX=$(grep -rl "javafx" src/main/java/tropical/engine/ 2>/dev/null | wc -l)
+echo "  engine files referencing JavaFX: $JFX of $(ls src/main/java/tropical/engine/*.java | wc -l)   README claims: none"
+if [ "$JFX" -eq 0 ]; then echo "  ok"; else
+  echo "  MISMATCH - the engine now imports JavaFX; the README says it never does" >&2; fails=$((fails + 1)); fi
+
 # AND THAT THE FEATURE LIST DOES NOT CLAIM ONE OF THEM. The section below says what is not wired; the feature list
 # at the top said "moving platforms with carry" and "parallax" as though they were in the game, and a reader meets
 # the feature list first. Both were corrected on 2026-10-06 and this is what keeps them corrected - the same shape
