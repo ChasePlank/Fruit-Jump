@@ -41,6 +41,22 @@ else
   fails=$((fails + 1))
 fi
 
+# AND THE TUTORIAL LEVEL COUNT, which was wrong when this check was written: the README said "eight hand-built
+# levels" and Tutorial.LAST is 9. It had drifted the same way the others did - the tutorial grew a level and the
+# sentence did not - and nothing was looking at it, which is the whole reason this file exists.
+# The pattern is the FIELD, not "Tutorial.LAST" - the first version looked for a qualified name that does not appear
+# in the file, found nothing, and reported "actually: ?" against a README that says 9. It failed rather than
+# passing, which is the right way round, but the pattern was still wrong.
+TUT=$(grep -oE "int LAST = [0-9]+" src/main/java/tropical/Tutorial.java | grep -oE "[0-9]+" | head -1 || true)
+TCLAIM=$(grep -oE "[0-9]+ hand-built levels" README.md | grep -oE "[0-9]+" | head -1 || true)
+echo "  tutorial levels actually: ${TUT:-?}   README claims: ${TCLAIM:-none}"
+if [ -n "${TUT:-}" ] && [ "${TCLAIM:-}" = "$TUT" ]; then
+  echo "  ok"
+else
+  echo "  MISMATCH - update the README, or this check" >&2
+  fails=$((fails + 1))
+fi
+
 # AND THAT THE FOUR UNWIRED CLASSES ARE STILL UNWIRED. The README tells a reader they are not in the game; if one
 # gets wired, that sentence becomes the wrong kind of wrong - it would send someone to build something that exists.
 for pair in "Boss:new Boss(" "AIDirector:new AIDirector(" "ParallaxLayer:new ParallaxLayer("; do

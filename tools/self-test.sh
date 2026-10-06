@@ -65,6 +65,26 @@ else
   bad "jar-current notices stale source" "no 'RUN_SPEED = 200' line to break"
 fi
 
+# ---- readme-counts.sh must notice a WRONG TUTORIAL COUNT, not just a wrong class count --------------------------
+# The self-test already proved the tool can fail, by breaking the engine-class count. That is not the same as
+# proving THIS assertion works: the tutorial pattern was wrong when it was written - it looked for a qualified name
+# that does not appear in the file - and the existing injection would not have noticed.
+# NOT anchored to the line start: the line is "- **The tutorial** — 9 hand-built levels", so a ^ pattern
+# matches nothing and the injection reports "no line to break" - which is a failure, but the wrong one.
+if grep -qE "[0-9]+ hand-built levels" README.md; then
+  RD_BAK=$(mktemp); cp README.md "$RD_BAK"
+  sed -i -E 's/[0-9]+ hand-built levels/99 hand-built levels/' README.md
+  out=$(tools/readme-counts.sh 2>&1); rc=$?
+  if [ $rc -ne 0 ] && echo "$out" | grep -q "tutorial levels actually"; then
+    ok "readme-counts notices a wrong tutorial count" "$(echo "$out" | grep 'tutorial levels' | tr -s ' ')"
+  else
+    bad "readme-counts notices a wrong tutorial count" "reported clean with 99 levels claimed"
+  fi
+  cp "$RD_BAK" README.md; rm -f "$RD_BAK"
+else
+  bad "readme-counts notices a wrong tutorial count" "no 'N hand-built levels' line to break"
+fi
+
 # ---- check-jar-reproducible.sh must notice a build that is not reproducible ------------------------------------
 # THE ORIGINAL FAULT, injected: the normalizer is what makes the build reproducible, so removing its call puts the
 # two timestamps `jar` writes itself back and the two builds diverge again.
