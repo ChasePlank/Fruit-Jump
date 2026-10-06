@@ -504,6 +504,15 @@ public class GameplayScreen extends Screen {
             // Found by comparing every line of this file against the engine's copy and reading the ones that
             // nearly matched: this was one word different in an otherwise identical line.
             if (p.type == Pickup.Type.HEART) gc.drawImage(Sprites.snack2x, sx, sy, 16 * S, 16 * S);
+            // THE JAR HAD NO BRANCH HERE, so it fell into the key fallback and WAS DRAWN AS A KEY. The safe-room
+            // reward - "a life FOREVER, and a full refill", as the tutorial's own sign says - looked exactly like
+            // a key, and the key sprite next to it looked the same too. Sprites.jar2x was built in this file's
+            // own Sprites class and never drawn by anything.
+            //
+            // Found the same way as the snack: reading the near-matching lines, then asking what the OTHER lines
+            // were doing. The tutorial-6 render showed two identical orange shapes where a jar and a key should
+            // have been, and that was the jar.
+            else if (p.type == Pickup.Type.JAR) gc.drawImage(Sprites.jar2x, sx, sy, 16 * S, 16 * S);
             else gc.drawImage(Sprites.key2x, sx, sy, 16 * S, 16 * S);
         }
 

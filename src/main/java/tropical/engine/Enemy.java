@@ -41,8 +41,11 @@ public class Enemy {
     boolean stompImmune = false;  // spiked/shielded: stomping hurts the player
     
     // Ledge/wall detection memory (set by World each frame)
-    boolean hitWall = false;
-    boolean atLedge = false;
+    // PUBLIC LIKE `topDown`, because they are the World's report to this enemy for the frame - an interface
+    // rather than an internal. A check cannot see a package-private field from another package, and the branch
+    // that SETS these was the one thing the mutation sweep found unprotected.
+    public boolean hitWall = false;
+    public boolean atLedge = false;
 
     /** Wall sensor for top-down mode: solid tile just ahead in the
      *  current heading direction. (World.senseWall only probes
@@ -172,15 +175,35 @@ public class Enemy {
             if (hitWall) {
                 hitWall = false;
                 double oldX = hdx, oldY = hdy;
-                int tries = 0;
-                do {
-                    switch (tdr.nextInt(4)) {
-                        case 0 -> { hdx = 1; hdy = 0; }
-                        case 1 -> { hdx = -1; hdy = 0; }
-                        case 2 -> { hdx = 0; hdy = 1; }
-                        default -> { hdx = 0; hdy = -1; }
+                // PICK FROM THE ALLOWED SET, do not retry until you get one.
+                //
+                // PORTED FROM THE ENGINE, 6 October 2026. The version here rolled a d4 and re-rolled if it landed on
+                // the heading it already had or the exact reverse. With two of the four faces excluded that is a
+                // 1-in-16 chance of exhausting the retries and ACCEPTING THE SAME HEADING ANYWAY - so an enemy that
+                // walked up into a ceiling could walk up into it again, stall for a frame, and try again. The
+                // visible effect is small; the effect on the suite is not, because a check that reads the heading
+                // to assert "a top-down enemy facing a ceiling turns" becomes FLAKY - it passed or failed depending
+                // on an unseeded Random. Measured in the engine: six runs gave five 455/0 and one 454/1.
+                //
+                // Collecting the allowed headings first makes the turn certain, and the fallback only fires in a
+                // corner where every direction is the one it came from.
+                double[] dxs = {1, -1, 0, 0};
+                double[] dys = {0, 0, 1, -1};
+                int allowed = 0;
+                for (int i = 0; i < 4; i++) {
+                    if (dxs[i] == oldX && dys[i] == oldY) continue;      // same
+                    if (dxs[i] == -oldX && dys[i] == -oldY) continue;    // reverse
+                    allowed++;
+                }
+                int pick = tdr.nextInt(allowed > 0 ? allowed : 4);
+                int seen = 0;
+                for (int i = 0; i < 4; i++) {
+                    if (allowed > 0) {
+                        if (dxs[i] == oldX && dys[i] == oldY) continue;
+                        if (dxs[i] == -oldX && dys[i] == -oldY) continue;
                     }
-                } while (hdx == -oldX && hdy == -oldY && ++tries < 4);
+                    if (seen++ == pick) { hdx = dxs[i]; hdy = dys[i]; break; }
+                }
             }
             body.vx = hdx * patrolSpeed;
             body.vy = hdy * patrolSpeed;
