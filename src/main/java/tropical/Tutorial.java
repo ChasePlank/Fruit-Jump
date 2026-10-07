@@ -6,15 +6,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The first eight levels are hand-built tutorials, not generated ones.
+ * The first nine levels are hand-built tutorials, not generated ones.
  *
  * Each teaches exactly one thing and shows it rather than saying it, in the
  * order the player needs it: move, fight, blast, shoot, deal with the bat,
- * know your items, know your enemies, know the ground. Level 8 ends the run
- * back at the menu.
+ * know your items, know your enemies, know the ground, and know the water.
+ * Level 9 ends the run back at the menu.
+ *
+ * THIS HEADER SAID "eight" AND "Level 8 ends the run" LONG AFTER LEVEL 9 EXISTED. Water was added as level 9 and
+ * the count and the list were not revisited, so the claim was false in the file that DEFINES `LAST` - and the
+ * check written to catch exactly this class of staleness did not see it, because it greps for the phrase
+ * "ends at <N>" and this file says neither "ends at" nor a digit. Two spellings of the same claim, one covered.
+ * A comment naming a value is a claim; a check that matches one phrasing of it is a check with a blind spot.
  *
  * Built PROGRAMMATICALLY from a flat floor plus placed entities rather than as
- * eight hand-written ASCII grids. Flat rooms are exactly the shape you should
+ * hand-written ASCII grids. Flat rooms are exactly the shape you should
  * generate - I have been consistently wrong about hand-placed grids, and these
  * have to be right because they are the first thing anyone plays.
  */
