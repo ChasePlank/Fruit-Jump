@@ -7,6 +7,7 @@ package tropical.engine;
  * keys and unlocks doors). Also counts feature placement.
  */
 public class DoorStressTest {
+
     public static void main(String[] args) {
         System.exit(runAll() == 0 ? 0 : 1);
     }
@@ -50,6 +51,19 @@ public class DoorStressTest {
             doorLevels, crackedLevels);
         if (!failed.isEmpty()) System.out.println("Failed: " + failed);
         System.out.printf("Door boxes: %d with a bottom that does not reach the floor, or no sprite%n", boxFaults);
+
+        // AND THE VALIDATOR'S CLIMB, WHICH I TRIED TO CHECK HERE AND COULD NOT.
+        //
+        // A real jump, one impulse from the ground, reaches 70.3 px - measured. A re-implementation of the
+        // validator's climb loop reached 431.7 px, because it re-applied the jump every 0.5s with no grounded
+        // check and a jump takes about 0.86s to apex. On that basis LevelValidator's climb branch now requires
+        // player.grounded.
+        //
+        // BUT THE MEASUREMENT WAS OF MY OWN RE-IMPLEMENTATION, NOT OF THE VALIDATOR, and the check I wrote on top
+        // of it cannot fail: a 2-cell wall passes and a 6-cell wall fails, and BOTH STILL DO with the grounded
+        // guard removed. So the guard is kept because it is what a player does - jump from the ground - and NOT
+        // because a check proves it fixes anything. The check is deleted rather than left in place, because a
+        // check that cannot fail is worse than no check: it is believed.
         return failed.size() + boxFaults;
     }
 }

@@ -314,10 +314,13 @@ TUT=src/main/java/tropical/Tutorial.java
 if grep -q "HOOKSHOT   X" "$TUT"; then
   TUT_BAK=$(mktemp); cp "$TUT" "$TUT_BAK"
   python3 - <<'PY'
+import re
 p='src/main/java/tropical/Tutorial.java'; s=open(p).read()
-old = '                s.add(new Sign(44 * 32, y, "HOOKSHOT   X   -   pulls you to a wall"));'
-assert old in s, 'the hookshot sign is not there to remove'
-open(p,'w').write(s.replace(old, '                // removed for the fault injection', 1))
+# BY THE TEXT, NOT BY THE POSITION. The first version matched "44 * 32" and broke the moment the sign moved to
+# column 8 - it reported "reported clean with the hookshot sign removed" because it removed nothing.
+pat = re.compile(r'^\s*s\.add\(new Sign\([^)]*"HOOKSHOT   X[^"]*"\)\);$', re.M)
+assert pat.search(s), 'the hookshot sign is not there to remove'
+open(p,'w').write(pat.sub('                // removed for the fault injection', s, count=1))
 PY
   /root/jdk-27+35/bin/javac --module-path /root/javafx-sdk-27/lib \
       --add-modules javafx.controls,javafx.graphics,javafx.media,javafx.swing -cp out -d out \

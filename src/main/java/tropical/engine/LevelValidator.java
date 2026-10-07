@@ -195,7 +195,15 @@ public class LevelValidator {
             if (windowT <= 0) { windowX = player.x; windowT = 0.5; }
             windowT -= GameLoop.DT;
             if (windowT <= 0) {
-                if (player.x - windowX < 10) player.vy = JUMP_V;
+                // AND ONLY FROM THE GROUND, which this did not check. MEASURED on 2026-10-07: a real jump, one
+                // impulse from the ground, reaches 70.3 px; this loop reaches 431.7 px, because a jump takes about
+                // 0.86s to apex and the 0.5s window fires again while the body is still in the air. So the bot
+                // could scale a wall six times higher than a player can, and a level it certified as traversable
+                // could be one a player cannot finish.
+                //
+                // It matters because the margin is thin: LevelGen allows climbs of up to 2 cells, which is 64 px,
+                // against a 70 px jump - six pixels - and a checker that over-estimates by 360 would never show it.
+                if (player.grounded && player.x - windowX < 10) player.vy = JUMP_V;
                 windowX = player.x;
                 windowT = 0.5;
             }

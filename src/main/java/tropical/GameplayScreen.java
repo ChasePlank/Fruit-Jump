@@ -747,7 +747,21 @@ public class GameplayScreen extends Screen {
                 // CLAMPED, because wrapping alone was not enough. Tutorial 9's PIRANHA sign is anchored so far
                 // right that even a 34-character line ran off - "they come in groups. get out an". A sign that
                 // is wrapped but still past the edge is a sign half-read.
-                sx = Math.min(sx, CANVAS_W - widest * 12 - 8);
+                //
+                // MEASURED, NOT ESTIMATED. This used `widest * 12` - twelve pixels a character - and the real
+                // figure for Arial 22 is about ten, with the width depending on WHICH characters ("mmmm" is 20.6
+                // px each, "iiii" is 5.7). Twelve over-estimates, so the clamp pulled signs further left than
+                // they needed and dragged three of them into their neighbours: the hookshot sign into the spiders
+                // sign on tutorial 4, the KEY sign into the JAR sign on tutorial 6, and the deep-water sign into
+                // the piranha sign on tutorial 9. All three are visible when rendered, and none was caught
+                // because the collision check computed spans from the sign's own x without modelling this clamp.
+                double realW = 0;
+                for (String line : lines) {
+                    javafx.scene.text.Text t = new javafx.scene.text.Text(line);
+                    t.setFont(gc.getFont());
+                    realW = Math.max(realW, t.getLayoutBounds().getWidth());
+                }
+                sx = Math.min(sx, CANVAS_W - realW - 8);
                 for (int i = 0; i < lines.size(); i++) {
                     double ly = sy + i * 26;
                     gc.setFill(Color.web("#1a1a2e"));

@@ -65,12 +65,26 @@ public class TutorialTest extends Application {
             for (int i = 0; i < signs.size(); i++) {
                 for (int j = i + 1; j < signs.size(); j++) {
                     Tutorial.Sign a = signs.get(i), b = signs.get(j);
-                    double[] ra = spanOf(a, FONT, LINE_H);
-                    double[] rb = spanOf(b, FONT, LINE_H);
-                    boolean overlapX = ra[0] < rb[1] && rb[0] < ra[1];
-                    boolean overlapY = ra[2] < rb[3] && rb[2] < ra[3];
+                    boolean overlapY = false;
+                    {
+                        double[] ra = spanOf(a, FONT, LINE_H);
+                        double[] rb = spanOf(b, FONT, LINE_H);
+                        overlapY = ra[2] < rb[3] && rb[2] < ra[3];
+                    }
                     checked++;
-                    if (overlapX && overlapY) {
+                    if (!overlapY) continue;
+                    // EVERY CAMERA POSITION, not just the one where a sign sits at its own x. The renderer clamps
+                    // a sign to the right edge of the VIEW, so which signs collide depends on where the camera is:
+                    // a sign far to the right is pulled flush-right as the view approaches it, and can land on
+                    // top of one that is already there. Modelling a single camera reported no overlap on tutorial
+                    // 4 while the render showed the hookshot sign running into the spiders sign.
+                    boolean hit = false;
+                    for (double cam = 0; cam <= 1920 - 1280 && !hit; cam += 16) {
+                        double[] ra = screenSpan(a, cam, FONT, LINE_H);
+                        double[] rb = screenSpan(b, cam, FONT, LINE_H);
+                        if (ra[0] < rb[1] && rb[0] < ra[1]) hit = true;
+                    }
+                    if (hit) {
                         collisions++;
                         System.out.printf("  tutorial %d: \"%s\" overlaps \"%s\"%n", level, shorten(a.text()), shorten(b.text()));
                     }
@@ -146,7 +160,37 @@ public class TutorialTest extends Application {
             t.setFont(font);
             widest = Math.max(widest, t.getLayoutBounds().getWidth());
         }
+        // THE CLAMP, WHICH THIS DID NOT MODEL AND THE RENDERER DOES. GameplayScreen draws a sign at
+        // min(sx, CANVAS_W - widest * 12 - 8) so that a sign anchored past the right edge is still readable -
+        // and the check computed the span from s.x() alone. So the two disagreed, and the disagreement was
+        // visible: on tutorial 4 the hookshot sign is anchored at column 44 and the clamp pulls it from screen
+        // 1100 to 864, which is inside the spiders sign's span. The check said "no two tutorial signs overlap"
+        // while the render showed them running together.
+        //
+        // The clamp is in SCREEN space and a sign is only clamped when it is partly on screen - the renderer
+        // skips one entirely past the edge - so the span is expressed in screen coordinates for the same camera.
+        // THE RENDERER'S `widest` IS A CHARACTER COUNT, NOT A WIDTH. GameplayScreen computes
+        // `for (String line : lines) widest = Math.max(widest, line.length())` and then clamps to
+        // CANVAS_W - widest * 12 - 8. My first version of this model multiplied the PIXEL width by 12, which
+        // made the threshold enormous and clamped every sign on every level - it reported four overlaps that are
+        // not there, including two on tutorial 6 that were fixed weeks ago. A model of a renderer has to use the
+        // renderer's own arithmetic, not an equivalent-looking one.
         return new double[] { s.x(), s.x() + widest, s.y(), s.y() + lines.size() * lineH };
+    }
+
+    /** The sign's span in SCREEN coordinates for a given camera x, including the renderer's clamp. */
+    private static double[] screenSpan(Tutorial.Sign s, double cam, Font font, double lineH) {
+        java.util.List<String> lines = GameplayScreen.wrapSign(s.text());
+        double widest = 0;
+        for (String line : lines) {
+            javafx.scene.text.Text t = new javafx.scene.text.Text(line);
+            t.setFont(font);
+            widest = Math.max(widest, t.getLayoutBounds().getWidth());
+        }
+        double sx = s.x() - cam;
+        if (sx > 1280 || sx + widest < 0) return new double[] { 1e9, 1e9, s.y(), s.y() + lines.size() * lineH };
+        sx = Math.min(sx, 1280 - widest - 8);
+        return new double[] { sx, sx + widest, s.y(), s.y() + lines.size() * lineH };
     }
 
     private static String shorten(String t) {
