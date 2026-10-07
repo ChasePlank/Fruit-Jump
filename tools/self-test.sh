@@ -135,6 +135,22 @@ else
   bad "readme-counts notices a feature not in the game" "no movement line to change"
 fi
 
+# ---- readme-counts.sh must notice a file the README names that is not there -------------------------------------
+# check-release-notes.sh does this for release notes and found eleven releases naming files that were not attached.
+# Nothing did it for the README, which names HOLDFAST.md, the sky comparison, the jar and six tools.
+if [ -f HOLDFAST.md ]; then
+  HF_BAK=$(mktemp); cp HOLDFAST.md "$HF_BAK"; rm HOLDFAST.md
+  out=$(tools/readme-counts.sh 2>&1); rc=$?
+  if [ $rc -ne 0 ] && echo "$out" | grep -q "HOLDFAST.md"; then
+    ok "readme-counts notices a missing file the README names" "$(echo "$out" | grep 'files the README' | tr -s ' ')"
+  else
+    bad "readme-counts notices a missing file the README names" "reported clean with HOLDFAST.md deleted"
+  fi
+  cp "$HF_BAK" HOLDFAST.md; rm -f "$HF_BAK"
+else
+  bad "readme-counts notices a missing file the README names" "no HOLDFAST.md to remove"
+fi
+
 # ---- check-jar-current.sh must notice a RESOURCE that changed without the jar being rebuilt ----------------------
 # The check compared the jar's classes and nothing else, so style.css and ninety audio files could go stale in the
 # jar and it would pass. Same shape as the unwired list covering three of four: a check covering part of what it

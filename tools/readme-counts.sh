@@ -92,6 +92,24 @@ echo "  comments stating a tutorial end: ${STALE:-none}   Tutorial.LAST: ${TUT:-
 if [ -z "$STALE" ]; then echo "  ok"; else
   echo "  MISMATCH - a comment says the tutorial ends at $STALE; Tutorial.LAST is $TUT" >&2; fails=$((fails + 1)); fi
 
+# AND THAT EVERY FILE THE README NAMES IS THERE. check-release-notes.sh does this for release notes and found
+# eleven releases naming files that were not attached; nothing did it for the README, which names HOLDFAST.md, the
+# sky comparison, the jar and six tools. All present today - checked by hand once - and a hand check is not a
+# check. Only relative targets: an https link is somebody else's problem.
+MISSING_FILES=""
+for f in $(grep -oE '\[[^]]*\]\(([^)]+)\)' README.md | grep -oE '\(([^)]+)\)' | tr -d '()' | grep -vE '^https?:' | sort -u); do
+  [ -e "$f" ] || MISSING_FILES="$MISSING_FILES $f"
+done
+# A BARE NAME IS RELATIVE TO tools/. The first version looked only at the repository root and reported six tools
+# missing that are all present under tools/ - the README's own prose says "the tools under `tools/`", so the bare
+# names are relative to that. A check built on a guess reports its own error as a fault in the repository.
+for f in $(grep -oE '`[A-Za-z0-9_./-]+\.(md|png|jar|sh|css|cmd)`' README.md | tr -d '`' | sort -u); do
+  if [ ! -e "$f" ] && [ ! -e "tools/$f" ]; then MISSING_FILES="$MISSING_FILES $f"; fi
+done
+echo "  files the README names but that do not exist:${MISSING_FILES:- none}"
+if [ -z "$MISSING_FILES" ]; then echo "  ok"; else
+  echo "  MISMATCH - the README points at something that is not there" >&2; fails=$((fails + 1)); fi
+
 # AND THAT THE ENGINE STILL DOES NOT KNOW JAVAFX EXISTS. The README states it as a property - "the engine never
 # knows JavaFX exists - the same property that lets the validator bot and the engine suites drive it headless" -
 # and everything headless depends on it. It is true today: none of the 36 files in the engine package mentions
