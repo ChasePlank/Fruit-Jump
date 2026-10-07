@@ -38,6 +38,56 @@ set -u
 REPO="${REPO:-ChasePlank/Fruit-Jump}"
 WANT="${1:-}"
 
+# ---- DRAFT MODE -----------------------------------------------------------------------------------------------
+#
+#   tools/check-release-notes.sh --draft <notes.md> <artifact> [<artifact>...]
+#
+# WHY. release.sh's step 6 runs this tool, and this tool reads PUBLISHED releases - so the notes that are about to
+# be attached are the only ones never checked. On 2026-10-07 the whole release ran end to end and passed, and the
+# draft notes for 1.15 were not among the fifteen releases it verified. The one document the publish command uses
+# was the one document outside the check.
+#
+# The artifacts are named on the command line because a draft has no release to read them from. They are the names
+# the publish command will attach, which is exactly what the notes have to agree with.
+if [ "${1:-}" = "--draft" ]; then
+  NOTES="${2:-}"
+  [ -n "$NOTES" ] || { echo "usage: check-release-notes.sh --draft <notes.md> <artifact> [<artifact>...]" >&2; exit 2; }
+  shift 2
+  [ $# -gt 0 ] || { echo "check-release-notes: name the artifacts that will be attached" >&2; exit 2; }
+  [ -f "$NOTES" ] || { echo "check-release-notes: no such notes file: $NOTES" >&2; exit 2; }
+  command -v python3 >/dev/null 2>&1 || { echo "check-release-notes: no python3" >&2; exit 2; }
+  DRAFT_NOTES="$NOTES" python3 - "$@" <<'PY'
+import os, re, sys
+
+# the same extraction the published-release check uses, deliberately - a draft checked by different rules is not
+# evidence about what the publish will do
+def promised(body):
+    got = set(re.findall(r'[A-Za-z0-9._-]+\.(?:zip|tar\.gz|tgz|tar|AppImage)', body))
+    got |= set(re.findall(r'Download\s*(?:\*\*)?\s*`?([A-Za-z0-9._-]+\.jar)', body))
+    got |= set(re.findall(r'java\s+-jar\s+`?([A-Za-z0-9._-]+\.jar)', body))
+    return got
+
+path = os.environ["DRAFT_NOTES"]
+body = open(path).read()
+will_attach = set(sys.argv[1:])
+named = promised(body)
+missing = sorted(named - will_attach)
+print(f"  draft {os.path.basename(path)}: names {len(named)} file(s); the release would attach {len(will_attach)}")
+for n in sorted(named):
+    print(f"      names   {n}")
+for n in sorted(will_attach):
+    print(f"      attaches {'(named)' if n in named else '(NOT NAMED)'} {n}")
+if missing:
+    print()
+    for n in missing:
+        print(f"     draft: notes say '{n}', which is not among the artifacts to be attached", file=sys.stderr)
+    print(f"=== DRAFT FAILS: {len(missing)} name(s) in the notes are attached to nothing ===", file=sys.stderr)
+    sys.exit(1)
+print("=== DRAFT OK: every file the notes name is one this release would attach ===")
+PY
+  exit $?
+fi
+
 command -v gh >/dev/null 2>&1 || { echo "check-release-notes: no gh" >&2; exit 2; }
 command -v python3 >/dev/null 2>&1 || { echo "check-release-notes: no python3" >&2; exit 2; }
 

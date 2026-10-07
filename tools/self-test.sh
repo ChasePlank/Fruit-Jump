@@ -389,6 +389,27 @@ else
   bad "style-classes notices a missing rule" "no .menu-item rule to delete"
 fi
 
+# ---- check-release-notes.sh --draft must notice a note naming a file that will not be attached -----------------
+# THE FAULT IS THE ONE THE TOOL WAS WRITTEN FOR, one step earlier in time. The published-release check found eleven
+# releases naming files that were not attached; the DRAFT is the same fault caught before it ships, and until this
+# mode existed the notes about to be attached were the only ones never checked - a whole release ran end to end on
+# 2026-10-07 and 1.15's notes were not among the fifteen releases it verified.
+NOTES="docs/release-notes-1.15.md"
+if [ -f "$NOTES" ]; then
+  RN_BAK=$(mktemp); cp "$NOTES" "$RN_BAK"
+  printf '\nDownload `holdfast-1.15-macos-x64.tar.gz` for macOS.\n' >> "$NOTES"
+  out=$(tools/check-release-notes.sh --draft "$NOTES" holdfast-1.15-windows-x64.zip \
+        holdfast-1.15-linux-x64.tar.gz tropical-punch.jar 2>&1); rc=$?
+  cp "$RN_BAK" "$NOTES"; rm -f "$RN_BAK"
+  if [ $rc -ne 0 ] && echo "$out" | grep -q "holdfast-1.15-macos-x64.tar.gz"; then
+    ok "check-release-notes --draft notices an unattached name" "$(echo "$out" | grep 'DRAFT FAILS' | tr -s ' ')"
+  else
+    bad "check-release-notes --draft notices an unattached name" "reported clean with a name attached to nothing"
+  fi
+else
+  bad "check-release-notes --draft notices an unattached name" "no draft notes to break"
+fi
+
 # ---- and both must be CLEAN once restored, or the injections above proved nothing -----------------------------
 if tools/readme-counts.sh >/dev/null 2>&1; then ok "readme-counts clean after restore" "exit 0"
 else bad "readme-counts clean after restore" "still failing once restored"; fi
