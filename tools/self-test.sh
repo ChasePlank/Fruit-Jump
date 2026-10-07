@@ -135,6 +135,25 @@ else
   bad "readme-counts notices a feature not in the game" "no movement line to change"
 fi
 
+# ---- check-jar-current.sh must notice a RESOURCE that changed without the jar being rebuilt ----------------------
+# The check compared the jar's classes and nothing else, so style.css and ninety audio files could go stale in the
+# jar and it would pass. Same shape as the unwired list covering three of four: a check covering part of what it
+# claims. The fault is one appended line to the stylesheet.
+JCC=tools/check-jar-current.sh
+if [ -f src/main/resources/style.css ]; then
+  CSS2_BAK=$(mktemp); cp src/main/resources/style.css "$CSS2_BAK"
+  printf '\n/* fault injection */\n' >> src/main/resources/style.css
+  out=$("$JCC" 2>&1); rc=$?
+  if [ $rc -ne 0 ] && echo "$out" | grep -q "stale in the jar: style.css"; then
+    ok "jar-current notices a stale resource" "$(echo "$out" | grep 'resource(s) differ' | tr -s ' ')"
+  else
+    bad "jar-current notices a stale resource" "reported clean with the stylesheet changed"
+  fi
+  cp "$CSS2_BAK" src/main/resources/style.css; rm -f "$CSS2_BAK"
+else
+  bad "jar-current notices a stale resource" "no stylesheet to change"
+fi
+
 # ---- readme-counts.sh must notice one of the four unwired classes being wired -----------------------------------
 # MovingPlatform was simply absent from the list: the README named four things as unwired and the check covered
 # three, so wiring the fourth would have made the README quietly false with nothing to show it.

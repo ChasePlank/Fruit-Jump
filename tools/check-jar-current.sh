@@ -48,9 +48,43 @@ for f in $(cd "$TMP/tropical" && find . -name '*.class' | sort); do
 done
 classes=$(cd "$TMP/tropical" && find . -name '*.class' | wc -l)
 
-if [ "$stale" -eq 0 ]; then
-  echo "  jar-current          ok     $classes class(es) in the jar match a fresh build"
+# AND THE RESOURCES, WHICH THIS DID NOT LOOK AT. The jar carries style.css and about ninety audio files beside
+# the classes, and only the classes were compared - so a stylesheet or a sound that changed without the jar being
+# rebuilt would pass this check. That is the same shape as the unwired list covering three of four: a check that
+# covers part of what it claims.
+#
+# Both directions, because a file that is missing from the jar and a file that is stale in it are different faults.
+res_stale=0; res_checked=0
+for f in $(unzip -Z1 "$JAR_ABS" | grep -vE '^tropical/|^META-INF' | grep -v '/$'); do
+  src=""
+  [ "$f" = "style.css" ] && src="src/main/resources/style.css"
+  case "$f" in audio/*) src="$f";; esac
+  [ -n "$src" ] || continue
+  res_checked=$((res_checked + 1))
+  if [ ! -f "$src" ]; then
+    echo "      in the jar but not in the tree: $f"; res_stale=$((res_stale + 1))
+  elif ! cmp -s <(unzip -p "$JAR_ABS" "$f") "$src"; then
+    echo "      stale in the jar: $f"; res_stale=$((res_stale + 1))
+  fi
+done
+# and the other way: something in the tree the jar does not carry
+for f in audio/*; do
+  [ -f "$f" ] || continue
+  unzip -Z1 "$JAR_ABS" | grep -qx "$f" || { echo "      in the tree but not in the jar: $f"; res_stale=$((res_stale + 1)); }
+done
+unzip -Z1 "$JAR_ABS" | grep -qx "style.css" || { echo "      style.css is in the tree but not in the jar"; res_stale=$((res_stale + 1)); }
+
+if [ "$stale" -eq 0 ] && [ "$res_stale" -eq 0 ]; then
+  echo "  jar-current          ok     $classes class(es) and $res_checked resource(s) in the jar match the tree"
   exit 0
 fi
-echo "  jar-current          FAIL   $stale of $classes class(es) differ - rebuild with tools/make-jar.sh" >&2
+if [ "$res_stale" -gt 0 ]; then
+  echo "  jar-current          FAIL   $res_stale resource(s) differ - rebuild with tools/make-jar.sh" >&2
+fi
+# ONLY WHEN THE CLASSES ARE THE PROBLEM. Without this guard a resource-only failure printed the class line too,
+# saying "0 of 93 class(es) differ" underneath a resource failure - two messages for one fault, and the second one
+# reads as a contradiction.
+if [ "$stale" -gt 0 ]; then
+  echo "  jar-current          FAIL   $stale of $classes class(es) differ - rebuild with tools/make-jar.sh" >&2
+fi
 exit 1
