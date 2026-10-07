@@ -135,6 +135,47 @@ else
   bad "readme-counts notices a feature not in the game" "no movement line to change"
 fi
 
+# ---- readme-counts.sh must notice one of the four unwired classes being wired -----------------------------------
+# MovingPlatform was simply absent from the list: the README named four things as unwired and the check covered
+# three, so wiring the fourth would have made the README quietly false with nothing to show it.
+if ! grep -q "new MovingPlatform(" src/main/java/tropical/engine/World.java; then
+  W_BAK=$(mktemp); cp src/main/java/tropical/engine/World.java "$W_BAK"
+  python3 - <<'PY'
+p='src/main/java/tropical/engine/World.java'; s=open(p).read()
+i = s.index('public void addMover(')
+open(p,'w').write(s[:i] + '    // fault injection\n    void probe() { MovingPlatform m = new MovingPlatform(null, 0, 0, 0, 0, 0, 0); }\n\n' + s[i:])
+PY
+  out=$(tools/readme-counts.sh 2>&1)
+  if echo "$out" | grep -q "WIRED?   MovingPlatform"; then
+    ok "readme-counts notices a wired MovingPlatform" "WIRED? MovingPlatform is constructed in 1 file"
+  else
+    bad "readme-counts notices a wired MovingPlatform" "reported clean with MovingPlatform constructed"
+  fi
+  cp "$W_BAK" src/main/java/tropical/engine/World.java; rm -f "$W_BAK"
+else
+  bad "readme-counts notices a wired MovingPlatform" "MovingPlatform is already constructed"
+fi
+
+# ---- readme-counts.sh must notice a fifth unwired bullet the list does not cover ---------------------------------
+if grep -q "^- \*\*Parallax\*\*" README.md; then
+  RB_BAK=$(mktemp); cp README.md "$RB_BAK"
+  python3 - <<'PY'
+p='README.md'; s=open(p).read()
+old = '- **Parallax** — `Camera.parallaxOffset` and `ParallaxLayer` exist; no layer is drawn, so the sky is flat.'
+assert old in s, 'the parallax bullet is not there'
+open(p,'w').write(s.replace(old, old + '\n- **Something else** — nothing builds it either.', 1))
+PY
+  out=$(tools/readme-counts.sh 2>&1)
+  if echo "$out" | grep -q "the README lists 5 unwired thing"; then
+    ok "readme-counts notices an uncovered unwired bullet" "$(echo "$out" | grep 'unwired:' | tr -s ' ')"
+  else
+    bad "readme-counts notices an uncovered unwired bullet" "reported clean with five bullets and four checks"
+  fi
+  cp "$RB_BAK" README.md; rm -f "$RB_BAK"
+else
+  bad "readme-counts notices an uncovered unwired bullet" "no parallax bullet to follow"
+fi
+
 # ---- readme-counts.sh must notice WaterSuite is a test, not a class ---------------------------------------------
 # THE FAULT IS THE ORIGINAL PATTERN. Matching only "Test.java$" counted WaterSuite as an engine class, and because
 # the README's number had been computed the same way, the check reported "actually: 32, claims: 32, ok" for a count

@@ -122,7 +122,16 @@ echo "  ok"
 
 # AND THAT THE FOUR UNWIRED CLASSES ARE STILL UNWIRED. The README tells a reader they are not in the game; if one
 # gets wired, that sentence becomes the wrong kind of wrong - it would send someone to build something that exists.
-for pair in "Boss:new Boss(" "AIDirector:new AIDirector(" "ParallaxLayer:new ParallaxLayer("; do
+# MOVINGPLATFORM WAS MISSING, and the README names FOUR things as unwired. The check covered three, so if someone
+# wired the fourth the README's "nothing constructs one" would quietly become false and nothing would notice -
+# the same shape as the engine-class count, which agreed with the README because it made the same mistake.
+#
+# AND THE COUNT IS ASSERTED, because a hand-kept list falls behind the moment somebody adds a fifth bullet. That is
+# the failure this list just had: three entries against four bullets, and no way to see it.
+UNWIRED_BULLETS=$(sed -n '/^## In the engine, not in the game/,/^## Not in this repository/p' README.md | grep -cE "^- \*\*")
+UNWIRED_CHECKED=0
+for pair in "Boss:new Boss(" "AIDirector:new AIDirector(" "ParallaxLayer:new ParallaxLayer(" "MovingPlatform:new MovingPlatform("; do
+  UNWIRED_CHECKED=$((UNWIRED_CHECKED + 1))
   cls="${pair%%:*}"; call="${pair#*:}"
   # BY BASENAME, not by a pattern built from $cls. The first version interpolated the class name into a regex and
   # every file failed to match its own exclusion, so ParallaxLayer.java counted as a caller of itself.
@@ -135,6 +144,15 @@ for pair in "Boss:new Boss(" "AIDirector:new AIDirector(" "ParallaxLayer:new Par
   if [ "$n" -eq 0 ]; then echo "  ok       $cls is still not constructed outside itself"
   else echo "  WIRED?   $cls is constructed in $n main-source file(s) - the README says nothing builds one" >&2; fails=$((fails + 1)); fi
 done
+
+# AND THAT THE LIST IS AS LONG AS THE README'S. A hand-kept list falls behind the moment somebody adds a fifth
+# bullet, and that is exactly what had happened: three entries against four bullets, with nothing to show it.
+echo "  unwired: $UNWIRED_CHECKED checked   README has $UNWIRED_BULLETS bullet(s)"
+if [ "$UNWIRED_CHECKED" -eq "$UNWIRED_BULLETS" ]; then echo "  ok"
+else
+  echo "  MISMATCH - the README lists $UNWIRED_BULLETS unwired thing(s) and this checks $UNWIRED_CHECKED" >&2
+  fails=$((fails + 1))
+fi
 
 echo
 if [ "$fails" = 0 ]; then echo "=== README counts and unwired claims agree with the files ==="
