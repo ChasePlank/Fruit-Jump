@@ -87,10 +87,68 @@ if [ "${GAP0:-}" = "3" ] && [ "${GAPC:-}" = "4" ]; then echo "  ok"; else
 # AND THAT NO COMMENT STATES A TUTORIAL COUNT THAT DISAGREES WITH Tutorial.LAST. GameplayScreen said "ends at 8"
 # while Tutorial.LAST was 9, in both copies, and nothing was looking - the same shape as the README's tutorial
 # count, one layer down. A comment that names a value is a claim.
-STALE=$(grep -rhoE "ends at [0-9]+" src/main/java/ 2>/dev/null | grep -oE "[0-9]+" | sort -u | grep -v "^${TUT}$" | tr '\n' ' ')
-echo "  comments stating a tutorial end: ${STALE:-none}   Tutorial.LAST: ${TUT:-?}"
-if [ -z "$STALE" ]; then echo "  ok"; else
-  echo "  MISMATCH - a comment says the tutorial ends at $STALE; Tutorial.LAST is $TUT" >&2; fails=$((fails + 1)); fi
+#
+# THIS CHECK USED TO MATCH ONE PHRASING, AND SO IT COULD NOT SEE THE CLAIM. It grepped for `ends at [0-9]+`, which
+# is one way of writing the claim rather than the claim itself. When it was written it caught three real instances
+# of the fault, and its self-test passed the whole time - which is what made it believable. Four MORE sat in the two
+# repositories unseen, because they were written "eight hand-built levels": the number as a WORD, in a sentence with
+# no "ends at" in it. Fixing the shape of the defect, not the instance: the check now looks for a COUNT STATED ABOUT
+# THE TUTORIAL, in either numeral form, and compares the value.
+#
+# THE TWO TIERS ARE MEASURED, NOT GUESSED. The unqualified pattern `\w+ levels` alone produced seven false
+# positives, all in LevelGen and WaterProbe, where "40 levels", "5 levels" and "ten levels" are about GENERATED
+# levels and a wrong tutorial count is not being claimed at all. A check that flagged those would report its own
+# overreach as a fault in the repository. So: unambiguously-tutorial shapes ("N hand-built levels", "Level N ends",
+# "ends at N", "the N levels") are checked everywhere, and the bare "N levels" shape only on a line that also says
+# "tutorial".
+#
+# QUOTED TEXT IS SKIPPED, and that is not a convenience. A claim inside quotes is being DISCUSSED rather than
+# asserted - Tutorial.java's header quotes the old wrong wording in order to record the mistake - so a check that
+# could not tell the two apart would fail on the correction itself.
+if [ -z "${TUT:-}" ]; then
+  echo "  MISMATCH - Tutorial.LAST could not be read, so no comment can be checked against it" >&2
+  fails=$((fails + 1))
+else
+  STALE=$(python3 - "$TUT" <<'PY'
+import os, re, sys
+tut = int(sys.argv[1])
+WORDS = {w: i + 1 for i, w in enumerate(
+    "one two three four five six seven eight nine ten eleven twelve".split())}
+ALWAYS = [
+    r'(\w+)\s+hand-(?:built|written)\s+(?:tutorial\s+)?(?:levels?|tutorials?)',
+    r'level\s+(\w+)\s+ends',
+    r'ends\s+at\s+(?:level\s+)?(\w+)',
+    r'(?:all|its|the)\s+(\w+)\s+levels\b',
+]
+IN_TUTORIAL = [r'first\s+(\w+)\s+levels', r'(\w+)\s+levels\b']
+def strip_quotes(text):
+    return re.sub(r'"[^"\n]*"|`[^`\n]*`', lambda m: ' ' * len(m.group(0)), text)
+def value(token):
+    t = token.lower().strip('.,;:')
+    return int(t) if t.isdigit() else WORDS.get(t)
+bad = set()
+for dirpath, _, filenames in os.walk('src/main/java'):
+    for name in filenames:
+        if not name.endswith('.java'):
+            continue
+        with open(os.path.join(dirpath, name), encoding='utf-8', errors='replace') as fh:
+            for line in fh:
+                clean = strip_quotes(line)
+                pats = list(ALWAYS)
+                if re.search(r'tutorial', clean, re.I):
+                    pats += IN_TUTORIAL
+                for pat in pats:
+                    for m in re.finditer(pat, clean, re.I):
+                        v = value(m.group(1))
+                        if v is not None and v != tut:
+                            bad.add(v)
+print(' '.join(str(v) for v in sorted(bad)))
+PY
+)
+  echo "  comments stating a tutorial count: ${STALE:-none}   Tutorial.LAST: ${TUT:-?}"
+  if [ -z "$STALE" ]; then echo "  ok"; else
+    echo "  MISMATCH - a comment states a tutorial count of $STALE; Tutorial.LAST is $TUT" >&2; fails=$((fails + 1)); fi
+fi
 
 # AND THAT EVERY FILE THE README NAMES IS THERE. check-release-notes.sh does this for release notes and found
 # eleven releases naming files that were not attached; nothing did it for the README, which names HOLDFAST.md, the

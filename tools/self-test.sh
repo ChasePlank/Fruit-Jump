@@ -24,10 +24,11 @@ pass=0; fail=0
 ok()  { printf '  %-34s ok      %s\n' "$1" "$2"; pass=$((pass+1)); }
 bad() { printf '  %-34s FAIL    %s\n' "$1" "$2"; fail=$((fail+1)); }
 
-README_BAK=$(mktemp); SRC_BAK=$(mktemp)
+README_BAK=$(mktemp); SRC_BAK=$(mktemp); MM_BAK=$(mktemp)
 SRC=src/main/java/tropical/GameplayScreen.java
-cp README.md "$README_BAK"; cp "$SRC" "$SRC_BAK"
-restore() { cp "$README_BAK" README.md; cp "$SRC_BAK" "$SRC"; rm -f "$README_BAK" "$SRC_BAK"; }
+MM=src/main/java/tropical/MainMenu.java
+cp README.md "$README_BAK"; cp "$SRC" "$SRC_BAK"; cp "$MM" "$MM_BAK"
+restore() { cp "$README_BAK" README.md; cp "$SRC_BAK" "$SRC"; cp "$MM_BAK" "$MM"; rm -f "$README_BAK" "$SRC_BAK" "$MM_BAK"; }
 trap restore EXIT
 
 # ---- readme-counts.sh must notice a count that no longer matches the files ------------------------------------
@@ -251,12 +252,58 @@ else
   ST_BAK=$(mktemp); cp src/main/java/tropical/TutorialTest.java "$ST_BAK"
   sed -i 's/and it ends back at the/ends at 8 back to the/' src/main/java/tropical/TutorialTest.java
   out=$(tools/readme-counts.sh 2>&1); rc=$?
-  if [ $rc -ne 0 ] && echo "$out" | grep -q "a comment says the tutorial ends at 8"; then
-    ok "readme-counts notices a stale tutorial end" "$(echo "$out" | grep 'a comment says' | tr -s ' ')"
+  if [ $rc -ne 0 ] && echo "$out" | grep -q "a comment states a tutorial count of 8"; then
+    ok "readme-counts notices a stale tutorial end" "$(echo "$out" | grep 'a comment states' | tr -s ' ')"
   else
     bad "readme-counts notices a stale tutorial end" "reported clean with a comment saying 8"
   fi
   cp "$ST_BAK" src/main/java/tropical/TutorialTest.java; rm -f "$ST_BAK"
+fi
+
+# ---- readme-counts.sh must notice the SAME CLAIM SPELLED AS A WORD -------------------------------------------------
+# THE INJECTION THAT WAS MISSING, and the whole reason this check was widened. The check above proves the check
+# works on "ends at 8" - the phrasing it was written for - and it passed for months while four comments in the two
+# repositories said "eight hand-built levels", which is the same false claim written a way the pattern could not
+# see. A self-test that only exercises the phrasing the check already handles is a self-test that certifies the
+# blind spot. This is the fault that actually escaped, injected verbatim.
+if grep -q "// Eight hand-built levels" src/main/java/tropical/MainMenu.java; then
+  bad "readme-counts notices a word-form count" "the fixture is already stale"
+else
+  sed -i 's|// Nine hand-built levels|// Eight hand-built levels|' src/main/java/tropical/MainMenu.java
+  if ! grep -q "// Eight hand-built levels" src/main/java/tropical/MainMenu.java; then
+    bad "readme-counts notices a word-form count" "the injection did not apply"
+  else
+    out=$(tools/readme-counts.sh 2>&1); rc=$?
+    if [ $rc -ne 0 ] && echo "$out" | grep -q "a comment states a tutorial count of 8"; then
+      ok "readme-counts notices a word-form count" "$(echo "$out" | grep 'a comment states' | tr -s ' ')"
+    else
+      bad "readme-counts notices a word-form count" "reported clean with a comment saying Eight"
+    fi
+  fi
+  cp "$MM_BAK" src/main/java/tropical/MainMenu.java
+fi
+
+# ---- and readme-counts.sh must NOT fire on a claim it is only DISCUSSING -------------------------------------------
+# A NEGATIVE TEST, which the block above cannot be. The widened check skips quoted text, because Tutorial.java's
+# header quotes the old wrong wording in order to record the mistake - so a check that could not tell a quoted
+# claim from an asserted one would fail on the correction itself. That makes "does not fire" the correct behaviour
+# here, and a rule that is only ever tested in the firing direction is not tested. If the quote-skipping breaks,
+# nothing else in this file notices; this does.
+if grep -q '"Eight hand-built levels"' src/main/java/tropical/MainMenu.java; then
+  bad "readme-counts ignores a quoted claim" "the fixture is already quoted"
+else
+  sed -i 's|// Nine hand-built levels, one mechanic each|// the header once claimed "Eight hand-built levels"|' src/main/java/tropical/MainMenu.java
+  if ! grep -q '"Eight hand-built levels"' src/main/java/tropical/MainMenu.java; then
+    bad "readme-counts ignores a quoted claim" "the injection did not apply"
+  else
+    out=$(tools/readme-counts.sh 2>&1); rc=$?
+    if [ $rc -eq 0 ]; then
+      ok "readme-counts ignores a quoted claim" "quoted text did not trip the check"
+    else
+      bad "readme-counts ignores a quoted claim" "flagged quoted text: $(echo "$out" | grep 'a comment states' | tr -s ' ')"
+    fi
+  fi
+  cp "$MM_BAK" src/main/java/tropical/MainMenu.java
 fi
 
 # ---- TutorialTest must notice water the climber cannot swim in --------------------------------------------------

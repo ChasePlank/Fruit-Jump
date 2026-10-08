@@ -69,7 +69,7 @@ public class MainMenu extends Screen {
         });
 
         MenuButton tutorial = new MenuButton("Tutorial", () -> {
-            // Eight hand-built levels, one mechanic each, in an order. The engine has had them since aside
+            // Nine hand-built levels, one mechanic each, in an order. The engine has had them since aside
             // grew them and this menu never offered them, so Tutorial.java sat in this repository unused.
             manager.replace(new GameplayScreen(manager, 1, true));
         });
