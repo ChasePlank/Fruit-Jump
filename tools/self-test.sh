@@ -224,6 +224,8 @@ fi
 # that is 31. A tool sharing the mistake it was written to catch is the quietest kind of check that cannot fail.
 RC=tools/readme-counts.sh
 if grep -q '(Test|Suite)\\.java\$' "$RC"; then
+  # READ BEFORE THE INJECTION, or it reads the injected count.
+  before=$(tools/readme-counts.sh 2>&1 | sed -n 's/.*engine classes actually: \([0-9]*\).*/\1/p' | head -1)
   RC_BAK=$(mktemp); cp "$RC" "$RC_BAK"
   # PYTHON, NOT SED. The pattern contains ( and |, which sed's basic regex treats as literals, so the
   # substitution silently did nothing and the injection reported "the old pattern did not reproduce the
@@ -235,14 +237,18 @@ old = '(Test|Suite)' + chr(92) + '.java$'
 assert old in s, 'the pattern is not there to change'
 open(p, 'w').write(s.replace(old, '(Test)' + chr(92) + '.java$', 1))
 PY
+  # THE EXPECTED NUMBER IS DERIVED, NOT WRITTEN DOWN. It used to say "counts 32 classes instead of 31" - and adding
+  # one class to the engine broke this case, which is the same fault the case exists to catch, one level up: a check
+  # that encodes the state of the world goes stale when the world moves. So the good pattern's own answer is read
+  # first, and the injection has to come out exactly one higher. One higher is the fault: the old pattern counts the
+  # suite as a class.
   out=$(tools/readme-counts.sh 2>&1); rc=$?
-  # THE TEST IS THE NUMBER, NOT THE EXIT CODE. With the old pattern the count comes out 32 - which is what the
-  # README used to say and what the check used to agree with. Now that the README says 31, the old pattern FAILS
-  # rather than passing, so requiring rc=0 tested the wrong thing.
-  if echo "$out" | grep -q "engine classes actually: 32"; then
-    ok "readme-counts notices WaterSuite is a test" "with the old pattern it counts 32 classes instead of 31"
+  if [ -n "$before" ] && echo "$out" | grep -q "engine classes actually: $((before + 1))"; then
+    ok "readme-counts notices WaterSuite is a test" \
+       "with the old pattern it counts $((before + 1)) classes instead of $before"
   else
-    bad "readme-counts notices WaterSuite is a test" "the old pattern did not reproduce the fault"
+    bad "readme-counts notices WaterSuite is a test" \
+        "the old pattern did not reproduce the fault (expected $((before + 1)), got $(echo "$out" | sed -n 's/.*actually: \([0-9]*\).*/\1/p' | head -1))"
   fi
   cp "$RC_BAK" "$RC"; rm -f "$RC_BAK"
 else
