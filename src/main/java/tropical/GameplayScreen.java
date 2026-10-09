@@ -73,6 +73,35 @@ public class GameplayScreen extends Screen {
      * pattern, and an explanation of a fault trips the check for the fault.)
      */
     private final boolean tutorial;
+    // --- The sky, ported from the engine on 2026-10-09 -----------------------------------------------------
+    //
+    // THE RELEASE HAD A FLAT #87CEEB SKY. The sunset is the engine's identity - warm sky, a low sun, the world as
+    // a black silhouette against it - and it had never reached this fork, along with the two ridges that give it
+    // depth. That was found by measurement rather than memory: aside/tools/compare-release.sh counts the features
+    // this repository has and this one does not, and there were twenty of them.
+    //
+    // The shape of a ridge, as fractions of one period: eight points, each a height above the layer's baseline.
+    // A ridge with a flat top and a long fall reads as a hill; anything smoother reads as a wave.
+    private static final double[] RIDGE_X = {0.00, 0.13, 0.26, 0.44, 0.57, 0.71, 0.88, 1.00};
+    private static final double[] RIDGE_H = {0.58, 0.18, 0.46, 0.04, 0.34, 0.12, 0.42, 0.58};
+    /** One ridge period, in logical pixels before the 2x scale. */
+    private static final double RIDGE_PERIOD = 640;
+
+    /**
+     * How many levels the climb takes to reach the deepest sky.
+     *
+     * <p>A PLAIN 40 HERE, WHERE THE ENGINE SOURCES IT FROM ITS OWN RUN LENGTH: the engine's run ends at
+     * {@code LevelGen.FINAL_LEVEL} and its dusk is defined as that number, so its sun is fully down at exactly the
+     * level that ends the game. This fork has no ending yet - that is one of the twenty missing features - so the
+     * number stands alone. When the ending is ported, this should become the same reference the engine uses, or the
+     * sky and the ending will drift apart the first time either is retuned.</p>
+     */
+    private static final int LEVELS_TO_DUSK = 40;
+
+    /** The two ridge layers: the far one lifts higher, because it is further away. */
+    private final ParallaxLayer ridgeFar;
+    private final ParallaxLayer ridgeNear;
+
     private final Camera camera;
     private final int levelNum;
 
@@ -181,6 +210,8 @@ public class GameplayScreen extends Screen {
         // so all draw calls (sprites at 2x, tiles at 2x) land 1:1 on
         // screen with no resampling.
         camera = new Camera(CANVAS_W, CANVAS_H);
+        ridgeFar = ParallaxLayer.far(64);
+        ridgeNear = ParallaxLayer.near(26);
         camera.setRoom(60 * 32, map.heightCells() * 32);
 
         // Weapons
@@ -488,8 +519,33 @@ public class GameplayScreen extends Screen {
         final double S = SCALE;
 
         // Sky
-        gc.setFill(Color.web("#87CEEB"));
+        // SUNSET: warm sky, a low sun, and the world as a black silhouette against it. The sky deepens and the sun
+        // sinks with the level number, so a long run has a sense of going somewhere; tutorial levels keep the
+        // canonical sunset, because the hand-built ones are the game's identity at its plainest.
+        double dusk = tutorial ? 0.0
+                : Math.max(0.0, Math.min(1.0, (levelNum - 1) / (double) LEVELS_TO_DUSK));
+
+        gc.setFill(Color.web("#E8763A").interpolate(Color.web("#B4482C"), dusk));
         gc.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+        // The sun: backdrop, screen-anchored, no parallax. It is meant to read as far away, so it should NOT track
+        // the camera. It sinks and grows a little as the run goes on - which is what a sun near the horizon does,
+        // and it is what makes the deepening sky read as time passing rather than as a tint.
+        {
+            double sunR = CANVAS_H * (0.30 + 0.06 * dusk);
+            double sunY = CANVAS_H * (0.38 + 0.14 * dusk);
+            gc.setFill(Color.web("#F7C847"));
+            gc.fillOval(CANVAS_W / 2.0 - sunR, sunY - sunR, sunR * 2, sunR * 2);
+            gc.setFill(Color.web("#FBDD7E"));
+            gc.fillOval(CANVAS_W / 2.0 - sunR * 0.62, sunY - sunR * 0.72,
+                        sunR * 1.24, sunR * 1.24);
+        }
+
+        // TWO RIDGES, at 30% and 60% of the camera's speed, hung above the terrain's own top edge. Between the sun
+        // and the terrain there was nothing but flat orange, and the parallax machinery sat unused behind it.
+        double horizon = horizonScreenY();
+        drawRidge(ridgeFar, Color.web("#9C4E2C"), 0.10, horizon);
+        drawRidge(ridgeNear, Color.web("#4A2417"), 0.07, horizon);
 
         // Water: AFTER the sky (before it, the sky paints over the pool) and BEFORE the terrain, so
         // a pool reads as water in a pit with the tiles as its walls. The engine has generated
@@ -786,6 +842,59 @@ public class GameplayScreen extends Screen {
             if (d.aabb() == t) return true;
         }
         return false;
+    }
+
+private double horizonScreenY() {
+        double[] tops = new double[map.widthCells()];
+        int n = 0;
+        for (int c = 0; c < map.widthCells(); c++) {
+            for (int r = 0; r < map.heightCells(); r++) {
+                char ch = map.cell(r, c);
+                if (ch == '#' || ch == 'C' || ch == '^' || ch == '/' || ch == '\\' || ch == '~') {
+                    tops[n++] = camera.worldToScreenY(r * 32.0);
+                    break;
+                }
+            }
+        }
+        if (n == 0) return CANVAS_H * 0.72;   // no terrain at all: fall back to where it used to be
+        java.util.Arrays.sort(tops, 0, n);
+        return tops[n / 2];
+    }
+
+private void drawRidge(ParallaxLayer layer, Color colour, double amplitudeFraction, double horizon) {
+        final double S = SCALE;
+        double period = RIDGE_PERIOD * S;
+        double shift = -layer.getOffsetX(camera) * S;
+        double baseline = horizon - layer.getOffsetY();   // the layer's offsetY is now a lift above the horizon
+        double amplitude = amplitudeFraction * CANVAS_H;
+
+        // ONE POLYGON ACROSS THE WHOLE SPAN, not one per period. Tiling it and fixing the seam by overlapping
+        // adjacent tiles by a pixel did NOT work - the shared edge is a slanted line meeting a vertical one, and
+        // the seam survived at (174,87,47) against the ridge's (156,78,44), a 22% blend with the sky. Measured
+        // twice: once to see it, once to find the overlap had not shifted it. A single polygon has no internal
+        // edges to blend, which is the only version of this that cannot have the fault.
+        int n = RIDGE_X.length;
+        int firstTile = (int) Math.floor(-shift / period) - 1;
+        int lastTile = (int) Math.ceil((CANVAS_W - shift) / period) + 1;
+        int points = n + (lastTile - firstTile) * (n - 1) + 2;
+        double[] px = new double[points];
+        double[] py = new double[points];
+        int k = 0;
+        for (int t = firstTile; t <= lastTile; t++) {
+            double x0 = shift + t * period;
+            // Skip the tile's first point after the first tile: consecutive periods share it, and two identical
+            // consecutive vertices are the kind of thing that draws a hairline nobody can explain later.
+            for (int i = (t == firstTile ? 0 : 1); i < n; i++) {
+                px[k] = x0 + RIDGE_X[i] * period;
+                py[k] = baseline - RIDGE_H[i] * amplitude;
+                k++;
+            }
+        }
+        // Down the right edge, along the bottom, and the closing edge runs back up the left one.
+        px[k] = px[k - 1]; py[k] = CANVAS_H; k++;
+        px[k] = px[0];     py[k] = CANVAS_H; k++;
+        gc.setFill(colour);
+        gc.fillPolygon(px, py, k);
     }
 
     private void drawGroundTile(Physics.AABB t, java.util.HashSet<Long> solidCells) {
