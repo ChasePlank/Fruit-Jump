@@ -178,6 +178,9 @@ public class GameplayScreen extends Screen {
         audio = new AudioSystem();
         world.setAudio(audio);
         sound = Sound.load(".");
+        // The engine asks; the screen plays. AudioSystem records which track is current and knows nothing about
+        // JavaFX, and Sound is the audio - so the bridge is here, in the screen, exactly like the volume.
+        audio.playMusic(AudioSystem.Music.LEVEL);
         look = Sprites.buildLook(CharacterConfig.load());
         inventory = new PlayerInventory();
 
@@ -412,6 +415,9 @@ public class GameplayScreen extends Screen {
         // Engine step
         world.update(dt);
         sound.drain(audio);
+        // AND THE MUSIC, the other half of the same bridge. Per-frame is safe because playMusic ignores a request
+        // for the track already playing - and it has to be per-frame, because the boss changes the engine's mind.
+        sound.playMusic(audio.currentMusicName());
         combat.update(dt);
 
         // Enemy contact (stomp or hurt — Combat decides)

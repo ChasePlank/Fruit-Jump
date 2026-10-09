@@ -25,6 +25,10 @@ import java.util.Map;
 public class Sound {
 
     private final Map<String, AudioClip> clips = new LinkedHashMap<>();
+    /** The music tracks, kept apart from the cues: they loop, and at most one of them is playing. */
+    private final Map<String, AudioClip> music = new LinkedHashMap<>();
+    /** What is playing now, so a request for the same track is not a restart. */
+    private String nowPlaying;
     private final Map<String, String> missing = new LinkedHashMap<>();
     private boolean enabled = true;
 
@@ -40,6 +44,25 @@ public class Sound {
     public static Sound load(String root) {
         Sound s = new Sound();
         File dir = new File(root, "audio");
+        // MUSIC, a separate list because it is a separate kind of asset - a loop rather than a cue. Until now the
+        // engine could ASK for four tracks and none of them had a file nor a way to play: every request was silence,
+        // including the boss asking for its own theme on every phase change.
+        for (String track : AudioSystem.musicNames()) {
+            String source = null;
+            for (String ext : new String[]{".wav", ".mp3"}) {
+                File f = new File(dir, track + ext);
+                if (f.isFile()) { source = f.toURI().toString(); break; }
+            }
+            if (source == null) { s.missing.put(track, "no file"); continue; }
+            try {
+                AudioClip c = new AudioClip(source);
+                c.setCycleCount(AudioClip.INDEFINITE);  // a track is a loop: it plays until asked to stop
+                s.music.put(track, c);
+            } catch (Exception ex) {
+                s.missing.put(track, String.valueOf(ex.getMessage()));
+            }
+        }
+
         for (String cue : AudioSystem.sfxNames()) {
             String source = null;
             for (String ext : new String[]{".wav", ".mp3"}) {
@@ -101,6 +124,42 @@ public class Sound {
             // A clip that will not start must never take the game with it.
         }
     }
+
+    /**
+     * Play one of the engine's tracks, stopping whatever else was playing.
+     *
+     * <p>The screen that owns this Sound calls it with the engine's current request every frame. Asking for the same
+     * track twice does nothing, which is what makes a per-frame call safe - and it has to be per-frame, because the
+     * engine changes its mind mid-level: the boss switches to its own theme on every phase change.
+     */
+    public void playMusic(String track) {
+        if (track == null || track.equals(nowPlaying)) return;
+        stopMusic();
+        if (!enabled) { nowPlaying = track; return; }
+        AudioClip c = music.get(track);
+        nowPlaying = track;
+        if (c == null) return;                  // no file for this track, or no sound device: nothing to do
+        try {
+            c.play();
+        } catch (Exception ignored) {
+            // A track that will not start must never take the game with it.
+        }
+    }
+
+    /** Stop the music, so a menu theme does not play under a level. */
+    public void stopMusic() {
+        if (nowPlaying == null) return;
+        AudioClip c = music.get(nowPlaying);
+        nowPlaying = null;
+        if (c == null) return;
+        try {
+            c.stop();
+        } catch (Exception ignored) {
+        }
+    }
+
+    /** How many tracks loaded. A headless run can say what it would have played without a sound device. */
+    public int musicLoaded() { return music.size(); }
 
     public void setEnabled(boolean on) { enabled = on; }
     public boolean isEnabled() { return enabled; }

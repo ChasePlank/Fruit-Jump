@@ -24,6 +24,13 @@ public class TitleScreen extends Screen {
 
     public TitleScreen(ScreenManager manager) {
         super(manager);
+        // The evening starts here: the title theme, loaded and looping for as long as the screen is up.
+        //
+        // AFTER super(), because this release compiles with --release 17 - it promises Java 17+ - and a statement
+        // before the superclass call is a Java 25 feature. My own javac accepted it and the release's build did not,
+        // which is how a jar came to be committed whose build had failed silently.
+        Sound titleMusic = Sound.load(".");
+        titleMusic.playMusic("title-theme");
 
         // NOT "TROPICAL PUNCH". That is the name of a different, unbuilt game, and this file was the last
         // place still saying it - Sprite.java already carries the note that the radioactive premise belongs

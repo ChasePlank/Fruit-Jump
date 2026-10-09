@@ -49,7 +49,7 @@ public class AudioSystem {
     }
     
     // --- Music states ---
-    enum Music {
+    public enum Music {
         TITLE("title-theme"),
         LEVEL("level-theme"),
         BOSS("boss-theme"),
@@ -58,6 +58,9 @@ public class AudioSystem {
         
         final String trackName;
         Music(String track) { this.trackName = track; }
+
+        /** The file this track names, without an extension. Public so a screen can play the track it requested. */
+        public String track() { return trackName; }
     }
     
     // --- Event log (headless output) ---
@@ -77,6 +80,21 @@ public class AudioSystem {
     public static final int LOG_LIMIT = 500;
 
     /** Append an event, dropping the oldest once the log is full. */
+    /**
+     * The track name the engine is currently asking for, or null.
+     *
+     * <p>The field is package-private, so nothing outside the engine could read it - which is why `playMusic` could
+     * record a track and no one could act on it. The screen is the other half: it reads this and plays it.
+     */
+    public String currentMusicName() { return currentMusic.trackName; }
+
+    /** Every track the engine can ask for, derived from the enum so a track cannot be added without this seeing it. */
+    public static String[] musicNames() {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        for (Music m : Music.values()) if (m.trackName != null) out.add(m.trackName);
+        return out.toArray(new String[0]);
+    }
+
     private void log(String event) {
         eventLog.add(event);
         while (eventLog.size() > LOG_LIMIT) eventLog.remove(0);

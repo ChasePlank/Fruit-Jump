@@ -39,9 +39,18 @@ public class AudioTest extends Application {
         // present but unplayable is already recorded by Sound.load as missing with the exception that stopped it.
         boolean ok = (missing == 0) && (loaded == total);
 
+        // AND THE MUSIC, which is a separate list and was a separate silence: AudioSystem.Music declared four
+        // tracks, the boss asked for one of them on every phase change, and NOT ONE had a file. The cues were in
+        // the same state until a generator was written for them. This is the check that keeps the tracks honest.
+        int tracksWanted = AudioSystem.musicNames().length;
+        int tracksLoaded = s.musicLoaded();
+        System.out.println("music tracks loaded: " + tracksLoaded + " of " + tracksWanted);
+        ok = ok && tracksLoaded == tracksWanted;
+
         System.out.println(ok
-                ? "SUCCESS: all " + total + " cue(s) present and loaded"
-                : "FAILURE: " + missing + " cue(s) missing, " + loaded + " of " + total + " loaded");
+                ? "SUCCESS: all " + total + " cue(s) and " + tracksWanted + " track(s) present and loaded"
+                : "FAILURE: " + missing + " missing, " + loaded + " of " + total + " cue(s) loaded, "
+                  + tracksLoaded + " of " + tracksWanted + " track(s) loaded");
         Platform.exit();
         System.exit(ok ? 0 : 1);
     }

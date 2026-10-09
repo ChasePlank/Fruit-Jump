@@ -55,6 +55,11 @@ public class VictoryScreen extends Screen {
         // either. Two screens differing by one boolean and meaning opposite things is stronger than a new layout.
         //
         // No -fx-background-color here any more: it would paint over the canvas.
+        // The fourth track, and the one that most needed an ending to exist: this screen is the only place
+        // victory-theme belongs, and until this hour there was no such screen and no such file.
+        Sound endMusic = Sound.load(".");
+        endMusic.playMusic("victory-theme");
+
         Canvas sky = new Canvas();
         root.widthProperty().addListener((o, a, b) -> paintSky(sky));
         root.heightProperty().addListener((o, a, b) -> paintSky(sky));
