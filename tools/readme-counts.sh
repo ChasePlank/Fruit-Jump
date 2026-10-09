@@ -190,7 +190,9 @@ FEATURES=$(sed -n "/^## What.s in it/,/^## In the engine/p" README.md)
 # MOVERS AND PARALLAX LEFT THIS LIST ON 2026-10-09, because both were wired and the check had become the stale
 # thing: it forbade the feature list from claiming two features that are in the game. A check whose assumptions age
 # is the same fault as the README claim it was written to guard, one layer up.
-for word in "boss fight" "ai director" "multiplayer" "tcp server"; do
+# "boss fight" LEFT THIS LIST ON 2026-10-09 with movers and parallax: the boss is placed by the generator now, so
+# forbidding the feature list from claiming one would forbid the truth. What remains here is what is still absent.
+for word in "ai director" "multiplayer" "tcp server"; do
   if echo "$FEATURES" | grep -qi "$word"; then
     echo "  MISMATCH - the feature list claims \"$word\", which is not in the game" >&2
     fails=$((fails + 1))
@@ -209,7 +211,7 @@ echo "  ok"
 # the failure this list just had: three entries against four bullets, and no way to see it.
 UNWIRED_BULLETS=$(sed -n '/^## In the engine, not in the game/,/^## Not in this repository/p' README.md | grep -cE "^- \*\*")
 UNWIRED_CHECKED=0
-for pair in "Boss:new Boss(" "AIDirector:new AIDirector("; do
+for pair in "AIDirector:new AIDirector("; do
   UNWIRED_CHECKED=$((UNWIRED_CHECKED + 1))
   cls="${pair%%:*}"; call="${pair#*:}"
   # BY BASENAME, not by a pattern built from $cls. The first version interpolated the class name into a regex and

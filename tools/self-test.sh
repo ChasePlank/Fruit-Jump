@@ -178,18 +178,18 @@ fi
 # three, so wiring the fourth would have made the README quietly false with nothing to show it.
 # AND THIS CASE NOW INJECTS THE BOSS, because MovingPlatform left the unwired list when it was wired: the case was
 # checking that the tool still called a wired class unwired.
-if ! grep -q "new Boss(" src/main/java/tropical/engine/World.java; then
+if ! grep -q "new AIDirector(" src/main/java/tropical/engine/World.java; then
   W_BAK=$(mktemp); cp src/main/java/tropical/engine/World.java "$W_BAK"
   python3 - <<'PY'
 p='src/main/java/tropical/engine/World.java'; s=open(p).read()
 i = s.index('public void addMover(')
-open(p,'w').write(s[:i] + '    // fault injection\n    void probe() { Boss b = new Boss(0, 0, 64, 64); }\n\n' + s[i:])
+open(p,'w').write(s[:i] + '    // fault injection\n    void probe() { AIDirector d = new AIDirector(); }\n\n' + s[i:])
 PY
   out=$(tools/readme-counts.sh 2>&1)
-  if echo "$out" | grep -q "WIRED?   Boss"; then
-    ok "readme-counts notices a wired Boss" "WIRED? Boss is constructed in 1 file"
+  if echo "$out" | grep -q "WIRED?   AIDirector"; then
+    ok "readme-counts notices a wired AIDirector" "WIRED? AIDirector is constructed in 1 file"
   else
-    bad "readme-counts notices a wired Boss" "reported clean with Boss constructed"
+    bad "readme-counts notices a wired AIDirector" "reported clean with AIDirector constructed"
   fi
   cp "$W_BAK" src/main/java/tropical/engine/World.java; rm -f "$W_BAK"
 else
@@ -199,23 +199,23 @@ fi
 # ---- readme-counts.sh must notice a fifth unwired bullet the list does not cover ---------------------------------
 # THE PARALLAX BULLET IS GONE - it is wired - so this hangs itself on the Boss bullet, which is still there. The
 # case is about the COUNT: a bullet the list of checks does not cover has to be noticed.
-if grep -q "^- \*\*Boss fights\*\*" README.md; then
+if grep -q "^- \*\*AI Director\*\*" README.md; then
   RB_BAK=$(mktemp); cp README.md "$RB_BAK"
   python3 - <<'PY'
 p='README.md'; s=open(p).read()
-old = '- **Boss fights**'
-assert old in s, 'the boss bullet is not there'
+old = '- **AI Director**'
+assert old in s, 'the director bullet is not there'
 open(p,'w').write(s.replace(old, old + '\n- **Something else** — nothing builds it either.', 1))
 PY
   out=$(tools/readme-counts.sh 2>&1)
-  if echo "$out" | grep -q "the README lists 3 unwired thing"; then
+  if echo "$out" | grep -q "the README lists 2 unwired thing"; then
     ok "readme-counts notices an uncovered unwired bullet" "$(echo "$out" | grep 'unwired:' | tr -s ' ')"
   else
-    bad "readme-counts notices an uncovered unwired bullet" "reported clean with three bullets and two checks"
+    bad "readme-counts notices an uncovered unwired bullet" "reported clean with two bullets and one check"
   fi
   cp "$RB_BAK" README.md; rm -f "$RB_BAK"
 else
-  bad "readme-counts notices an uncovered unwired bullet" "no boss bullet to follow"
+  bad "readme-counts notices an uncovered unwired bullet" "no director bullet to follow"
 fi
 
 # ---- readme-counts.sh must notice WaterSuite is a test, not a class ---------------------------------------------

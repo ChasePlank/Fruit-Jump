@@ -53,6 +53,11 @@ java -jar target/tropical-punch-1.0.0.jar
 
 ## What's in it
 
+- **A boss, every tenth level.** `Boss` is 368 lines of multi-phase AI, telegraphed attacks and weak-point
+  windows: a hunched, horned brute that only takes damage while the mark on its
+  back is lit, and that throws charges when you keep your distance. It is placed by the generator on the
+  tenth level of a run, seeded from the level so the fight is the same on every attempt.
+
 A complete platformer engine, built and tested layer by layer:
 
 - **Physics** — fixed timestep (1/60), swept AABB collision (slab method), iterative multi-collision resolution, slopes (45°/30° walkable, 63°+ slides)
@@ -82,16 +87,6 @@ the section above because a reader should not have to run `grep` to find out whe
 
 Each one also says what wiring it would take, so the decision is a read rather than a project.
 
-- **Boss fights** — `Boss` is 368 lines of multi-phase AI, telegraphed attacks, weak-point windows and wall-stun.
-  **THE WORLD SIDE IS WIRED AS OF 2026-10-09**: its box is visible to the two things outside it that need one,
-  `World.setBoss` puts its body in the physics and wires its volley, arrows and blasts are routed at it, it thinks
-  in `World.update` where the enemies do, `LevelMap` will declare one, and the screen draws the sprite, the
-  danger rim and the lit weak point. **What is still missing is a level that declares one** — which is why the
-  sentence below about nothing constructing one is still true, and why `readme-counts.sh` still guards it.
-  Nothing builds one. **To wire:** `new Boss(x, y, w, h)` in a level; the screen calling `boss.update(dt, player)`
-  each frame and `boss.hit(damage)` when the player's weapons connect; `setVolleyCallback` is the hook where the
-  boss's own projectiles get spawned into the world; and a draw call. Nothing calls any of it today. **Needs a
-  level to have one**, which is the real work.
 - **AI Director** — `AIDirector` is L4D-style pacing (BUILD/PEAK/RELAX/RECOVER) with an intensity signal and a
   mercy window. Nothing builds one, *and* nothing reads its output — `Combat` reports into it and no code asks it
   anything. **To wire:** `new AIDirector()`, `combat.setDirector(director)` (that hook exists), and

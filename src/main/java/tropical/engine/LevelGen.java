@@ -37,6 +37,20 @@ public class LevelGen {
     public static final int PLANK_EVERY = 4;
 
     /**
+     * How often a run gets a boss: every tenth level.
+     *
+     * <p>THE PACING DECISION, AND IT IS ONE CONSTANT. The boss exists in the tutorial, where it teaches the fight;
+     * without this it exists ONLY there, and a player who starts a New Game and plays a hundred levels would never
+     * meet one - a feature in a lesson and nowhere else. A boss every tenth level is the ordinary shape of that
+     * rhythm, and it is reversible by changing this number, which is why the number is here and not spread through
+     * the placement code.
+     *
+     * <p>It is placed ON the walk rather than in a side arena, and it is killable rather than avoidable - see
+     * {@link #bossColumn}, which will only use a stretch the boss can actually stand in.
+     */
+    public static final int BOSS_EVERY = 10;
+
+    /**
      * How often a run gets a moving platform: every third level.
      *
      * <p>Three rather than ten, because a moving platform is furniture rather than a set-piece - and a ferry is not
@@ -147,6 +161,44 @@ public class LevelGen {
      * at the same height. The engine's first version searched only the middle half of the walk and found NOTHING on
      * any of the thirteen levels that asked - the whole walk is searched here for that reason.
      */
+    /**
+     * A column the boss can stand in, or -1 if this level has no such stretch.
+     *
+     * <p><b>IT REFUSES RATHER THAN GUESSES.</b> A generated level is a random walk, so a boss dropped at "about the
+     * middle" would sometimes be inside a wall or over a pit - the kind of fault that reads as "the boss is stuck
+     * in the floor" in play and appears in no test. So this looks for a stretch that is FLAT over four columns and
+     * CLEAR over the two cells the boss's 64x64 body occupies, and returns -1 rather than a bad spot. The middle
+     * half is searched first so the fight is not on top of the spawn or the exit.
+     *
+     * <p>The boss is two cells wide and two tall: its feet sit on the walk's surface at {@code pathFloor[col] * 32}
+     * and its centre is half its height above that, which is why the rows checked are R-1 and R-2.
+     */
+    private int bossColumn(char[][] g) {
+        int from = width / 4, to = (width * 3) / 4 - 3;
+        List<Integer> candidates = new ArrayList<>();
+        for (int col = from; col <= to; col++) {
+            if (pathFloor[col] < 3 || pathFloor[col + 1] < 3) continue;
+            int r = pathFloor[col];
+            if (pathFloor[col + 1] != r) continue;
+            // flat either side too, so the fight does not open against a step
+            if (col > 0 && pathFloor[col - 1] != r) continue;
+            if (col + 2 < width && pathFloor[col + 2] != r) continue;
+            boolean clear = true;
+            for (int c = col; c <= col + 1 && clear; c++)
+                for (int rr = r - 1; rr >= r - 2; rr--) {
+                    // ' ' is the only empty cell: everything else is terrain, a hazard, water or content.
+                    if (g[rr][c] != ' ') { clear = false; break; }
+                }
+            if (clear) candidates.add(col);
+        }
+        if (candidates.isEmpty()) return -1;
+        // AND ANY OF THEM, BY THE LEVEL'S OWN SEED. Taking the first was the first version, and every tenth level
+        // in the range put the boss at the same x - the first qualifying stretch is often the same one, so the
+        // fight always opened in the same place in the level. Seeded, so it is still the same encounter on every
+        // attempt at that level, which is what the level's seed is for.
+        return candidates.get(rng.nextInt(candidates.size()));
+    }
+
     private int[] ferryGap(char[][] g) {
             // THE WHOLE WALK, NOT ITS MIDDLE HALF. The first version searched the middle half and found NOTHING on any
             // of the thirteen levels that asked for a ferry - measured - because a gap in the carved walk is rare and
@@ -816,6 +868,17 @@ public class LevelGen {
         //
         // Found in the Aside edition by a difficulty-curve probe that walked levels 1 to 40 and died on level
         // 10, and ported here because the two copies of this file are meant to be the same.
+        // EVERY TENTH LEVEL GETS A BOSS. Placed in the SAFE-ROOM path, which is the path tenth levels take - the
+        // first attempt at this in the engine put a different block on the walk path and it fired on one level in
+        // forty, which is how the two paths were told apart.
+        if (levelNum > 0 && levelNum % BOSS_EVERY == 0) {
+            int col = bossColumn(g);
+            if (col >= 0) {
+                int surface = pathFloor[col] * 32;
+                this.lastMap.addBoss(new LevelMap.BossSpec(col * 32 + 32, surface - 32, 64, 64, levelNum));
+            }
+        }
+
         this.lastPathFloor = pathFloor.clone();
         return this.lastMap;
     }
