@@ -660,7 +660,11 @@ public class GameplayScreen extends Screen {
         //
         // Ported from the engine, 6 October 2026.
         for (Enemy e : world.enemies) {
-            if (e.dead) continue;
+            // A DEAD ENEMY IS DRAWN UNTIL ITS FADE RUNS OUT. This skipped dead ones outright, so every kill was a
+            // disappearance on the frame it happened - and it left Enemy.deadTimer counting a fade nothing drew.
+            // The counter was the whole mechanism; this is the half that was missing. See Enemy.deathFade().
+            final double fade = e.deathFade();
+            if (fade <= 0) continue;
             // Drawn at the SPRITE's own size and bottom-aligned on the body's feet, rather than stretched into the
             // collision box. A snake is longer than it is tall, and forcing it into a square box would squash it.
             boolean isSnake = e.kind == Enemy.KIND_SNAKE;
@@ -683,7 +687,15 @@ public class GameplayScreen extends Screen {
             double sx = camera.worldToScreenX(e.body.x) - w / 2;
             double sy = camera.worldToScreenY(e.body.y + e.body.hh) - h;
             if (sx > CANVAS_W || sx + w < 0) continue;
+            gc.setGlobalAlpha(fade);
             gc.drawImage(img, sx, sy, w, h);
+            gc.setGlobalAlpha(1.0);
+            // A white wash over the first third of the fade: the hit reads as a hit, and then the thing goes.
+            double wash = Math.max(0.0, 1.0 - (1.0 - fade) * 3.0);
+            if (wash > 0) {
+                gc.setFill(Color.web("#FFFFFF", wash * 0.75));
+                gc.fillRect(sx, sy, w, h);
+            }
         }
 
         // Bats. The engine has placed them, flown them and stunned the player with them since the
@@ -940,6 +952,12 @@ private void drawRidge(ParallaxLayer layer, Color colour, double amplitudeFracti
         // Keys
         gc.setFill(Color.GOLD);
         gc.fillText("Key x" + inventory.keys, 40, 120);
+        // COINS, which the game has been counting in secret. Pickup increments them, the save file persists them,
+        // and the HUD has never shown them - so a player collects one, hears the cue, and has no way to know it
+        // counted. WHAT COINS ARE FOR is the open question the field's own comment records; that they are LEGIBLE
+        // is not a question. Below the keys line and clear of the air bar, which sits at y 138.
+        gc.setFill(Color.web("#F7C847"));
+        gc.fillText("Coins " + inventory.coins, 40, 176);
         // AIR. Drawn only while it is actually draining, so a climber who is not swimming never sees a bar they do
         // not need - and the bar's arrival is itself the warning that they are under. Blue until it gets low, then
         // red. Ported from the engine, 6 October 2026; the breath meter has always been there and this screen

@@ -354,7 +354,15 @@ public class World {
             }
         }
         for (Enemy e : enemies) {
-            if (!e.dead && playerBody != null) {
+            if (e.dead) {
+                // THE DEATH TIMER RUNS HERE AND NOWHERE ELSE, and it could not run at all before. `updateAI`
+                // increments `deadTimer` and returns, and this loop skipped dead enemies entirely - so the counter
+                // never advanced past zero, which is why nothing had ever read it and why the death fade it
+                // measures was never drawn. A timer behind the guard that excludes the only case it exists for.
+                e.updateAI(dt, 0, 0);
+                continue;
+            }
+            if (playerBody != null) {
                 if (e.topDown) {
                     e.hitWall = e.senseWallTopDown(tiles);
                 } else {

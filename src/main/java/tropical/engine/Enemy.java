@@ -38,6 +38,9 @@ public class Enemy {
     // Stomp
     public boolean dead = false;
     double deadTimer = 0;
+
+    /** How long the death visual lasts. One number, read by the view and by nothing else. */
+    public static final double DEATH_SECONDS = 0.35;
     boolean stompImmune = false;  // spiked/shielded: stomping hurts the player
     
     // Ledge/wall detection memory (set by World each frame)
@@ -95,6 +98,20 @@ public class Enemy {
      * AI update. The World reports hitWall/atLedge for this frame.
      * Player position used for chase logic.
      */
+    /**
+     * 1 while alive, falling to 0 over {@link #DEATH_SECONDS} after death.
+     *
+     * <p><b>THIS IS THE READER `deadTimer` NEVER HAD.</b> The field has been incremented on every frame since an
+     * enemy died - four writes, no reads, which means the code was keeping
+     * time for a death visual that was never drawn: `GameplayScreen` skipped dead enemies outright, so they
+     * vanished on the frame they were killed. The counter was the whole mechanism and the drawing was the missing
+     * half. Returning a fade rather than exposing the timer keeps the arithmetic here, where the duration lives.
+     */
+    public double deathFade() {
+        if (!dead) return 1.0;
+        return Math.max(0.0, 1.0 - deadTimer / DEATH_SECONDS);
+    }
+
     public void updateAI(double dt, double playerX, double playerY) {
         if (dead) {
             deadTimer += dt;
