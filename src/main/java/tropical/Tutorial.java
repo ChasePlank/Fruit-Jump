@@ -62,6 +62,19 @@ public class Tutorial {
         put(g, W - 3, FLOOR - 1, 'E');
 
         switch (level) {
+            case 1 -> {
+                // THE ONE-WAY PLANK, and it is here because of a fault this project has had four times, seen from
+                // the other side: the generator started placing one-way platforms in the run, and the TUTORIAL had
+                // never shown one - the game contained a movement affordance it never taught. The movement level is
+                // where it belongs.
+                //
+                // TWO ROWS UP: 64px, inside the 73px jump apex, and the height is the whole lesson. You pass UP
+                // THROUGH a one-way and land on top, which cannot be shown one row up, because a body standing on
+                // the walk already occupies the row above it. The snack is the reason to go up. Optional, so the
+                // jump-only bot walks past it.
+                for (int c = 20; c <= 22; c++) put(g, c, FLOOR - 2, '=');
+                put(g, 21, FLOOR - 3, 'h');
+            }
             case 2 -> {
                 // One spider to stomp.
                 put(g, 22, FLOOR - 1, 'o');

@@ -26,6 +26,16 @@ public class LevelGen {
     // Player physics (measured from the engine at 1x velocity):
     // jump v0 = 420, gravity 1200 -> apex ~73px ~ 2.3 cells
     // run speed 200px/s, air time ~0.7s -> jump distance ~140px ~ 4.4 cells
+    /**
+     * How often a run gets a one-way plank: every fourth level.
+     *
+     * <p><b>THE RUN NEVER CONTAINED ONE.</b> A coverage probe over levels 1 to 40 found water on 18, cracked floor
+     * on 36, bats on 36, snakes on 26, pickups on 29 - and ONE-WAY PLATFORMS ON NONE. The plank you jump up through
+     * existed in the parser and in the physics and no generated level had one. Fourth time this shape has turned up:
+     * the mechanic exists, the run never shows it.
+     */
+    public static final int PLANK_EVERY = 4;
+
     static final int BASE_MAX_GAP_CELLS = 3;    // conservative: 3-cell gaps
 
     /**
@@ -121,6 +131,33 @@ public class LevelGen {
     }
 
     /** Generate a level as ASCII rows. */
+    /**
+     * A gap a plank can bridge, as {middle column, walk row}, or null.
+     *
+     * <p>IT REFUSES RATHER THAN GUESSES: a run of columns with NO floor, two to four wide, flat floors either side
+     * at the same height. The engine's first version searched only the middle half of the walk and found NOTHING on
+     * any of the thirteen levels that asked - the whole walk is searched here for that reason.
+     */
+    private int[] ferryGap(char[][] g) {
+            // THE WHOLE WALK, NOT ITS MIDDLE HALF. The first version searched the middle half and found NOTHING on any
+            // of the thirteen levels that asked for a ferry - measured - because a gap in the carved walk is rare and
+            // turns up wherever the walk happened to jump: level 3's sits at columns 9 and 10, well outside a search
+            // that started at fifteen. The guard columns are the spawn area at the left and the exit stair at the right.
+            for (int col = 6; col <= width - 8; col++) {
+                if (pathFloor[col] >= 0) continue;
+                int start = col, end = col;
+                while (end + 1 < width && pathFloor[end + 1] < 0) end++;
+                int len = end - start + 1;
+                col = end;
+                if (len < 2 || len > 4) continue;
+                if (start == 0 || end + 1 >= width) continue;
+                int left = pathFloor[start - 1], right = pathFloor[end + 1];
+                if (left < 3 || right < 3 || left != right) continue;   // flat either side, and both are real floors
+                return new int[] { (start + end) / 2, left };
+            }
+            return null;
+        }
+
     public LevelMap generate() {
         // Every tenth level is a safe room.
         if (levelNum % 10 == 0) return generateSafeRoom();
@@ -608,6 +645,24 @@ public class LevelGen {
         }
 
         // Assemble rows (top to bottom)
+        // A ONE-WAY PLANK OVER A GAP, every fourth level. A one-way platform is the thing you jump up THROUGH and
+        // then stand on, and this fork's generated run never contained one.
+        //
+        // WRITTEN INTO THE GRID RATHER THAN DECLARED, because a one-way IS a cell - LevelMap parses '=' into
+        // world.oneways - AND IT MUST BE WRITTEN BEFORE THE MAP IS BUILT FROM `rows`, which is the next statement.
+        // In the engine this block first went in after the build, where it wrote into an array nothing would read:
+        // it silently placed nothing on the one level that had a gap, while the ferry in the next block worked,
+        // because a mover is a spec added to the finished map and a plank is a cell.
+        if (levelNum > 0 && levelNum % PLANK_EVERY == 0) {
+            int[] gap = ferryGap(g);
+            if (gap != null) {
+                int row = gap[1] - 1;
+                for (int c = gap[0] - 1; c <= gap[0] + 1; c++) {
+                    if (c > 0 && c < width - 1 && g[row][c] == ' ') g[row][c] = '=';
+                }
+            }
+        }
+
         List<String> rows = new ArrayList<>();
         for (char[] row : g) rows.add(new String(row));
         this.lastMap = new LevelMap(rows);
