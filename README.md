@@ -93,19 +93,14 @@ Each one also says what wiring it would take, so the decision is a read rather t
   `director.update(dt)` each frame — **and then something has to consult `getSpawnMultiplier()` and
   `isMercyActive()`**, which is the part that does not exist: the generator would have to ask it when placing
   enemies. So this one is a design decision about how much it steers, not just a wire.
-- **Moving platforms** — `World` has `movers` and `addMover`, and `World.update` already moves and carries them;
-  no level places one. **To wire:** `new MovingPlatform(PathType, x0, y0, w, h, ...)` and `world.addMover(...)`.
-  **This is the smallest of the four** — the physics half is done and nothing else is missing.
-- **Parallax** — `Camera.parallaxOffset` and `ParallaxLayer` exist; no layer is drawn, so the sky is flat.
-  **To wire:** `new ParallaxLayer(scrollFactor, offsetY)` and a draw call using `getOffsetX(camera)` — and the
-  layers need something to draw, so this one comes with art or with a procedural shape standing in for it.
-
 ## Not in this repository
 
-**Two things this list used to claim.** The feature list above said "moving platforms with carry" and "parallax".
-Neither is in the game: `MovingPlatform` and `ParallaxLayer` are built and nothing constructs or draws them, which
-is what the section below says in detail. A feature list is read first and the detail is read later, so the claim
-was the part that misled - the same shape as the multiplayer claim underneath it.
+**Two things this list used to claim, and now two things it can claim again.** The feature list said "moving
+platforms with carry" and "parallax" while neither was in the game: `MovingPlatform` and `ParallaxLayer` were built
+and nothing constructed or drew them. Both were wired on 2026-10-09: moving platforms are placed by the generator as a ferry over a gap every third level, and the parallax ridges are drawn as two layers hung on the terrain's own top edge. The paragraph
+is kept rather than deleted because the shape of the mistake is worth keeping: **a feature list is read first and
+the detail is read later, so the claim is the part that misleads** - the same shape as the multiplayer claim
+underneath it, which is still a claim with nothing behind it.
 
 **Multiplayer.** This README used to claim an authoritative TCP server, client prediction and reconciliation,
 lag compensation and entity interpolation. **No file for any of it has ever been committed on any branch.** It is

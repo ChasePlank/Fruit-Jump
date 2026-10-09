@@ -36,6 +36,15 @@ public class LevelGen {
      */
     public static final int PLANK_EVERY = 4;
 
+    /**
+     * How often a run gets a moving platform: every third level.
+     *
+     * <p>Three rather than ten, because a moving platform is furniture rather than a set-piece - and a ferry is not
+     * a gate: it is placed over a gap the player can already jump, so riding it is a way across rather than the only
+     * way across, and a level where it is missed still finishes.
+     */
+    public static final int MOVER_EVERY = 3;
+
     static final int BASE_MAX_GAP_CELLS = 3;    // conservative: 3-cell gaps
 
     /**
@@ -669,6 +678,20 @@ public class LevelGen {
         // The walk's floor per column, or -1 where there is no walk (a gap). Kept because a check cannot tell a
         // FLOODED GAP from a FLOODED WALK by looking at the grid: both are water at the walk's level with a solid
         // floor under them. The difference is whether the walk claims a floor there, and only the generator knows.
+        // A FERRY OVER A GAP, every third level. A spec rather than a cell, so it goes in AFTER the map is built -
+        // the opposite of the plank above, and the reason the plank's first version silently placed nothing.
+        // It rides ONE ROW ABOVE THE WALK, which is not decoration: the gaps are where the water goes, so a dry gap
+        // essentially does not exist, and one row up clears the water surface while staying inside the 73px jump.
+        if (levelNum > 0 && levelNum % MOVER_EVERY == 0) {
+            int[] gap = ferryGap(g);
+            if (gap != null) {
+                double surface = gap[1] * 32.0;
+                double centreX = gap[0] * 32.0 + 32.0;
+                double w = 96, h = 16;
+                this.lastMap.addMover(LevelMap.MoverSpec.horizontal(centreX, surface - h / 2 - 32, w, h, 48, 3.0));
+            }
+        }
+
         this.lastPathFloor = pathFloor.clone();
         return this.lastMap;
     }

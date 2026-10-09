@@ -25,7 +25,7 @@ public class World {
         water.setWater(w);
     }
     public final List<Physics.AABB> oneways = new ArrayList<>(); // platforms to jump through
-    final List<MovingPlatform> movers = new ArrayList<>(); // kinematic platforms
+    public final List<MovingPlatform> movers = new ArrayList<>(); // kinematic platforms
     public final List<Projectile> projectiles = new ArrayList<>();
     public final List<Physics.AABB> cracked = new ArrayList<>(); // destroyable tiles
     public final List<Pickup> pickups = new ArrayList<>();

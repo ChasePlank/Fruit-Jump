@@ -612,6 +612,19 @@ public class GameplayScreen extends Screen {
         // Cracked tiles: crack overlay on top of ground
         for (Physics.AABB t : world.cracked) drawCrackedTile(t);
         // One-ways: wooden platform
+        // Moving platforms, drawn beside the one-ways they resemble. Ported with the placement that finally uses
+        // them: the engine's wiring report carried "addMover is never called, so the physics loop over it does
+        // nothing forever" for a week, which is what an undrawn, unplaced feature looks like from the inside.
+        for (MovingPlatform m : world.movers) {
+            Physics.AABB a = m.aabb();
+            double sx = camera.worldToScreenX(a.x0), sy = camera.worldToScreenY(a.y0);
+            double w = (a.x1 - a.x0) * S, h = (a.y1 - a.y0) * S;
+            if (sx > CANVAS_W || sy > CANVAS_H || sx + w < 0 || sy + h < 0) continue;
+            gc.setFill(Color.web("#2E3A46"));
+            gc.fillRect(sx, sy, w, h);
+            gc.setFill(Color.web("#7FD4E8"));
+            gc.fillRect(sx, sy, w, 8);
+        }
         for (Physics.AABB t : world.oneways) {
             double sx = camera.worldToScreenX(t.x0), sy = camera.worldToScreenY(t.y0);
             double w = (t.x1 - t.x0) * S, h = (t.y1 - t.y0) * S;

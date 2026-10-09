@@ -194,11 +194,44 @@ public class LevelMap {
     }
 
     /** Build the world: geometry into the given World. */
+    /** One moving platform's declaration. Pixels, matching World's geometry. */
+    public record MoverSpec(MovingPlatform.PathType type, double x0, double y0, double w, double h,
+                            double amplitude, double period) {
+        /** A lift: travels straight up and down from (x0, y0), by amplitude either way. */
+        public static MoverSpec vertical(double x0, double y0, double w, double h, double amplitude, double period) {
+            return new MoverSpec(MovingPlatform.PathType.VERTICAL, x0, y0, w, h, amplitude, period);
+        }
+        /** A ferry: travels left and right from (x0, y0), by amplitude either way. */
+        public static MoverSpec horizontal(double x0, double y0, double w, double h, double amplitude, double period) {
+            return new MoverSpec(MovingPlatform.PathType.HORIZONTAL, x0, y0, w, h, amplitude, period);
+        }
+    }
+
+    /**
+     * The moving platforms this level declares.
+     *
+     * <p>A SPEC because a text grid holds one character per cell and there is room in it for none of this: where a
+     * platform travels, how far and how fast are decisions the level makes. Ported on 2026-10-09 with the placement
+     * that finally uses them - the engine's own wiring report carried "movers is filled by addMover, addMover is
+     * never called, so the list is always empty and the physics loop over it does nothing forever" for a week.
+     */
+    public final List<MoverSpec> movers = new java.util.ArrayList<>();
+
+    /** Declare a moving platform for this level. */
+    public void addMover(MoverSpec spec) { movers.add(spec); }
+
     public void buildWorld(World world) {
         // Tell the world how big the level is, so projectiles cull against the
         // real extent instead of a constant that goes stale.
         world.setBounds(width * (double) TILE, height * (double) TILE);
         for (Physics.AABB t : solidTiles) world.tiles.add(t);
+
+        // Moving platforms. Kinematic: they ignore tiles and follow their own path, and World carries a body that
+        // is standing on one. Added here rather than by the screen so a level's platforms arrive with the rest of
+        // its geometry.
+        for (MoverSpec m : movers) {
+            world.addMover(new MovingPlatform(m.type(), m.x0(), m.y0(), m.w(), m.h(), m.amplitude(), m.period()));
+        }
         for (Physics.AABB t : onewayTiles) world.oneways.add(t);
         for (Slope s : slopes) world.slopes.add(s);
         for (Physics.AABB sp : spikes) world.spikes.add(sp);

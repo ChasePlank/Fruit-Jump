@@ -124,12 +124,14 @@ fi
 # game, while a later section said nothing constructs or draws either. A reader meets the feature list first.
 if grep -q "one-way platforms$" README.md; then
   RD2_BAK=$(mktemp); cp README.md "$RD2_BAK"
-  sed -i 's/- \*\*Movement\*\* — run, jump, one-way platforms/- **Movement** — run, jump, one-way platforms, moving platforms with carry/' README.md
+  # MOVERS AND PARALLAX ARE IN THE GAME NOW, so they are no longer what this injects: the case was testing that the
+  # check still forbade two features that exist. It injects a claim about something that IS still unwired.
+  sed -i 's/- \*\*Movement\*\* — run, jump, one-way platforms/- **Movement** — run, jump, one-way platforms, an ai director/' README.md
   out=$(tools/readme-counts.sh 2>&1); rc=$?
-  if [ $rc -ne 0 ] && echo "$out" | grep -q 'claims "moving platform"'; then
-    ok "readme-counts notices a feature not in the game" 'the feature list claims "moving platform"'
+  if [ $rc -ne 0 ] && echo "$out" | grep -q 'claims "ai director"'; then
+    ok "readme-counts notices a feature not in the game" 'the feature list claims "ai director"'
   else
-    bad "readme-counts notices a feature not in the game" "reported clean with moving platforms claimed"
+    bad "readme-counts notices a feature not in the game" "reported clean with an ai director claimed"
   fi
   cp "$RD2_BAK" README.md; rm -f "$RD2_BAK"
 else
@@ -174,18 +176,20 @@ fi
 # ---- readme-counts.sh must notice one of the four unwired classes being wired -----------------------------------
 # MovingPlatform was simply absent from the list: the README named four things as unwired and the check covered
 # three, so wiring the fourth would have made the README quietly false with nothing to show it.
-if ! grep -q "new MovingPlatform(" src/main/java/tropical/engine/World.java; then
+# AND THIS CASE NOW INJECTS THE BOSS, because MovingPlatform left the unwired list when it was wired: the case was
+# checking that the tool still called a wired class unwired.
+if ! grep -q "new Boss(" src/main/java/tropical/engine/World.java; then
   W_BAK=$(mktemp); cp src/main/java/tropical/engine/World.java "$W_BAK"
   python3 - <<'PY'
 p='src/main/java/tropical/engine/World.java'; s=open(p).read()
 i = s.index('public void addMover(')
-open(p,'w').write(s[:i] + '    // fault injection\n    void probe() { MovingPlatform m = new MovingPlatform(null, 0, 0, 0, 0, 0, 0); }\n\n' + s[i:])
+open(p,'w').write(s[:i] + '    // fault injection\n    void probe() { Boss b = new Boss(0, 0, 64, 64); }\n\n' + s[i:])
 PY
   out=$(tools/readme-counts.sh 2>&1)
-  if echo "$out" | grep -q "WIRED?   MovingPlatform"; then
-    ok "readme-counts notices a wired MovingPlatform" "WIRED? MovingPlatform is constructed in 1 file"
+  if echo "$out" | grep -q "WIRED?   Boss"; then
+    ok "readme-counts notices a wired Boss" "WIRED? Boss is constructed in 1 file"
   else
-    bad "readme-counts notices a wired MovingPlatform" "reported clean with MovingPlatform constructed"
+    bad "readme-counts notices a wired Boss" "reported clean with Boss constructed"
   fi
   cp "$W_BAK" src/main/java/tropical/engine/World.java; rm -f "$W_BAK"
 else
@@ -193,23 +197,25 @@ else
 fi
 
 # ---- readme-counts.sh must notice a fifth unwired bullet the list does not cover ---------------------------------
-if grep -q "^- \*\*Parallax\*\*" README.md; then
+# THE PARALLAX BULLET IS GONE - it is wired - so this hangs itself on the Boss bullet, which is still there. The
+# case is about the COUNT: a bullet the list of checks does not cover has to be noticed.
+if grep -q "^- \*\*Boss fights\*\*" README.md; then
   RB_BAK=$(mktemp); cp README.md "$RB_BAK"
   python3 - <<'PY'
 p='README.md'; s=open(p).read()
-old = '- **Parallax** — `Camera.parallaxOffset` and `ParallaxLayer` exist; no layer is drawn, so the sky is flat.'
-assert old in s, 'the parallax bullet is not there'
+old = '- **Boss fights**'
+assert old in s, 'the boss bullet is not there'
 open(p,'w').write(s.replace(old, old + '\n- **Something else** — nothing builds it either.', 1))
 PY
   out=$(tools/readme-counts.sh 2>&1)
-  if echo "$out" | grep -q "the README lists 5 unwired thing"; then
+  if echo "$out" | grep -q "the README lists 3 unwired thing"; then
     ok "readme-counts notices an uncovered unwired bullet" "$(echo "$out" | grep 'unwired:' | tr -s ' ')"
   else
-    bad "readme-counts notices an uncovered unwired bullet" "reported clean with five bullets and four checks"
+    bad "readme-counts notices an uncovered unwired bullet" "reported clean with three bullets and two checks"
   fi
   cp "$RB_BAK" README.md; rm -f "$RB_BAK"
 else
-  bad "readme-counts notices an uncovered unwired bullet" "no parallax bullet to follow"
+  bad "readme-counts notices an uncovered unwired bullet" "no boss bullet to follow"
 fi
 
 # ---- readme-counts.sh must notice WaterSuite is a test, not a class ---------------------------------------------
