@@ -14,6 +14,17 @@ import java.util.List;
  */
 public class World {
     final List<Physics.Body> bodies = new ArrayList<>();
+    /**
+     * What one of the player's weapons takes off a boss.
+     *
+     * <p>Low on purpose, and the boss's own rule is what makes this a fight rather than an arithmetic problem: it
+     * counts damage only while the weak point is open, at most TWICE per window, so 30 hit points is about five
+     * windows whatever these numbers are. A blast is worth three arrows because a bomb costs the player
+     * something - it has a fuse, and it hurts them at their own feet.
+     */
+    static final double ARROW_DAMAGE = 3.0;
+    static final double BLAST_DAMAGE = 9.0;
+
     public final List<Physics.AABB> tiles = new ArrayList<>();
 
     /** Water: buoyancy, drag, currents, breath. Always present; with no field set it is a no-op, so nothing that
@@ -26,6 +37,32 @@ public class World {
     }
     public final List<Physics.AABB> oneways = new ArrayList<>(); // platforms to jump through
     public final List<MovingPlatform> movers = new ArrayList<>(); // kinematic platforms
+
+    /**
+     * The level's boss, if it has one.
+     *
+     * <p>It lives here rather than in the screen because the two things that must happen to it are both this
+     * class's business: its body has to be in the physics, and the player's weapons have to be able to reach it.
+     * Arrows and blasts were routed against `enemies`, and a boss is not an Enemy, so before this an arrow went
+     * straight through one - the same shape as the arrows that flew through enemies until that was fixed.
+     */
+    public Boss boss = null;
+
+    /**
+     * Put a boss in this world: its body joins the physics, and its volley is wired to lob charges at the player.
+     *
+     * <p><b>The volley fires bombs, and that is not a stopgap.</b> `Projectile` has two kinds - arrows, which are
+     * the player's, and bombs, whose blast already raises `playerBlastPending` for a body marked `oneway`, which
+     * is what the player is. So the boss's third attack works, hurts the player, and needs no new projectile kind
+     * and no new collision rule. A thrown charge is also a readable telegraph, which is what a volley is for.
+     */
+    public void setBoss(Boss b) {
+        boss = b;
+        if (b == null) return;
+        addBody(b.body);
+        b.setAudio(audio);
+        b.setVolleyCallback((x, y, dirX) -> addProjectile(Projectile.bomb(x, y, dirX < 0 ? -1 : 1)));
+    }
     public final List<Projectile> projectiles = new ArrayList<>();
     public final List<Physics.AABB> cracked = new ArrayList<>(); // destroyable tiles
     public final List<Pickup> pickups = new ArrayList<>();
@@ -297,7 +334,11 @@ public class World {
                 // missing entirely — arrows flew through enemies
                 // (playtest: "arrows fire, but do nothing").
                 if (p.active) {
-                    for (Enemy e : enemies) {
+                    // The boss thinks here rather than in the screen, for the same reason the enemies do: it needs the
+        // player's body and the physics step, and both belong to this class.
+        if (boss != null && !boss.dead) boss.update(dt, playerBody);
+
+        for (Enemy e : enemies) {
                         if (!e.dead && pbox.overlaps(e.body.aabb())) {
                             e.dead = true;
                             p.active = false;
@@ -319,6 +360,14 @@ public class World {
                             break;
                         }
                     }
+                }
+                // AND ARROWS HIT THE BOSS. It is not in `enemies` either, so without this an arrow went
+                // through it exactly as it used to go through a bat. `hit` decides whether it counts: it returns
+                // false outside the weak-point window and after two hits in one window, so the ARMOUR limits the
+                // damage rather than this routing.
+                if (p.active && boss != null && !boss.dead && pbox.overlaps(boss.aabb())) {
+                    boss.hit(ARROW_DAMAGE);
+                    p.active = false;
                 }
             }
             
@@ -513,6 +562,10 @@ public class World {
         // like anything else (Kinger, Sept 29). That is also what makes a
         // placed bomb a real decision rather than a free wall-opener.
         for (Enemy e : enemies) {
+        // The boss takes blast damage too, by the same rule as everything else: `hit` counts it only inside a
+        // window, so a bomb thrown at armour does nothing - which is the whole shape of the fight.
+        if (boss != null && !boss.dead && inBlast(boss.body.x, boss.body.y, x, y)) boss.hit(BLAST_DAMAGE);
+
             if (!e.dead && inBlast(e.body.x, e.body.y, x, y)) e.dead = true;
         }
         for (int i = bats.size() - 1; i >= 0; i--) {

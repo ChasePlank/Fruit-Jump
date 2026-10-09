@@ -298,7 +298,7 @@ public class Boss {
 
             case DYING: {
                 body.vx = 0;
-                if (stateTimer >= 1.0) {
+                if (stateTimer >= DYING_SECONDS) {
                     dead = true;
                     events.add("BOSS DEFEATED");
                 }
@@ -336,4 +336,33 @@ public class Boss {
             body.y + weakPointY + 10
         );
     }
+    /**
+     * The boss's box, for the two things outside this class that need it: World's weapon routing and the
+     * screen's contact check. Its body was package-private, so neither could see where it was.
+     */
+    public Physics.AABB aabb() { return body.aabb(); }
+
+    public double hp() { return hp; }
+    public double maxHP() { return maxHP; }
+    public int phase() { return phase; }
+    public boolean isDead() { return dead; }
+
+    /**
+     * 1 while alive, falling to 0 across its own DYING window.
+     *
+     * <p>The boss has always spent a second in {@code State.DYING} before {@code dead} goes true - a beat for a
+     * death to be seen - and the view drew it exactly as it drew a live boss, because the only thing it could ask
+     * was {@code isDead()}, which is false throughout. So the beat existed and showed nothing.
+     */
+    public double deathFade() {
+        if (state != State.DYING) return 1.0;
+        return Math.max(0.0, 1.0 - stateTimer / DYING_SECONDS);
+    }
+
+    /** How long the boss spends dying before it is dead. Named rather than repeated as a literal in two places. */
+    public static final double DYING_SECONDS = 1.0;
+
+    /** True during RECOVER and PHASE_ENTER - the only window in which damage counts. */
+    public boolean weakPointOpen() { return weakPointOpen; }
+
 }

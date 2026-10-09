@@ -414,6 +414,13 @@ public class GameplayScreen extends Screen {
 
         // Engine step
         world.update(dt);
+        // AND TOUCHING IT COSTS. A boss is dangerous through its whole charge and its whole slam, and `isDangerous`
+        // decides what it costs. Without this the wiring would be complete and the boss could not hurt you.
+        if (world.boss != null && !world.boss.isDead() && world.boss.isDangerous()
+                && player.aabb().overlaps(world.boss.aabb())) {
+            combat.hurtPlayer(player, world.boss.aabb().x0);
+        }
+
         sound.drain(audio);
         // AND THE MUSIC, the other half of the same bridge. Per-frame is safe because playMusic ignores a request
         // for the track already playing - and it has to be per-frame, because the boss changes the engine's mind.
@@ -612,6 +619,44 @@ public class GameplayScreen extends Screen {
         // Cracked tiles: crack overlay on top of ground
         for (Physics.AABB t : world.cracked) drawCrackedTile(t);
         // One-ways: wooden platform
+        // The boss, if the level has one. Drawn from its box rather than as a sprite, for now: the body, a rim
+        // that says whether it is dangerous, and a bright weak point while one is open. The weak point is the
+        // whole fight - it is the only time damage counts - so it has to be visible, and a shape that changes
+        // colour is more legible for that than a sprite frame would be.
+        if (world.boss != null) {
+            Physics.AABB bb = world.boss.aabb();
+            double bx = camera.worldToScreenX(bb.x0), by = camera.worldToScreenY(bb.y0);
+            double bw = (bb.x1 - bb.x0) * S, bh = (bb.y1 - bb.y0) * S;
+            if (!(bx > CANVAS_W || by > CANVAS_H || bx + bw < 0 || by + bh < 0)) {
+                // AND IT FADES WHILE IT DIES. The engine has always given the boss a one-second DYING window
+                // before it is dead - a beat for the death to be seen - and this asked only `isDead()`, which is
+                // false for that whole second, so the beat showed a boss in perfect health. Boss.deathFade() is
+                // the question this could not previously ask.
+                final double bossFade = world.boss.deathFade();
+                gc.setGlobalAlpha(bossFade);
+                // THE SPRITE FILLS ITS BOX EXACTLY. 64 grid pixels at SCALE lands one to one on the 128 physical
+                // pixels the box is, so nothing here is resampled - which is the whole reason the grid is 64.
+                gc.drawImage(Sprites.boss2x, bx, by, bw, bh);
+                gc.setFill(world.boss.isDead() ? Color.web("#4A5560")
+                        : world.boss.isDangerous() ? Color.web("#C4402A") : Color.web("#7FD4E8"));
+                gc.fillRect(bx, by, bw, 12);
+                if (world.boss.weakPointOpen()) {
+                    Physics.AABB wp = world.boss.weakPointBox();
+                    gc.setFill(Color.web("#FBDD7E"));
+                    gc.fillOval(camera.worldToScreenX(wp.x0), camera.worldToScreenY(wp.y0),
+                                (wp.x1 - wp.x0) * S, (wp.y1 - wp.y0) * S);
+                }
+                gc.setGlobalAlpha(1.0);
+                // The same white wash the enemies get, over the whole box: a boss dying should be the loudest
+                // thing on the screen, and for a second it is.
+                double bossWash = Math.max(0.0, 1.0 - (1.0 - bossFade) * 2.0);
+                if (bossWash > 0) {
+                    gc.setFill(Color.web("#FFFFFF", bossWash * 0.6));
+                    gc.fillRect(bx, by, bw, bh);
+                }
+            }
+        }
+
         // Moving platforms, drawn beside the one-ways they resemble. Ported with the placement that finally uses
         // them: the engine's wiring report carried "addMover is never called, so the physics loop over it does
         // nothing forever" for a week, which is what an undrawn, unplaced feature looks like from the inside.

@@ -82,7 +82,12 @@ the section above because a reader should not have to run `grep` to find out whe
 
 Each one also says what wiring it would take, so the decision is a read rather than a project.
 
-- **Boss fights** — `Boss` is 339 lines of multi-phase AI, telegraphed attacks, weak-point windows and wall-stun.
+- **Boss fights** — `Boss` is 368 lines of multi-phase AI, telegraphed attacks, weak-point windows and wall-stun.
+  **THE WORLD SIDE IS WIRED AS OF 2026-10-09**: its box is visible to the two things outside it that need one,
+  `World.setBoss` puts its body in the physics and wires its volley, arrows and blasts are routed at it, it thinks
+  in `World.update` where the enemies do, `LevelMap` will declare one, and the screen draws the sprite, the
+  danger rim and the lit weak point. **What is still missing is a level that declares one** — which is why the
+  sentence below about nothing constructing one is still true, and why `readme-counts.sh` still guards it.
   Nothing builds one. **To wire:** `new Boss(x, y, w, h)` in a level; the screen calling `boss.update(dt, player)`
   each frame and `boss.hit(damage)` when the player's weapons connect; `setVolleyCallback` is the hook where the
   boss's own projectiles get spawned into the world; and a draw call. Nothing calls any of it today. **Needs a
