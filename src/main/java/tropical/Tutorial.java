@@ -75,6 +75,25 @@ public class Tutorial {
                 // jump-only bot walks past it.
                 for (int c = 20; c <= 22; c++) put(g, c, FLOOR - 2, '=');
                 put(g, 21, FLOOR - 3, 'h');
+
+                // AND A MOVING PLATFORM, for the same reason and found the same way: the run places a ferry every
+                // third level and this tutorial had nothing that moves. A check for it was written this hour
+                // (CoverageTest) and it reported "taught by the tutorial: MISSING moving platforms" on its first
+                // run - which is the whole argument for writing the check rather than looking.
+                //
+                // THE BAY IS WHAT MAKES THIS PASSABLE. A platform resting on the floor anywhere along the walk is a
+                // solid obstacle in the corridor, and whether a player could get past would depend on where the
+                // platform happened to be in its cycle when they arrived. Two cells cut out of the walk gives the
+                // lift somewhere to go: at the bottom it sits flush with the floor INSIDE the bay, and the two-cell
+                // gap is jumped like any other. The bay is also the answer to falling in - it is two deep with a
+                // floor, so a player who drops in stands on the lift and rides back up.
+                //
+                // A LEDGE SIX ROWS UP with a snack on it, well past the 70px a jump actually reaches, so the lift is
+                // the way up rather than decoration beside a step. No sign: this level shows rather than says, and
+                // the platform moving is the explanation.
+                for (int c = 36; c <= 37; c++) { g[FLOOR][c] = ' '; g[FLOOR + 1][c] = ' '; }
+                for (int c = 38; c <= 44; c++) put(g, c, FLOOR - 6, '#');
+                put(g, 41, FLOOR - 7, 'h');
             }
             case 2 -> {
                 // One spider to stomp.
@@ -180,6 +199,15 @@ public class Tutorial {
         StringBuilder sb = new StringBuilder();
         for (char[] row : g) sb.append(new String(row)).append('\n');
         LevelMap built = LevelMap.parse(sb.toString());
+        // The lift, whose path is numbers - how far it travels and how long a cycle takes - and a grid of one
+        // character per cell has room for neither.
+        if (level == 1) {
+            built.addMover(LevelMap.MoverSpec.vertical(
+                    37 * 32,     // centred in the bay, right edge flush with the ledge at 38*32
+                    456,         // path origin; 96px either way gives 360 (top) and 552 (bottom)
+                    64, 16,      // two cells wide, half a cell thick - the bay's width
+                    96, 6.0));
+        }
         // THE BOSS IS A SPEC, NOT A CELL, which is why it is declared here rather than drawn into the grid above.
         // Seeded from the level number, so its attack order is the same on every attempt at this level.
         if (level >= 1 && level <= LAST && level % 10 == 0) {
