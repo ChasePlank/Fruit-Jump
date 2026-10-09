@@ -32,7 +32,7 @@ public class TutorialTest extends Application {
     }
 
     /**
-     * NO TWO SIGNS MAY OVERLAP. This is a static check with no screen involved, so it runs for all nine levels.
+     * NO TWO SIGNS MAY OVERLAP. This is a static check with no screen involved, so it runs for all ten levels.
      *
      * <p>It exists because two signs on tutorial 6 WERE overlapping and neither could be read: "JAR - a life
      * FOREVER, and a full refill" is 41 characters, wrapSign wraps it to a 34-character line, and at the 12px a
@@ -96,7 +96,7 @@ public class TutorialTest extends Application {
         // AND THAT THE TUTORIAL TEACHES EVERY CONTROL THE README DOCUMENTS.
         //
         // This is the check that would have caught the hookshot. The README leads with it - "with hookshot, bombs,
-        // bow" - and documents it as a control, and NONE of the nine levels mentioned it; the tutorial taught
+        // bow" - and documents it as a control, and NONE of the levels then did; the tutorial taught
         // movement, jumping, spiders, bombs, arrows, bats, pickups, spikes and water, and never the game's own
         // signature mechanic. The collision check above cannot see that: it compares signs to each other, and a
         // mechanic with no sign at all has nothing to collide with.

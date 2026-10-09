@@ -6,12 +6,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The first nine levels are hand-built tutorials, not generated ones.
+ * The first ten levels are hand-built tutorials, not generated ones.
  *
  * Each teaches exactly one thing and shows it rather than saying it, in the
  * order the player needs it: move, fight, blast, shoot, deal with the bat,
- * know your items, know your enemies, know the ground, and know the water.
- * Level 9 ends the run back at the menu.
+ * know your items, know your enemies, know the ground, know the water, and
+ * know what a boss is.
+ * Level 10 ends the run back at the menu.
  *
  * THIS HEADER SAID "eight" AND "Level 8 ends the run" LONG AFTER LEVEL 9 EXISTED. Water was added as level 9 and
  * the count and the list were not revisited, so the claim was false in the file that DEFINES `LAST` - and the
@@ -25,7 +26,7 @@ import java.util.List;
  * have to be right because they are the first thing anyone plays.
  */
 public class Tutorial {
-    public static final int LAST = 9;
+    public static final int LAST = 10;
     static final int W = 60, H = 20, FLOOR = 17;
 
     public static boolean isTutorial(int level) {
@@ -155,6 +156,19 @@ public class Tutorial {
                 // neither, because there was nothing deep enough to teach them in.
                 for (int c = 44; c <= 50; c++) { g[FLOOR - 2][c] = '~'; g[FLOOR - 1][c] = '~'; }
             }
+            case 10 -> {
+                // A BOSS. Everything before this taught what the player controls and what the world does; this is
+                // the first thing in the game that fights back on purpose, and the first that cannot be solved by
+                // being careful.
+                //
+                // A FLAT WALK AND NOTHING ELSE, deliberately: every mechanic it needs is already taught, so the
+                // level adds no new furniture and the fight is read off the boss itself - the rim goes red when it
+                // is dangerous, and the mark on its back is lit only while damage counts.
+                //
+                // THE BOSS IS NOT IN THIS GRID. Where it stands, how big it is and what seed its attack order comes
+                // from are decisions a character-per-cell grid has no room for, so it is declared below, beside the
+                // parse. See LevelMap.BossSpec.
+            }
             default -> { }
         }
 
@@ -165,7 +179,13 @@ public class Tutorial {
 
         StringBuilder sb = new StringBuilder();
         for (char[] row : g) sb.append(new String(row)).append('\n');
-        return LevelMap.parse(sb.toString());
+        LevelMap built = LevelMap.parse(sb.toString());
+        // THE BOSS IS A SPEC, NOT A CELL, which is why it is declared here rather than drawn into the grid above.
+        // Seeded from the level number, so its attack order is the same on every attempt at this level.
+        if (level >= 1 && level <= LAST && level % 10 == 0) {
+            built.addBoss(new LevelMap.BossSpec(31 * 32, 512, 64, 64, level));
+        }
+        return built;
     }
 
     /** A sealed 3x3 display box holding one enemy, for level 7. */
@@ -205,7 +225,7 @@ public class Tutorial {
                 s.add(new Sign(20 * 32, y, "ARROWS   F   -   hits what you face"));
                 s.add(new Sign(32 * 32, y, "the spiders are out of reach. shoot them"));
                 // AND THE HOOKSHOT, which the README leads with - "with hookshot, bombs, bow" - and which the
-                // tutorial never mentioned in any of its nine levels. It fires at a wall and pulls you to it, so
+                // tutorial never mentioned in any of its levels at the time. It fires at a wall and pulls you to it, so
                 // it belongs on the level that is already about reaching what you cannot walk to.
                 // TWO SIGNS, AND THE SECOND IS BELOW THE FIRST'S WRAP. The first is 37 characters and wraps to a
                 // 34-character line, so its second line lands where a sign 26px below would start - which is the
@@ -255,7 +275,15 @@ public class Tutorial {
                 // LINE - and that line landed exactly where this one started. A sign that wraps occupies two
                 // rows, and the next sign down has to clear both.
                 s.add(new Sign(20 * 32, y + 26, "they come in groups. get out and they lose you"));
-                s.add(new Sign(44 * 32, y, "that is everything. good luck"));
+            }
+            case 10 -> {
+                // SPACED 52 APART, NOT 26, and TutorialTest is why: "it is only hurt while the mark is lit" is 37
+                // characters, which wraps onto a second row 26px down - exactly where a sign 26px below would
+                // start. Two signs collide when their horizontal spans overlap AND their rows do.
+                s.add(new Sign(22 * 32, y, "A BOSS"));
+                s.add(new Sign(22 * 32, y + 52, "it is only hurt while the mark is lit"));
+                s.add(new Sign(22 * 32, y + 104, "back off when the rim goes red"));
+                s.add(new Sign(44 * 32, y - 34, "that is everything. good luck"));
             }
             default -> { }
         }

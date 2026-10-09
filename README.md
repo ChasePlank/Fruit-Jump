@@ -78,7 +78,7 @@ A complete platformer engine, built and tested layer by layer:
   repository** (`aside/tools/fruitjump-audio.py`), not here — this line used to say `tools/fruitjump-audio.py`,
   which sends a reader of THIS repository looking for a file that is not in it.
 - **Save/Load** — player, room, and global state, entity-ID tracking
-- **The tutorial** — 9 hand-built levels, and the only place the game explains itself
+- **The tutorial** — 10 hand-built levels, and the only place the game explains itself
 
 ## In the engine, not in the game
 

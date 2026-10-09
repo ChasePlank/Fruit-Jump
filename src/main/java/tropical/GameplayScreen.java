@@ -54,7 +54,7 @@ public class GameplayScreen extends Screen {
     /**
      * Floating tutorial words, or null on a generated level.
      *
-     * <p>TUTORIAL MODE. The engine has had nine hand-built levels since aside grew them, and the release has
+     * <p>TUTORIAL MODE. The engine has had ten hand-built levels since aside grew them, and the release has
      * never been able to reach them - this screen always generated a level, so Tutorial.java sat here unused.
      * That is the same half-built shape as the water, the bats and the splash, one layer up: not a feature
      * nobody drew, a feature nobody could enter.
@@ -137,7 +137,7 @@ public class GameplayScreen extends Screen {
         this(manager, levelNum, null);
     }
 
-    /** Tutorial mode: the nine hand-built levels rather than the generator. */
+    /** Tutorial mode: the ten hand-built levels rather than the generator. */
     public GameplayScreen(ScreenManager manager, int levelNum, boolean tutorial) {
         this(manager, levelNum, null, tutorial);
     }

@@ -275,7 +275,7 @@ fi
 if grep -q "// Eight hand-built levels" src/main/java/tropical/MainMenu.java; then
   bad "readme-counts notices a word-form count" "the fixture is already stale"
 else
-  sed -i 's|// Nine hand-built levels|// Eight hand-built levels|' src/main/java/tropical/MainMenu.java
+  sed -i 's|// Ten hand-built levels|// Eight hand-built levels|' src/main/java/tropical/MainMenu.java
   if ! grep -q "// Eight hand-built levels" src/main/java/tropical/MainMenu.java; then
     bad "readme-counts notices a word-form count" "the injection did not apply"
   else
@@ -298,7 +298,7 @@ fi
 if grep -q '"Eight hand-built levels"' src/main/java/tropical/MainMenu.java; then
   bad "readme-counts ignores a quoted claim" "the fixture is already quoted"
 else
-  sed -i 's|// Nine hand-built levels, one mechanic each|// the header once claimed "Eight hand-built levels"|' src/main/java/tropical/MainMenu.java
+  sed -i 's|// Ten hand-built levels, one mechanic each|// the header once claimed "Eight hand-built levels"|' src/main/java/tropical/MainMenu.java
   if ! grep -q '"Eight hand-built levels"' src/main/java/tropical/MainMenu.java; then
     bad "readme-counts ignores a quoted claim" "the injection did not apply"
   else
