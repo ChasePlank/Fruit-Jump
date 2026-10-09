@@ -96,7 +96,7 @@ public class GameplayScreen extends Screen {
      * number stands alone. When the ending is ported, this should become the same reference the engine uses, or the
      * sky and the ending will drift apart the first time either is retuned.</p>
      */
-    private static final int LEVELS_TO_DUSK = 40;
+    private static final int LEVELS_TO_DUSK = LevelGen.FINAL_LEVEL;
 
     /** The two ridge layers: the far one lifts higher, because it is further away. */
     private final ParallaxLayer ridgeFar;
@@ -484,6 +484,13 @@ public class GameplayScreen extends Screen {
             if (tutorial && Tutorial.endsTheTutorial(levelNum)) {
                 // The tutorial is done - back to the menu, not on to level 9 of a generated run.
                 manager.replace(new MainMenu(manager));
+                return;
+            }
+            // AND THIS IS THE WAY HOME. The run has a length, and its end is the dusk - the sun the whole climb
+            // has been sinking towards. It offers to keep climbing, so the endless run is still there; what changes
+            // is that the game now has somewhere to be going.
+            if (!tutorial && levelNum >= LevelGen.FINAL_LEVEL) {
+                manager.replace(new VictoryScreen(manager, levelNum, playTime));
                 return;
             }
             int nextLevel = levelNum + 1;

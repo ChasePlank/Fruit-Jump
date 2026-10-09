@@ -20,6 +20,9 @@ import java.util.Random;
  * bot exists to prove it empirically.
  */
 public class LevelGen {
+
+    /** How long a run is: reaching the exit on this level is the way home. */
+    public static final int FINAL_LEVEL = 40;
     // Player physics (measured from the engine at 1x velocity):
     // jump v0 = 420, gravity 1200 -> apex ~73px ~ 2.3 cells
     // run speed 200px/s, air time ~0.7s -> jump distance ~140px ~ 4.4 cells
