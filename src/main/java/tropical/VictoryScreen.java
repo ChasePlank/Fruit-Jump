@@ -18,9 +18,31 @@ public class VictoryScreen extends Screen {
     private final StackPane root;
     private final int levelReached;
     private final double playTime;
+    /** Rooms mode's ending: one line and one key differ, and where ENTER goes. */
+    private final boolean rooms;
     
     public VictoryScreen(ScreenManager manager, int levelReached, double playTime) {
+        this(manager, levelReached,
+                String.format("Climbed %d levels, and the sun went down on the way%nTime: %.1f seconds",
+                        levelReached, playTime),
+                "Press ENTER to keep climbing", playTime, false);
+    }
+
+    /**
+     * Rooms mode's way out, and it is the SAME SCREEN because it is the same sentence: a way home. The two modes
+     * differ in what that means - topping out the climb, or finding the way out of a grid of rooms - and not in what
+     * it looks like, so they share the horizon and differ in one line and one key.
+     */
+    public static VictoryScreen roomsOut(ScreenManager manager, int roomsVisited, double playTime) {
+        return new VictoryScreen(manager, 0,
+                String.format("Found the way out, through %d rooms%nTime: %.1f seconds", roomsVisited, playTime),
+                "Press ENTER for another way out", playTime, true);
+    }
+
+    private VictoryScreen(ScreenManager manager, int levelReached, String statsText, String enterText,
+                          double playTime, boolean rooms) {
         super(manager);
+        this.rooms = rooms;
         this.levelReached = levelReached;
         this.playTime = playTime;
         
@@ -29,13 +51,12 @@ public class VictoryScreen extends Screen {
         title.setFont(Font.font("Arial", 80));
         title.setStyle("-fx-text-fill: #f5a623;");
         
-        Label stats = new Label(String.format("Climbed %d levels, and the sun went down on the way%nTime: %.1f seconds",
-            levelReached, playTime));
+        Label stats = new Label(statsText);
         stats.getStyleClass().add("menu-item");
         stats.setFont(Font.font("Arial", 36));
         stats.setStyle("-fx-text-fill: white;");
         
-        Label retry = new Label("Press ENTER to keep climbing");
+        Label retry = new Label(enterText);
         retry.getStyleClass().add("menu-item");
         retry.setFont(Font.font("Arial", 28));
         
@@ -95,7 +116,7 @@ public class VictoryScreen extends Screen {
             // ON TO THE NEXT LEVEL, AND THE RUN CONTINUES PAST ITS OWN ENDING: the way home is a place you can
             // leave again rather than a full stop. The endless run is untouched - what the ending gives the climb
             // is somewhere to be going.
-            manager.replace(new GameplayScreen(manager, levelReached + 1));
+            manager.replace(rooms ? new RoomsScreen(manager, 1) : new GameplayScreen(manager, levelReached + 1));
         } else if (e.getCode() == KeyCode.ESCAPE) {
             manager.replace(new MainMenu(manager));
         }

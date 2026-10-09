@@ -92,6 +92,12 @@ public class RoomsScreen extends Screen {
     static final String SAVE_FILE = System.getProperty("user.home")
             + "/.tropical-punch-autosave.txt";
 
+    /** How many rooms this run has been through, for the ending's line. Starts at 1: the start room counts. */
+    int roomsVisited = 1;
+
+    /** Seconds since this run began, for the ending's line. Rooms mode had no clock at all before this. */
+    double elapsed = 0;
+
     /** Snapshot + write the rooms autosave (mode=rooms). */
     void autosave() {
         SaveSystem.GameState state = new SaveSystem.GameState();
@@ -179,6 +185,7 @@ public class RoomsScreen extends Screen {
         if (left && !right) facing = -1;
         else if (right && !left) facing = 1;
 
+        elapsed += dt;
         String roomBefore = screens.currentRoomId();
         phys.update(dt);
         screens.update(dt, phys);  // edge-crossing detection + transitions
@@ -186,6 +193,14 @@ public class RoomsScreen extends Screen {
         // Room changed (transition completed): load the new room's
         // content + autosave (Continue resumes in the last room).
         if (!screens.currentRoomId().equals(roomBefore)) {
+            roomsVisited++;
+            // AND ARRIVING AT THE EXIT ROOM IS THE WAY OUT, which nothing recognised before: the generator picked
+            // an exit, drew a guaranteed path to it, and crossing into it was an ordinary room change. It ends on
+            // the same screen the climb ends on, because it is the same sentence.
+            if (world.isExit(screens.currentRoomId())) {
+                manager.replace(VictoryScreen.roomsOut(manager, roomsVisited, elapsed));
+                return;
+            }
             loadRoom(screens.currentRoomId());
             autosave();
         }

@@ -36,6 +36,29 @@ public class RoomsTest extends Application {
         stage.setScene(scene);
         stage.show();
 
+        // AND THE WAY OUT EXISTS. The generator picks a start room, walks a guaranteed path and publishes an exit
+        // room - and until now NOTHING read it, so crossing into the goal was an ordinary room change. These are the
+        // assertions for that: the exit is named, it is not where you start, it is the END of the guaranteed path,
+        // and the world agrees about it and about nothing else.
+        tropical.engine.RoomWorld w = new tropical.engine.RoomWorld(5, 5, 2000L + 1);
+        if (w.exitRoomId == null || w.exitRoomId.isBlank()) {
+            failures++; System.out.println("  FAIL: the world names no exit room");
+        }
+        if (w.exitRoomId != null && w.exitRoomId.equals(w.startRoomId)) {
+            failures++; System.out.println("  FAIL: the exit is the room you start in");
+        }
+        if (w.mainPath.isEmpty() || !w.mainPath.get(w.mainPath.size() - 1).equals(w.exitRoomId)) {
+            failures++; System.out.println("  FAIL: the exit is not the end of the guaranteed path");
+        }
+        if (!w.isExit(w.exitRoomId)) {
+            failures++; System.out.println("  FAIL: isExit() disagrees about the exit room");
+        }
+        if (w.isExit(w.startRoomId)) {
+            failures++; System.out.println("  FAIL: isExit() agrees about a room that is not the exit");
+        }
+        System.out.println("  room exit: " + w.startRoomId + " -> " + w.exitRoomId
+                + ", a path of " + w.mainPath.size() + " rooms");
+
         screens.push(new RoomsScreen(screens, 1));
         nextStep();
     }
