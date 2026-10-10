@@ -24,8 +24,13 @@ import java.util.ArrayList;
  */
 public class GameplayScreen extends Screen {
     // Tuned constants (match the validator's verified values)
-    private static final double RUN_SPEED = 200;
-    private static final double JUMP_V = -420;
+    // PUBLIC SO PlayerModelTest CAN ASSERT THE VALIDATOR MATCHES. LevelValidator - the bot that proves generated
+    // levels are completable - keeps its own copy of both numbers, because the engine cannot reach up into this
+    // layer. Tune the jump here and leave the bot's copy alone and the gate keeps certifying levels the real player
+    // can no longer clear: nothing goes red, the levels are valid, and the game is unplayable. The sibling
+    // repository carries the same pair with the same reason, and the same check.
+    public static final double RUN_SPEED = 200;
+    public static final double JUMP_V = -420;
     // High-res: window and canvas are 2x the engine's logical 800x600.
     // The engine (physics, world coords) is untouched — only the VIEW
     // scales. Nearest-neighbor smoothing keeps pixel art crisp at 2x.
