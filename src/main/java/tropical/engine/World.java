@@ -334,11 +334,7 @@ public class World {
                 // missing entirely — arrows flew through enemies
                 // (playtest: "arrows fire, but do nothing").
                 if (p.active) {
-                    // The boss thinks here rather than in the screen, for the same reason the enemies do: it needs the
-        // player's body and the physics step, and both belong to this class.
-        if (boss != null && !boss.dead) boss.update(dt, playerBody);
-
-        for (Enemy e : enemies) {
+                    for (Enemy e : enemies) {
                         if (!e.dead && pbox.overlaps(e.body.aabb())) {
                             e.dead = true;
                             p.active = false;
@@ -402,6 +398,15 @@ public class World {
                 if (b.oneway) { playerBody = b; break; }
             }
         }
+        // The boss thinks here rather than in the screen, for the same reason the enemies do: it needs the
+        // player's body and the physics step, and both belong to this class.
+        //
+        // AND IT BELONGS HERE, AT THE TOP. This line was inserted INSIDE the arrow-collision block when the boss was
+        // ported - look at the comment's own indentation in the commit that did it - so the boss thought only while
+        // an arrow was in flight and stood frozen otherwise. Found by PORTING A TEST: BlastTest passed in the
+        // sibling and failed here, and the difference was that the sibling's boss opens its weak point in a World
+        // and this one never did.
+        if (boss != null && !boss.dead) boss.update(dt, playerBody);
         for (Enemy e : enemies) {
             if (e.dead) {
                 // THE DEATH TIMER RUNS HERE AND NOWHERE ELSE, and it could not run at all before. `updateAI`
@@ -562,12 +567,16 @@ public class World {
         // like anything else (Kinger, Sept 29). That is also what makes a
         // placed bomb a real decision rather than a free wall-opener.
         for (Enemy e : enemies) {
-        // The boss takes blast damage too, by the same rule as everything else: `hit` counts it only inside a
-        // window, so a bomb thrown at armour does nothing - which is the whole shape of the fight.
-        if (boss != null && !boss.dead && inBlast(boss.body.x, boss.body.y, x, y)) boss.hit(BLAST_DAMAGE);
-
             if (!e.dead && inBlast(e.body.x, e.body.y, x, y)) e.dead = true;
         }
+        // The boss takes blast damage too, by the same rule as everything else: `hit` counts it only inside a
+        // window, so a bomb thrown at armour does nothing - which is the whole shape of the fight.
+        //
+        // AND IT BELONGS OUTSIDE THAT LOOP, which is where it was not. Nested inside it, the line ran once per
+        // ENEMY - so a bomb did nothing to a boss standing in a level with no other enemies, and the boss arena is
+        // deliberately "a flat walk and nothing else". In the fight, bombs never hurt the boss at all. Found by
+        // porting BlastTest, which builds a world containing a boss and nothing else and measured zero.
+        if (boss != null && !boss.dead && inBlast(boss.body.x, boss.body.y, x, y)) boss.hit(BLAST_DAMAGE);
         for (int i = bats.size() - 1; i >= 0; i--) {
             Bat bat = bats.get(i);
             if (inBlast(bat.body.x, bat.body.y, x, y)) {
