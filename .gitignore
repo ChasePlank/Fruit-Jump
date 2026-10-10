@@ -16,3 +16,9 @@ gameclasses/
 jfx27/
 *.dll
 saves/
+
+# JVM crash dumps. The Robot tests abort under load - a SIGABRT, documented in the release notes as known
+# flakiness - and each one leaves a 1,480-line crash log at the repository root. Two of them were COMMITTED before
+# this line existed, which is how a release repository ends up carrying its own crash reports.
+hs_err_pid*.log
+replay_pid*.log
