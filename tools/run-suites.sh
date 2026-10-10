@@ -38,14 +38,24 @@ cd "$(dirname "$0")/.." || exit 2
 # server died mid-session every one of them failed with a JavaFX stack trace and no verdict line, which reads as
 # ten broken tests rather than one dead display - and I spent a round of this session believing the tests had
 # broken. A missing display is an ENVIRONMENT failure; say so once, at the top, with the thing to run.
-if [ -z "${DISPLAY:-}" ]; then
-  echo "  NOTE: DISPLAY is not set. The screen tests cannot open a window and will fail." >&2
-elif ! command -v xdpyinfo >/dev/null 2>&1; then
-  echo "  note: no xdpyinfo to check \$DISPLAY=$DISPLAY against; carrying on"
-elif ! xdpyinfo -display "$DISPLAY" >/dev/null 2>&1; then
-  echo "  NOTE: \$DISPLAY=$DISPLAY is set but nothing is serving it - start Xvfb, or the screen tests" >&2
-  echo "        will fail for a reason that has nothing to do with the code." >&2
+# AND IT DOES SOMETHING ABOUT IT, which the sibling repository's gate already did and this one did not. Warning and
+# carrying on means the run produces twelve failures that have to be diagnosed before they can be dismissed - which
+# is what happened on 10 October, when Xvfb died mid-hour and ten JavaFX suites failed with stack traces. The
+# sibling starts a display if there is not one; this does the same, and SAYS SO, so the reader knows the run began
+# with a dead display rather than discovering it from the wreckage.
+DISPLAY_NUM="${DISPLAY_NUM:-:99}"
+if ! command -v xdpyinfo >/dev/null 2>&1; then
+  echo "  note: no xdpyinfo to check \$DISPLAY=${DISPLAY:-unset} against; carrying on" >&2
+elif ! xdpyinfo -display "${DISPLAY:-$DISPLAY_NUM}" >/dev/null 2>&1; then
+  echo "  DISPLAY ${DISPLAY:-unset} is not being served - starting Xvfb $DISPLAY_NUM, because ten of these suites"
+  echo "  open a window and would otherwise fail for a reason that has nothing to do with the code."
+  Xvfb "$DISPLAY_NUM" -screen 0 "${SCREEN:-1400x900x24}" >/tmp/xvfb-tp.log 2>&1 &
+  for _ in $(seq 1 40); do xdpyinfo -display "$DISPLAY_NUM" >/dev/null 2>&1 && break; sleep 0.25; done
+  if ! xdpyinfo -display "$DISPLAY_NUM" >/dev/null 2>&1; then
+    echo "  AND IT DID NOT COME UP - the screen suites below will fail, and that is the reason." >&2
+  fi
 fi
+export DISPLAY="${DISPLAY:-$DISPLAY_NUM}"
 
 pass=0; fail=0; failed_names=()
 
