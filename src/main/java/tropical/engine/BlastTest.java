@@ -92,6 +92,8 @@ public class BlastTest {
 
         bossVolleyHurtsThePlayer();
 
+        anArrowHittingABossTakesItsHealth();
+
         System.out.println("\n=== " + passes + " passed, " + failures + " failed ===");
         return failures;
     }
@@ -159,5 +161,46 @@ public class BlastTest {
         }
         verdict("boss: and a player standing on that charge is flagged for damage", hurt);
     
+    }
+
+    /**
+     * An arrow that reaches a boss takes health off it.
+     *
+     * <p><b>THE CHECK THE MUTATION HARNESS SAID WAS MISSING.</b> Setting World's ARROW_DAMAGE from 3.0 to 0.0 - a
+     * weapon that does nothing - was caught by nothing in 642 checks. The reason is structural: Boss.hit() is
+     * reachable from here and ARROW_DAMAGE is not, because the constant is package-private to
+     * aside.games.fruitjump.engine. So this goes through the ROUTING rather than around it - a real World, a real
+     * Boss, a real Projectile - which is the only way a check can be about the damage the game deals.
+     *
+     * <p><b>AND IT IS RELATIONAL, ON PURPOSE.</b> "the health fell" rather than "the health fell by ARROW_DAMAGE":
+     * the second compares a measurement to the constant that defines it and passes whatever that constant becomes,
+     * which is exactly the fault that made this check necessary.
+     *
+     * <p>The player stands 1200px away for the same reason as the check above: the boss only opens its mark after
+     * an attack, and up close it never picks one.
+     */
+    static void anArrowHittingABossTakesItsHealth() {
+        World w = new World();
+        Physics.Body player = new Physics.Body(1200, 500, 24, 44);
+        w.addBody(player);
+        w.playerBody = player;
+        Boss b = new Boss(200, 400, 64, 64);
+        b.setSeed(7L);
+        w.boss = b;
+
+        boolean opened = false;
+        for (int i = 0; i < 60 * 40 && !opened; i++) {
+            w.update(GameLoop.DT);
+            if (b.weakPointOpen()) opened = true;
+        }
+        verdict("a boss in a real world opens its weak point within forty seconds", opened);
+        if (!opened) return;
+
+        double before = b.hp();
+        // An arrow spawned inside the boss's own box, so the routing's overlap test is the thing under test and
+        // not the flight. One frame is enough: the collision is checked on the projectile's update.
+        w.projectiles.add(Projectile.arrow(230, 430, 1));
+        w.update(GameLoop.DT);
+        verdict("an arrow overlapping a boss takes health off it (fell, rather than merely changed)", b.hp() < before);
     }
 }
