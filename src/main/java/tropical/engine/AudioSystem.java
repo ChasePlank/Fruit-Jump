@@ -138,12 +138,20 @@ public class AudioSystem {
     }
 
     public void playSfx(Sfx sfx) {
-        post(sfx.name);
-        if (muted) return;
+        // THE COOLDOWN COMES BEFORE THE QUEUE, and in this repository it did not. `post` was the first line, so every
+        // landing was already queued for the backend - Sound.drain plays everything in that queue - and the cooldown
+        // below it suppressed exactly one thing: the log line. Ten landings in one instant reached the speakers as
+        // ten sounds while a headless run's log said "SFX land" once. Found in the sibling repository, fixed there
+        // first, and this is the copy players actually hear.
         if (sfx == Sfx.LAND && landCooldown > 0) return;
         if (sfx == Sfx.LAND) landCooldown = LAND_COOLDOWN_TIME;
-        
-        log(String.format("SFX %s vol=%.2f", sfx.name, sfxVolume));
+        post(sfx.name);
+        if (muted) return;
+
+        // AND NO VOLUME IN THIS LINE, which is the second fault here and the same one the sibling already fixed: the
+        // field it names is not the volume the player set - that lives in the UI half and is applied to the clip by
+        // Sound. A log line is a claim, and the only volume this class can honestly report is the one it does not own.
+        log(String.format("SFX %s", sfx.name));
     }
     
     /** Switch music track. Only logs if the track actually changes. */
