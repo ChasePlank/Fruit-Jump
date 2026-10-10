@@ -66,6 +66,7 @@ public class BlastTest {
         // mistake the arrow-versus-boss check made first.
         World bossWorld = new World();
         Boss boss = new Boss(300, 100, 64, 64);
+        boss.setSeed(7L);
         bossWorld.boss = boss;
         Physics.Body bait = new Physics.Body(1500, 100, 24, 44);
         // MARKED AS THE PLAYER, because that is how a World finds one - the release's World looks for a body flagged
