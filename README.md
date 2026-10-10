@@ -127,6 +127,27 @@ asks whether every style class the code names is actually defined in the stylesh
 lines of the game-over screen nearly unreadable on 2026-10-04, which the engine's tools could catch and
 nothing ran here, which is the repository where it happened.
 
+**`tools/mutations.sh` asks the question that is one level up from any of those: are these checks able to fail?** It
+breaks one invariant at a time — the landing cooldown, the boss's volley wiring, the boss thinking every frame, the
+validator's copy of the player's speed, the room transition — and requires the check that *claims* that invariant to
+notice. Each entry names its suite, so a mutation is judged by the check that owns the claim rather than by the gate,
+which would fail every source mutation on `jar-current` for a reason unrelated to the invariant.
+
+```
+  audio: landing sounds are not rate-limited   caught by AudioRateTest
+  boss: the volley is not wired                caught by BlastTest
+  boss: it does not think every frame          caught by BlastTest
+  the validator stops matching the player      caught by PlayerModelTest
+  rooms: no transition at all                  caught by TransitionTest
+```
+
+All five are caught. It is **not part of the gate** — each entry is a compile plus a suite, seconds each and minutes
+together — and it reports three different kinds of nothing, because they are not the same thing: **NOT CAUGHT** (the
+mutation applied and nothing noticed — the finding), **ANCHOR MISSING** (it never applied, so the run proves
+nothing), and **AMBIGUOUS ANCHOR** (it fits more than one place, so it may have changed something else entirely).
+The third is not hypothetical: in the sibling game's list the trigger-reset mutation landed in a different function,
+changed nothing observable, and reported *"no test covers this"* about a claim that is covered.
+
 `check-release-notes.sh` is separate, because it needs the network: it asks whether every file the **release notes**
 tell you to download is actually attached to a release. Run it before publishing.
 
