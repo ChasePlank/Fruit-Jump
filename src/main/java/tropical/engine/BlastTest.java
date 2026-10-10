@@ -94,6 +94,8 @@ public class BlastTest {
 
         anArrowHittingABossTakesItsHealth();
 
+        theWindowTakesTwoHitsAndThenCloses();
+
         System.out.println("\n=== " + passes + " passed, " + failures + " failed ===");
         return failures;
     }
@@ -203,4 +205,48 @@ public class BlastTest {
         w.update(GameLoop.DT);
         verdict("an arrow overlapping a boss takes health off it (fell, rather than merely changed)", b.hp() < before);
     }
+
+    /**
+     * The window takes two hits and then closes, and the next one is fresh.
+     *
+     * <p><b>FOUND BY A MUTATION NOBODY NOTICED.</b> `MAX_HITS_PER_WINDOW = 2` could be set to 99 with every check
+     * green: the fight's whole shape is that the armour limits how much you can do while the mark is lit, and nothing
+     * asserted it. Thirty hit points at three a hit is ten hits; the armour is what makes that a fight rather than an
+     * arithmetic problem, which is what the constant's own comment says.
+     *
+     * <p>BOTH HALVES ARE CHECKED, because either alone would pass on a broken boss: a window that takes two hits and
+     * never resets is a boss you can only hit twice, and a window that resets after every hit has no armour at all.
+     * The counts are printed rather than only compared, so a failure says which way it went.
+     */
+    static void theWindowTakesTwoHitsAndThenCloses() {
+        World w = new World();
+        Physics.Body p = new Physics.Body(1500, 100, 24, 44);
+        p.oneway = true;
+        p.noGravity = true;
+        w.addBody(p);
+        w.playerBody = p;
+        Boss b = new Boss(300, 100, 64, 64);
+        b.setSeed(7L);
+        w.boss = b;
+
+        boolean opened = false;
+        for (int i = 0; i < 60 * 60 && !opened; i++) {
+            w.update(GameLoop.DT);
+            opened = b.weakPointOpen();
+        }
+        verdict("a weak-point window opens, to measure the armour against", opened);
+        if (!opened) return;
+
+        int landed = 0;
+        for (int i = 0; i < 4; i++) if (b.hit(3.0)) landed++;
+        verdict("and the window takes exactly two hits, not four (" + landed + " of four landed)", landed == 2);
+
+        int second = 0;
+        for (int i = 0; i < 60 * 60 && second == 0; i++) {
+            w.update(GameLoop.DT);
+            if (b.weakPointOpen()) for (int k = 0; k < 4; k++) if (b.hit(3.0)) second++;
+        }
+        verdict("and the next window is fresh rather than the same exhausted one (" + second + " landed)", second == 2);
+    }
+
 }
