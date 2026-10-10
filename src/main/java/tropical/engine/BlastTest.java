@@ -90,7 +90,74 @@ public class BlastTest {
         verdict("a blast is worth about three arrows off a boss - it took " + (int) took
                 + " against one arrow's 3", took > 6 && took < 15);
 
+        bossVolleyHurtsThePlayer();
+
         System.out.println("\n=== " + passes + " passed, " + failures + " failed ===");
         return failures;
+    }
+
+    /**
+     * AND WHAT THE BOSS DOES TO YOU, which is a blast as well: its volley lobs a charge.
+     *
+     * <p>This lives here rather than in the suite because the volley IS a blast - the boss lobs a bomb, whose blast
+     * already raises `playerBlastPending` for a body marked `oneway` - and because this class is ported to the
+     * release, where the boss was frozen until 10 October and its volley could therefore never fire at all.
+     *
+     * <p>It was three fixtures wrong before it was right, and every one of those was a fact about the game:
+     * the volley needs PHASE 2 (chooseAttack returns VOLLEY only when phase >= 2), the boss WALKS TO THE PLAYER
+     * before choosing (so a stationary body is always in the close branch, CHARGE or JUMP_SLAM), and a Boss's
+     * Random is TIME-SEEDED (so the check passed alone and failed in the gate).
+     */
+    static void bossVolleyHurtsThePlayer() {
+        World w = new World();
+        Physics.Body p = new Physics.Body(1500, 100, 24, 44);   // far away, so the boss chooses to lob at it
+        p.oneway = true;
+        p.noGravity = true;
+        w.addBody(p);
+        w.playerBody = p;
+        Boss boss = new Boss(300, 100, 64, 64);
+        // SEEDED, because a Boss's Random is time-seeded and its attack choice is therefore not reproducible: this
+        // check passed on its own and failed inside the gate on its first run. The class provides setSeed for exactly
+        // this, and a flaky check is worse than no check.
+        boss.setSeed(7L);
+        w.setBoss(boss);                                        // THE METHOD, which wires the volley
+
+        // IT ONLY LOBS FROM ITS SECOND PHASE - `chooseAttack` returns VOLLEY only when `phase >= 2` - so the boss has
+        // to be damaged first, and that is FIXTURE work rather than the thing under test: how damage reaches the boss
+        // is the arrow check's job. The first version of this check drove an undamaged boss for sixty seconds,
+        // watched it charge, and reported no volley - a fixture that had not set up its own premise.
+        // AND THE PLAYER HAS TO KEEP RUNNING, which is the whole shape of the attack. In IDLE the boss WALKS toward
+        // the player before choosing, so against a stationary body it is always inside 250px and always picks the
+        // close branch - CHARGE or JUMP_SLAM. The volley is the answer to a player who keeps their distance, and the
+        // first two versions of this check never saw one for that reason: the fixture was standing still.
+        for (int i = 0; i < 60 * 120 && boss.phase() < 2; i++) {
+            p.vx = 200;                                  // the player's own run speed, fleeing
+            w.update(GameLoop.DT);
+            if (boss.weakPointOpen()) boss.hit(3.0);
+        }
+        verdict("boss: it reaches its second phase once it takes damage (phase " + boss.phase() + ")", boss.phase() >= 2);
+
+        Projectile charge = null;
+        for (int i = 0; i < 60 * 60 && charge == null; i++) {
+            p.vx = 200;
+            w.update(GameLoop.DT);
+            for (Projectile pr : w.projectiles) {
+                if (pr.type == Projectile.Type.BOMB) { charge = pr; break; }
+            }
+        }
+        verdict("boss: its volley lobs a charge at the player (one in flight: " + (charge != null) + ")",
+                charge != null);
+        if (charge == null) return;
+
+        // AND THE CHARGE IS A WEAPON, not a decoration: put the player on it and let the fuse run out.
+        p.x = charge.x;
+        p.y = charge.y;
+        boolean hurt = false;
+        for (int i = 0; i < 60 * 3 && !hurt; i++) {
+            w.update(GameLoop.DT);
+            hurt = w.playerBlastPending;
+        }
+        verdict("boss: and a player standing on that charge is flagged for damage", hurt);
+    
     }
 }
