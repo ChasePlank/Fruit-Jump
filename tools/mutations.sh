@@ -138,9 +138,43 @@ for m in "${MUTATIONS[@]}"; do
       timeout 60 "$JDK/bin/java" --module-path "$FX" --add-modules "$MODS" -cp "classes:src/main/resources" \
         "$s" >/dev/null 2>&1 || noticed="$noticed ${s##*.}"
     done
+    # EVERY NOTICER IS VERIFIED BEFORE IT COUNTS, and this is the fix for three false verdicts in one week. A suite
+    # can fail for a reason that has nothing to do with the mutation: a dead display failed fourteen of them at once
+    # and a mutation looked "caught by fourteen suites"; a mutated build that would not start was reported as
+    # "caught by Main"; and a flaky Robot test aborting was counted as a detection, WHICH HID A REAL GAP - the run's
+    # length is not asserted by anything and the tool said it was.
+    #
+    # So: put the source back, REBUILD (or the suites would run the mutated classes that are still in classes/), and
+    # run the noticers again. A suite that fails without the mutation is not evidence; it is a baseline failure, and
+    # it is reported as one. Twice, because a flaky abort needs more than one chance to show itself - and the
+    # residual is named rather than hidden: a suite that flakes less often than one in two will still get through.
+    real=""
     if [ -n "$noticed" ]; then
-      printf 'caught by%s\n' "$noticed"
+      cp "$BAK" "$file"
+      "$JDK/bin/javac" --module-path "$FX" --add-modules "$MODS" -cp classes -d classes \
+        $(find src/main/java -name '*.java') >/tmp/tp-mutation-rebuild.log 2>&1
+      for s in $noticed; do
+        q=$(grep -rl "public static void main" src/main/java --include='*.java' \
+              | sed 's|src/main/java/||; s|\.java$||; s|/|.|g' | grep -E "\.$s\$" | head -1)
+        [ -z "$q" ] && continue
+        baseline=""
+        for _ in 1 2; do
+          timeout 60 "$JDK/bin/java" --module-path "$FX" --add-modules "$MODS" -cp "classes:src/main/resources" \
+            "$q" >/dev/null 2>&1 || baseline="yes"
+        done
+        if [ -n "$baseline" ]; then
+          printf '\n    (%s fails WITHOUT the mutation too - not evidence)\n' "$s"
+        else
+          real="$real $s"
+        fi
+      done
+    fi
+    if [ -n "$real" ]; then
+      printf 'caught by%s\n' "$real"
       caught=$((caught + 1))
+    elif [ -n "$noticed" ]; then
+      printf 'NOT CAUGHT - the only suite(s) that failed also fail unmutated\n'
+      missed=$((missed + 1))
     else
       printf 'NOT CAUGHT - no suite notices this\n'
       missed=$((missed + 1))
