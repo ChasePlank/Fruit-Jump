@@ -45,7 +45,12 @@ MUTATIONS=(
   "arrows do no damage|src/main/java/tropical/engine/World.java|ARROW_DAMAGE = 3.0;|ARROW_DAMAGE = 0.0;|all"
   "the run is two levels long|src/main/java/tropical/engine/LevelGen.java|FINAL_LEVEL = 40;|FINAL_LEVEL = 2;|all"
   "the boss takes unlimited hits in a window|src/main/java/tropical/engine/Boss.java|MAX_HITS_PER_WINDOW = 2;|MAX_HITS_PER_WINDOW = 99;|all"
-  "the tutorial stops explaining|src/main/java/tropical/Tutorial.java|s.add(new Sign(44 * 32, y - 34, \"that is everything. good luck\"));|// sign removed|all"
+  # THE TUTORIAL'S SIGNS ARE NOT THE MECHANISM, which this entry got wrong for a week. Deleting a sign came back
+  # NOT CAUGHT and I read that as a gap - but the lesson lives in the LEVEL, not the text: Tutorial's own comment says
+  # "No sign: this level shows rather than says, and the platform moving is the explanation." CoverageTest asserts
+  # that every mechanic the run uses appears in a tutorial GRID, and it passes. The mutation was unfair, not the
+  # check. This is the fair version of it: take the mechanic away and see whether the check notices.
+  "the tutorial stops introducing moving platforms|src/main/java/tropical/Tutorial.java|built.addMover(LevelMap.MoverSpec.vertical(|if (false) built.addMover(LevelMap.MoverSpec.vertical(|all"
   "audio: landing sounds are not rate-limited|src/main/java/tropical/engine/AudioSystem.java|LAND_COOLDOWN_TIME = 0.1;|LAND_COOLDOWN_TIME = 0.0;|tropical.engine.AudioRateTest"
   "boss: the volley is not wired|src/main/java/tropical/engine/World.java|b.setVolleyCallback((x, y, dirX) -> addProjectile(Projectile.bomb(x, y, dirX < 0 ? -1 : 1)));|// volley not wired|tropical.engine.BlastTest"
   "boss: it does not think every frame|src/main/java/tropical/engine/World.java|if (boss != null && !boss.dead) boss.update(dt, playerBody);|;|tropical.engine.BlastTest"
