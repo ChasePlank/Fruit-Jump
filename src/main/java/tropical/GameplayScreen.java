@@ -347,7 +347,11 @@ public class GameplayScreen extends Screen {
 
                     double frameTime = (now - lastPulse) / 1e9;
                     lastPulse = now;
-                    frameTime = Math.min(frameTime, 0.25);  // spiral-of-death cap
+                    // THE CLAMP IS NAMED, NOT TYPED. This was  - the same value as
+                    // GameLoop.MAX_FRAME with neither the name nor the comment, in the file that actually runs the
+                    // loop. The sibling repository fixed this a day ago and it did not cross over; the engine's copy
+                    // of the number was in a path where it could never fire.
+                    frameTime = Math.min(frameTime, tropical.engine.GameLoop.MAX_FRAME);
 
                     accumulator += frameTime;
                     while (accumulator >= GameLoop.DT) {
