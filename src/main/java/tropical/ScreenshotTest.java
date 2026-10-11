@@ -98,7 +98,43 @@ public class ScreenshotTest extends Application {
                     System.out.println("FAIL: " + ex.getMessage());
                     Platform.exit(); System.exit(1); return;
                 }
-                Platform.exit(); System.exit(0);
+                // AND IT ASSERTS SOMETHING ABOUT WHAT IT DREW, which this test did not do until now. The class doc
+                // has claimed "verifies sprites render (non-sky pixels where sprites should be)" since it was
+                // written, while the body saved a PNG and exited 0 - which is why a backwards parallax passed it.
+                //
+                // Two claims, both cheap because the pixels are already being read:
+                //   * the frame is not just sky - a real gameplay frame has many distinct colours in it;
+                //   * the frame CHANGES when the camera moves, which is the weakest true statement about parallax
+                //     and the one a rendering test can make without knowing where the ridges are drawn. The
+                //     arithmetic of the parallax is pinned by ParallaxTest; this pins that anything is drawn at all.
+                int distinct = 0;
+                java.util.Set<Integer> seen = new java.util.HashSet<>();
+                for (int y = 0; y < h; y += 4) for (int x = 0; x < w; x += 4) seen.add(reader.getArgb(x, y));
+                distinct = seen.size();
+                System.out.println((distinct > 20 ? "PASS: " : "FAIL: ")
+                        + "the frame has more than a sky in it (" + distinct + " distinct colours sampled)");
+                if (distinct <= 20) { Platform.exit(); System.exit(1); }
+
+                // Move the player, which moves the camera, and compare.
+                final WritableImage first = img;
+                robot.keyPress(KeyCode.RIGHT);
+                javafx.animation.PauseTransition w3 = new javafx.animation.PauseTransition(
+                        javafx.util.Duration.millis(700));
+                w3.setOnFinished(e3 -> {
+                    robot.keyRelease(KeyCode.RIGHT);
+                    WritableImage second = scene.snapshot(null);
+                    var r2 = second.getPixelReader();
+                    int changed = 0, sampled = 0;
+                    for (int y = 0; y < h; y += 4) for (int x = 0; x < w; x += 4) {
+                        sampled++;
+                        if (first.getPixelReader().getArgb(x, y) != r2.getArgb(x, y)) changed++;
+                    }
+                    int pct = (int) Math.round(100.0 * changed / sampled);
+                    System.out.println((changed > 0 ? "PASS: " : "FAIL: ")
+                            + "and moving the camera changes what is drawn (" + pct + "% of sampled pixels)");
+                    Platform.exit(); System.exit(changed > 0 ? 0 : 1);
+                });
+                w3.play();
             });
             w2.play();
         });
