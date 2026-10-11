@@ -34,6 +34,7 @@ MODS=javafx.controls,javafx.graphics,javafx.media,javafx.swing
 
 # label | file | anchor | replacement | suite
 MUTATIONS=(
+  "the parallax moves the wrong way|src/main/java/tropical/engine/Camera.java|return x * scrollFactor;|return x * (1 - scrollFactor);|all"
   # PORTED FROM THE ENGINE'S LIST, where each of these was already caught. Same engine, same anchors - the paths and
   # the suite are the only things that differ, and the suite is `all` because this repository has no SelfTest to name.
   "piranha: it never drifts when idle|src/main/java/tropical/engine/Piranha.java|IDLE_SPEED = 28;|IDLE_SPEED = 0.0;|all"
