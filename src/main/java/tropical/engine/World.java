@@ -122,7 +122,6 @@ public class World {
     AudioSystem audio = null;  // optional
 
     // Slope tuning
-    static final double SLOPE_SNAP_UP = 12.0;    // max px/frame feet can snap up (walking up)
     static final double SLOPE_SNAP_DOWN = 14.0;  // max px/frame feet can snap down (walking down)
     static final double SLOPE_SLIDE_ACC = 900.0; // slide acceleration on steep slopes
     
