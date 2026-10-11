@@ -34,6 +34,13 @@ MODS=javafx.controls,javafx.graphics,javafx.media,javafx.swing
 
 # label | file | anchor | replacement | suite
 MUTATIONS=(
+  # PORTED FROM THE ENGINE'S LIST, where each of these was already caught. Same engine, same anchors - the paths and
+  # the suite are the only things that differ, and the suite is `all` because this repository has no SelfTest to name.
+  "piranha: it never drifts when idle|src/main/java/tropical/engine/Piranha.java|IDLE_SPEED = 28;|IDLE_SPEED = 0.0;|all"
+  "damage: the knockback pushes you IN|src/main/java/tropical/engine/Combat.java|player.vx = dir * KNOCKBACK_X;|player.vx = -dir * KNOCKBACK_X;|all"
+  "slopes: no snap onto a ramp from a ledge|src/main/java/tropical/engine/World.java|SLOPE_SNAP_DOWN = 14.0;|SLOPE_SNAP_DOWN = 0.0;|all"
+  "stomp: no bounce off an enemy|src/main/java/tropical/engine/Combat.java|STOMP_BOUNCE = -400;|STOMP_BOUNCE = 0.0;|all"
+
   # THE WATER, which is where this game's tension lives and which had no mutation at all. A long stretch of it
   # drowns you; twelve seconds of breath is what makes a river a decision rather than a detour.
   "water: you can hold your breath forever|src/main/java/tropical/engine/WaterSystem.java|BREATH_SECONDS = 12.0;|BREATH_SECONDS = 1200.0;|tropical.engine.WaterSuite"
