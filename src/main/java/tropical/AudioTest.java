@@ -28,6 +28,26 @@ public class AudioTest extends Application {
     public static void main(String[] args) { launch(args); }
 
     @Override public void start(Stage stage) {
+        // AN UNCAUGHT EXCEPTION ON A JAVAFX THREAD IS NOT A VERDICT, AND IT MUST NOT LOOK LIKE ONE.
+        //
+        // The sibling repository spent three gate runs finding this: loading a clip with no audio device throws from
+        // JavaFX's own media thread, where nothing here can catch it, so the stack trace lands on stderr whenever that
+        // thread gets there - sometimes after this suite's summary. The gate reads the last summary-shaped line, so a
+        // green run came back red with a bare "#" as the reason.
+        //
+        // One line, never a trace. A player it could not create is the SANDBOX'S; anything else counts against the
+        // run, so the fix is not silence.
+        final java.util.List<String> asyncErrors = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
+        final java.util.concurrent.atomic.AtomicInteger noDevice = new java.util.concurrent.atomic.AtomicInteger();
+        Thread.setDefaultUncaughtExceptionHandler((thread, e) -> {
+            boolean device = "MediaException".equals(e.getClass().getSimpleName())
+                    && String.valueOf(e.getMessage()).contains("Could not create player");
+            if (device) noDevice.incrementAndGet();
+            else asyncErrors.add(e.getClass().getSimpleName() + ": " + e.getMessage());
+            System.out.println("  (media thread: " + e.getClass().getSimpleName() + " - "
+                    + (device ? "no audio device here, expected" : "UNEXPECTED") + ")");
+        });
+
         Sound s = Sound.load(".");
         int total = AudioSystem.sfxNames().length;
         int missing = s.missing().size();
@@ -46,6 +66,18 @@ public class AudioTest extends Application {
         int tracksLoaded = s.musicLoaded();
         System.out.println("music tracks loaded: " + tracksLoaded + " of " + tracksWanted);
         ok = ok && tracksLoaded == tracksWanted;
+
+        // A settle, so anything the media threads had to say is in the report rather than after it. The verdict does
+        // not depend on it: the presence checks above are the ones that decide.
+        try { Thread.sleep(400); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+        if (!asyncErrors.isEmpty()) {
+            System.out.println("async errors: " + asyncErrors);
+            ok = false;
+        }
+        if (noDevice.get() > 0) {
+            System.out.println("note: " + noDevice.get() + " media thread(s) could not create a player - no audio"
+                    + " device in this sandbox. The cue list above is the part that works everywhere.");
+        }
 
         System.out.println(ok
                 ? "SUCCESS: all " + total + " cue(s) and " + tracksWanted + " track(s) present and loaded"
