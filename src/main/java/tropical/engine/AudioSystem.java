@@ -164,7 +164,11 @@ public class AudioSystem {
         
         String from = currentMusic.trackName != null ? currentMusic.trackName : "silence";
         String to = music.trackName != null ? music.trackName : "silence";
-        log(String.format("MUSIC %s -> %s vol=%.2f", from, to, musicVolume));
+        // AND NO VOLUME IN THIS LINE, which the sibling removed for a reason worth repeating: the field it names is not
+        // the volume the player set - that lives in the UI half and is applied to the clip by Sound. A log line is a
+        // claim, and the only volume this class can honestly report is the one it does not own. Ported late; the
+        // engine deleted it a day before the release did.
+        log(String.format("MUSIC %s -> %s", from, to));
         currentMusic = music;
     }
     

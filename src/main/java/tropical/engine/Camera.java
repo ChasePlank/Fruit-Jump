@@ -135,6 +135,11 @@ public class Camera {
     /** Get parallax offset for a layer with given scroll factor (0 = fixed, 1 = camera speed). */
     public double parallaxOffset(double scrollFactor) {
         // Layer moves less than camera, creating depth
-        return x * (1 - scrollFactor);
+        // PARALLAX LAYERS MOVE LESS THE FURTHER AWAY THEY ARE, and this was `x * (1 - scrollFactor)` - which
+        // inverts it: far() is 0.3 and near() is 0.6, so the distance ridge travelled 70% of the camera and the
+        // near one 40%. The convention is documented on ParallaxLayer itself ("0 = fixed in screen space, 1 = moves
+        // with camera") and the sibling repository has always done it this way. Found by tools/check-platformer-match.sh,
+        // which is the first thing that has ever compared the two engines.
+        return x * scrollFactor;
     }
 }
