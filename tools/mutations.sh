@@ -50,7 +50,7 @@ MUTATIONS=(
   "run: the game ends after ten levels|src/main/java/tropical/engine/LevelGen.java|int FINAL_LEVEL = 40;|int FINAL_LEVEL = 10;|all"
   "water: nothing is deep enough to swim|src/main/java/tropical/engine/WaterSystem.java|SWIM_DEPTH = 48.0;|SWIM_DEPTH = 100000.0;|all"
   "water: the water does not slow you|src/main/java/tropical/engine/WaterSystem.java|DRAG_X = 2.5;|DRAG_X = 0.0;|all"
-  "hookshot: the stall guard switched off|src/main/java/tropical/engine/WaterSystem.java|STALL_TIME = 0.3;|STALL_TIME = 0.0;|all"
+  "hookshot: the stall guard switched off|src/main/java/tropical/engine/Hookshot.java|STALL_TIME = 0.3;|STALL_TIME = 0.0;|all"
   "weapons: arrows fly straight|src/main/java/tropical/engine/Projectile.java|ARROW_GRAVITY = 250;|ARROW_GRAVITY = 0.0;|all"
   "weapons: the blast hurts nobody|src/main/java/tropical/engine/Projectile.java|BLAST_DAMAGE_RANGE = 100;|BLAST_DAMAGE_RANGE = 0.0;|all"
   "piranha: no punish window after a miss|src/main/java/tropical/engine/Piranha.java|RECOVER_TIME = 1.1;|RECOVER_TIME = 0.0;|all"
@@ -73,7 +73,7 @@ MUTATIONS=(
   "bats: the dive never ends|src/main/java/tropical/engine/Bat.java|SWOOP_TIME = 0.5;|SWOOP_TIME = 0.0;|all"
   "bats: it cannot dive again for twenty seconds|src/main/java/tropical/engine/Bat.java|SWOOP_RECOVER = 0.85;|SWOOP_RECOVER = 20.0;|all"
   "boss: it never lobs a volley|src/main/java/tropical/engine/Boss.java|return phase >= 2 && rng.nextDouble() < 0.5 ? Attack.VOLLEY : Attack.CHARGE;|return phase >= 99 && rng.nextDouble() < 0.5 ? Attack.VOLLEY : Attack.CHARGE;|all"
-  "tutorial: one level short of the boss|src/main/java/tropical/Tutorial.java|int LAST = 11;|int LAST = 10;|all"
+  "tutorial: one level short of the boss|src/main/java/tropical/Tutorial.java|public static final int LAST = 10;|public static final int LAST = 9;|all"
 
   # THE WATER, which is where this game's tension lives and which had no mutation at all. A long stretch of it
   # drowns you; twelve seconds of breath is what makes a river a decision rather than a detour.
