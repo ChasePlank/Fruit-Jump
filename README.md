@@ -53,7 +53,7 @@ java -jar target/tropical-punch-1.0.0.jar
 
 ## What's in it
 
-- **A boss, every tenth level.** `Boss` is 368 lines of multi-phase AI, telegraphed attacks and weak-point
+- **A boss, every tenth level.** `Boss` is 374 lines of multi-phase AI, telegraphed attacks and weak-point
   windows: a hunched, horned brute that only takes damage while the mark on its
   back is lit, and that throws charges when you keep your distance. It is placed by the generator on the
   tenth level of a run, seeded from the level so the fight is the same on every attempt.
