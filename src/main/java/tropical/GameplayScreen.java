@@ -107,11 +107,11 @@ public class GameplayScreen extends Screen {
     /**
      * How far the sun has gone down by a level, from 0 at the first to 1 at the last.
      *
-     * <p><b>PUBLIC AND NAMED SO A CHECK CAN READ IT.</b> It was an expression inline in the drawing method, and the
-     * only way to see it was to look at the sky - which is how a comment beside the constant came to claim "its sun
-     * is fully down at exactly the level that ends the game" while the arithmetic gives 0.975 there and 1.0 one level
-     * later. Nearly true is the same as not true in a comment, and the fix is to make the number readable rather than
-     * to argue about it.
+     * <p><b>PUBLIC AND NAMED SO A CHECK CAN READ IT.</b> It was an expression inline in the drawing method, so the
+     * only way to see it was to look at the sky - which is how a comment beside the constant came to claim the sun is
+     * "fully down at exactly the level that ends the game". The arithmetic gives 0.975 there and 1.0 one level later,
+     * with the ending screen in full night, so that was off by one. Nearly true is the same as not true in a comment,
+     * and the fix is to make the number readable rather than to argue about it.
      */
     public static double duskFor(int levelNum) {
         return Math.max(0.0, Math.min(1.0, (levelNum - 1) / (double) LEVELS_TO_DUSK));
