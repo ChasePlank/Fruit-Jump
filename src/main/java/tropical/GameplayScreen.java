@@ -530,12 +530,7 @@ public class GameplayScreen extends Screen {
                 return;
             }
             int nextLevel = levelNum + 1;
-            SaveSystem.GameState checkpoint = new SaveSystem.GameState();
-            checkpoint.levelNum = nextLevel;
-            checkpoint.playerX = -1; checkpoint.playerY = -1;  // -1 = spawn
-            checkpoint.playerHP = (int) combat.playerHP;
-            checkpoint.keys = inventory.keys;
-            checkpoint.playTime = playTime;
+            SaveSystem.GameState checkpoint = checkpointFor(nextLevel, combat, inventory, playTime);
             try {
                 new SaveSystem().save(checkpoint, SAVE_FILE);
             } catch (java.io.IOException ex) {
@@ -1164,4 +1159,32 @@ private void drawRidge(ParallaxLayer layer, Color colour, double amplitudeFracti
         return out;
     }
 
+
+    /**
+     * The checkpoint that carries a run into the next level: HP, the lives cap, keys and time, spawning at the level
+     * start.
+     *
+     * <p><b>EXTRACTED SO A TEST CAN CALL IT, and the engine repository did this first.</b> It was six inline
+     * statements here, and the engine's mutation sweep found the consequence on its own copy: changing
+     * `playerHP = combat.playerHP` to a flat `3` - the exact bug a player reported as "lives still reset each
+     * level" - left the gate green at 449 passed, 0 failed, because a screen needs a UiManager and a display and
+     * nothing headless could reach the line. Behaviour written inline in a screen is behaviour no test can call.
+     *
+     * <p><b>AND THE SAME LINE WAS MISSING HERE: `maxHP`.</b> This edition's `applyState` reads
+     * `combat.maxHP = Math.max(3, state.maxHP)`, and the checkpoint never wrote it - so the field kept its default
+     * of 3 and A LIVES CAP RAISED BY THE HEART-IN-A-JAR WAS RESET AT EVERY LEVEL TRANSITION. The engine's copy has
+     * carried it since the extraction; this one had never been looked at, and the difference is visible only to a
+     * player who picked one up.
+     */
+    public static SaveSystem.GameState checkpointFor(int nextLevel, tropical.engine.Combat combat,
+                                                     tropical.engine.PlayerInventory inv, double playTime) {
+        SaveSystem.GameState c = new SaveSystem.GameState();
+        c.levelNum = nextLevel;
+        c.playerX = -1; c.playerY = -1;      // -1 = spawn at the level start, but restore the stats
+        c.playerHP = (int) combat.playerHP;
+        c.maxHP = (int) combat.maxHP;
+        c.keys = inv.keys;
+        c.playTime = playTime;
+        return c;
+    }
 }
