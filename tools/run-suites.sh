@@ -122,6 +122,34 @@ for full in "${suites[@]}"; do
     why=$(echo "$out" | grep -m1 -E 'Exception|Error|Unable to' | cut -c1-70)
     why="${why:-no verdict line and no exception - did it run?}"
   fi
+  # A SUITE THAT DIED IN THE JVM IS NOT A SUITE THAT FAILED A CHECK, and this gate could not tell them apart.
+  #
+  # MEASURED 2026-10-12: FOUR crashes in one day, in FOUR DIFFERENT SUITES - CustomizeTest, GameplayRobotTest,
+  # TutorialTest, RoomsTest - and every crash dump is identical: SIGSEGV at the same `getenv+0x9d` inside libc, on
+  # a native thread, 0.3 seconds into startup, while JavaFX's natives load and BEFORE ANY CHECK RUNS. Each was
+  # reported here as that suite failing, and two of them sent me looking for a flaky test that does not exist.
+  # Every one of those suites opens a window.
+  #
+  # SO: 134 (SIGABRT) and 139 (SIGSEGV) mean the PROCESS died, not that anything was asserted. Retried once,
+  # because a process that died before its checks ran cannot be evidence about the code - and if it dies again the
+  # crash is reproducible and is a failure. THE RETRY IS PRINTED: a silent retry is exactly how a real crash gets
+  # hidden, and telling the transient from the reproducible is what this distinction is for.
+  if [ $rc -eq 134 ] || [ $rc -eq 139 ]; then
+    printf '  %-20s CRASH  exit %s - the JVM died starting it, before any check ran; retrying once\n' "${t##*.}" "$rc"
+    hs=$(ls -t hs_err_pid*.log 2>/dev/null | head -1)
+    [ -n "$hs" ] && printf '  %-20s        crash dump: %s\n' "" "$hs"
+    out=$(timeout 300 "$JAVA" --module-path "$FX" --add-modules "$MODS" \
+          -cp "$OUT:src/main/resources" "$t" 2>&1)
+    rc=$?
+    if [ $rc -eq 134 ] || [ $rc -eq 139 ]; then
+      printf '  %-20s FAIL   exit %s TWICE - the JVM dies starting this suite, reproducibly\n' "${t##*.}" "$rc"
+      fail=$((fail+1)); failed_names+=("$t")
+    else
+      printf '  %-20s ok     the retry ran: %s\n' "${t##*.}" "$(echo "$out" | grep -vE '^WARNING|^[[:space:]]*at |^$' | tail -1 | cut -c1-60)"
+      pass=$((pass+1))
+    fi
+    continue
+  fi
   if [ $rc -ne 0 ]; then
     printf '  %-20s FAIL   exit %s: %s\n' "${t##*.}" "$rc" "$why"
     fail=$((fail+1)); failed_names+=("$t")
