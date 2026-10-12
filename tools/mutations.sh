@@ -102,6 +102,8 @@ MUTATIONS=(
   "checkpoint: the health is a fresh bar|src/main/java/tropical/GameplayScreen.java|c.playerHP = (int) combat.playerHP;|c.playerHP = 3;|all"
   "checkpoint: the lives cap is not carried|src/main/java/tropical/GameplayScreen.java|c.maxHP = (int) combat.maxHP;|c.maxHP = 3;|all"
   "checkpoint: the keys are not carried|src/main/java/tropical/GameplayScreen.java|c.keys = inv.keys;|c.keys = 0;|all"
+  "levels: a gap wider than the jump|src/main/java/tropical/engine/LevelGen.java|this.maxGapCells = Math.min(4, BASE_MAX_GAP_CELLS + (levelNum - 1) / 5);|this.maxGapCells = Math.min(7, BASE_MAX_GAP_CELLS + (levelNum - 1) / 5);|all"
+  "doors: the box is a sprite with no height|src/main/java/tropical/engine/LevelMap.java|d.visibleH = TILE * 2;|d.visibleH = 0;|all"
   "moving platform: a quarter of a period is a sixth of one|src/main/java/tropical/engine/MovingPlatform.java|double phase = (pathTimer / period) * 2 * Math.PI;|double phase = (pathTimer / period) * Math.PI;|all"
   "moving platform: the path is twice as wide as it says|src/main/java/tropical/engine/MovingPlatform.java|x = x0 + Math.sin(phase) * amplitude;|x = x0 + Math.sin(phase) * amplitude * 2;|all"
   "moving platform: the rider is carried TWICE as far|src/main/java/tropical/engine/World.java|b.x += delta[0] * dt;|b.x += 2 * delta[0] * dt;|all"
