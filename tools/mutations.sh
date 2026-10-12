@@ -101,6 +101,8 @@ MUTATIONS=(
   "moving platform: the path is twice as wide as it says|src/main/java/tropical/engine/MovingPlatform.java|x = x0 + Math.sin(phase) * amplitude;|x = x0 + Math.sin(phase) * amplitude * 2;|all"
   "moving platform: the rider is carried TWICE as far|src/main/java/tropical/engine/World.java|b.x += delta[0] * dt;|b.x += 2 * delta[0] * dt;|all"
   "moving platform: the rider is carried by both mechanisms again|src/main/java/tropical/engine/World.java|if (hitMover != null && ny == -1 && !b.carriedThisFrame) {|if (hitMover != null && ny == -1) {|all"
+  "particles: the pool's cursor points past the end|src/main/java/tropical/engine/ParticlePool.java|        nextIndex = 0;|        nextIndex = particles.size();|all"
+  "particles: a burst emits nothing|src/main/java/tropical/engine/Emitter.java|if (burstCount > 0) {|if (false) {|all"
 )
 
 if [ "${1:-}" = "--list" ]; then

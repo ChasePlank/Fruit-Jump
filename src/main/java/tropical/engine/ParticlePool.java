@@ -40,7 +40,17 @@ public class ParticlePool {
         // All particles active, grow the pool
         Particle p = new Particle();
         particles.add(p);
-        nextIndex = particles.size();
+        // THE CURSOR WRAPS; IT DOES NOT POINT PAST THE END.
+        //
+        // This was `nextIndex = particles.size()` - one past the last index - so the NEXT acquire called
+        // particles.get(size) and threw. MEASURED 2026-10-12 with a pool of 2: the third acquire grew the pool to
+        // 3, and the fourth threw "IndexOutOfBoundsException: Index 3 out of bounds for length 3".
+        //
+        // THE GAME'S POOL HOLDS 200 AND A SPLASH BURST IS AT MOST SIXTEEN, so it takes about thirteen splashes
+        // inside a particle's 0.25-0.6s lifetime to reach - rare, and not rare enough to leave: World.update is
+        // called from the JavaFX animation pulse with nothing catching, so when it does happen the FRAME LOOP dies
+        // rather than the effect. No test in either edition named this class until this one.
+        nextIndex = 0;
         return p;
     }
     
