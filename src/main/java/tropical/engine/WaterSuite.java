@@ -91,6 +91,42 @@ public class WaterSuite {
         System.exit(runAll() == 0 ? 0 : 1);
     }
 
+
+    /**
+     * An up-current lifts a body further than still water does.
+     *
+     * <p><b>THE RELEASE HAD NO CHECK FOR THIS AND THE ENGINE DID.</b> `tools/mutations.sh` reported
+     * "water: the up-current does nothing" as NOT CAUGHT here and caught in the sibling repository, whose
+     * `SelfTest` carries the check - a class the release cannot run. It is the same shape as the bat, the slope,
+     * the arrow and the boss's volley: a check that exists in one edition and not the other.
+     *
+     * <p><b>THE HONEST FORM IS A DIFFERENTIAL AGAINST STILL WATER</b>, because water lifts a body on its own -
+     * buoyancy is not the current. MEASURED in the engine edition: 78px of rise in still water over two seconds and
+     * 91px in the up-current, so the threshold sits between them and the check fails if the current is switched off
+     * while passing if it is merely retuned.
+     *
+     * <p><b>AND IT PINS BEHAVIOUR NO PLAYER CAN REACH, which is worth saying rather than implying otherwise.</b>
+     * `LevelMap` parses four current symbols - '&gt;' right, '&lt;' left, 'V' down, 'A' up - and the generator places
+     * only still water, in this edition as in the other. The check is here so that the day a level does place one,
+     * the code behind it is known to work.
+     */
+    static double riseInWater(char fill) {
+        StringBuilder sb = new StringBuilder();
+        String water = String.valueOf(fill).repeat(10);
+        sb.append("########################\n");
+        sb.append("#                      #\n");
+        sb.append("#                      #\n");
+        sb.append("#####          #########\n");
+        for (int r = 0; r < 4; r++) sb.append("#####").append(water).append("#########\n");
+        sb.append("########################\n");
+        World w = world(sb.toString());
+        Physics.Body p = new Physics.Body(384, 220, 24, 44);
+        w.addBody(p);
+        double y0 = p.y;
+        for (int i = 0; i < 120; i++) w.update(DT);
+        return y0 - p.y;
+    }
+
     /**
      * Run the whole suite and return the number of failures, so a caller can fold it into a
      * bigger gate.
@@ -274,6 +310,11 @@ public class WaterSuite {
             String.format("x=%.0f feet=%.0f jumps=%d", cp.x, cp.y + cp.hh, jumps));
         check("crossing: getting out needed a breach jump", jumps >= 1);
         check("crossing: one splash for the entry", cw.water.splashEvents() >= 1);
+
+        double stillRise = riseInWater('~');
+        double upRise = riseInWater('A');
+        check("up-current: it lifts a body higher than still water does", upRise > stillRise + 5,
+            String.format("%.0fpx still, %.0fpx in the current, over two seconds", stillRise, upRise));
 
         System.out.println();
         System.out.println(failures == 0 ? "ALL PASS" : failures + " CHECK(S) FAILED");
