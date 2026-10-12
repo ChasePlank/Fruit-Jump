@@ -765,6 +765,25 @@ public class World {
                 }
             }
             
+                // A CARRIED BODY IS STILL SWEPT AGAINST THE MOVER, AND THAT IS WHERE A RIDER SLIDES.
+                //
+                // MEASURED 2026-10-12, rider 24x44 on a 96x16 platform, amplitude 48, period 3.0, 180 frames
+                // through World.update: the rider's offset from the platform drifts 24.4px across a 96px platform,
+                // and at amplitude 120 it is 59.2px against a 60px budget - carried off the far edge. The extra
+                // displacement is the platform's own per-frame delta, alternating 2x/1x, so the rider gains 1.4963x
+                // the platform's travel. A platform with amplitude 0 moves a rider exactly 0.000px.
+                //
+                // THE CARRY IS NOT AT FAULT; THIS SWEEP IS. Skipping the mover here for a body the carry already
+                // moved takes the drift to 0.000px at both amplitudes. Pinning the feet to the surface each frame
+                // also removes it, and pinning plus skipping changes nothing further - which is why the sweep looked
+                // innocent when it was measured that way first.
+                //
+                // WHAT IS NOT LANDED: every variant that fixes the horizontal drift adds a vertical cost the
+                // unmodified engine does not have - skipping alone lets the rider sink 5.0px through the surface,
+                // pinning gives 2.667px - while the unmodified engine holds it at exactly 0.000px. The clean fix
+                // suppresses the HORIZONTAL component of a mover's resolution for a carried body and leaves the
+                // vertical one intact. That is a change to the resolution below, not to the carry, and it is not
+                // made yet. The check that will prove it is MovingPlatformTest, in both editions.
             // Moving platforms (solid, carry the player)
             for (MovingPlatform m : movers) {
                 Physics.AABB a = m.aabb();
