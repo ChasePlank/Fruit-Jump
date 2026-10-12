@@ -271,12 +271,16 @@ public class World {
         // (tEntry=0 is rejected), so collision-response carry never fires.
         // Direct displacement is the standard approach: if the player is
         // standing on the platform, move them with it.
+        for (Physics.Body b : bodies) {
+            b.carriedThisFrame = false;
+        }
         for (MovingPlatform m : movers) {
             double[] delta = m.update(dt);
             for (Physics.Body b : bodies) {
                 if (m.isCarrying(b)) {
                     b.x += delta[0] * dt;
                     b.y += delta[1] * dt;
+                    b.carriedThisFrame = true;
                 }
             }
         }
@@ -765,25 +769,26 @@ public class World {
                 }
             }
             
-                // A CARRIED BODY IS STILL SWEPT AGAINST THE MOVER, AND THAT IS WHERE A RIDER SLIDES.
+                // A CARRIED BODY IS STILL SWEPT AGAINST THE MOVER, WHICH IS HOW THE SECOND CARRY GETS ITS CHANCE.
                 //
                 // MEASURED 2026-10-12, rider 24x44 on a 96x16 platform, amplitude 48, period 3.0, 180 frames
-                // through World.update: the rider's offset from the platform drifts 24.4px across a 96px platform,
-                // and at amplitude 120 it is 59.2px against a 60px budget - carried off the far edge. The extra
-                // displacement is the platform's own per-frame delta, alternating 2x/1x, so the rider gains 1.4963x
-                // the platform's travel. A platform with amplitude 0 moves a rider exactly 0.000px.
+                // through World.update, BEFORE the fix below: the rider's offset from the platform drifted 24.4px
+                // across a 96px platform - and 461.6px at amplitude 120, 4598px on a circular path at amplitude 48.
+                // The rider gained 1.4963x the platform's travel, the extra being exactly the platform's per-frame
+                // delta on alternating frames.
                 //
-                // THE CARRY IS NOT AT FAULT; THIS SWEEP IS. Skipping the mover here for a body the carry already
-                // moved takes the drift to 0.000px at both amplitudes. Pinning the feet to the surface each frame
-                // also removes it, and pinning plus skipping changes nothing further - which is why the sweep looked
-                // innocent when it was measured that way first.
+                // THE CAUSE WAS TWO CARRY MECHANISMS BOTH FIRING. The direct displacement above carries a rider
+                // that isCarrying; the collision response below carries one that lands on the deck. Both are
+                // needed - a body at rest generates no collision at all (tEntry=0 is rejected), and a platform
+                // fast enough to outrun isCarrying's 4px tolerance is only caught by the response - but on the
+                // frames where the resting cycle's gravity dip IS resolved, both fired and the rider was carried
+                // twice. The response now checks `carriedThisFrame`.
                 //
-                // WHAT IS NOT LANDED: every variant that fixes the horizontal drift adds a vertical cost the
-                // unmodified engine does not have - skipping alone lets the rider sink 5.0px through the surface,
-                // pinning gives 2.667px - while the unmodified engine holds it at exactly 0.000px. The clean fix
-                // suppresses the HORIZONTAL component of a mover's resolution for a carried body and leaves the
-                // vertical one intact. That is a change to the resolution below, not to the carry, and it is not
-                // made yet. The check that will prove it is MovingPlatformTest, in both editions.
+                // AFTER: 0.333px on every path at the amplitude the generator places, which is one frame of the
+                // gravity dip and not a slide. At amplitude 120 a VERTICAL or CIRCULAR platform still outruns the
+                // 4px tolerance and loses its rider (22.95px and 5431px, unchanged by this fix) - a pre-existing
+                // limitation of a predicate-based carry, and not reachable from the generator, which places only
+                // horizontal movers at amplitude 48 (LevelGen: MoverSpec.horizontal, 96x16, 48, 3.0).
             // Moving platforms (solid, carry the player)
             for (MovingPlatform m : movers) {
                 Physics.AABB a = m.aabb();
@@ -841,8 +846,14 @@ public class World {
                     b.grounded = true;
                 }
 
-                // Carried by moving platform: inherit its velocity
-                if (hitMover != null && ny == -1) {
+                // Carried by moving platform: inherit its velocity.
+                //
+                // NOT IF THE DIRECT CARRY ALREADY MOVED IT THIS FRAME. Both mechanisms are needed - the direct one is
+                // the only one that fires for a rider resting on the deck (a body at rest generates no collision,
+                // tEntry=0 is rejected), and this one is the only one that keeps a rider aboard a platform fast
+                // enough to outrun isCarrying's 4px tolerance. Firing both in one frame carries the rider twice:
+                // MEASURED 1.4963x the platform's travel, a 24.4px slide across a 96px platform before the fix.
+                if (hitMover != null && ny == -1 && !b.carriedThisFrame) {
                     b.x += hitMover.vx * dt * remaining;
                     b.y += hitMover.vy * dt * remaining;
                 }

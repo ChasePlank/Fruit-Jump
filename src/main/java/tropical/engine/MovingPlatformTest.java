@@ -12,14 +12,28 @@ package tropical.engine;
  * <p><b>NO RENDERING NEEDED.</b> The path is arithmetic and the carry is a displacement, so this runs headless like
  * the other engine suites.
  *
- * <p><b>WHAT IS ASSERTED, AND WHAT IS MEASURED INSTEAD.</b> The path, the period, the velocity contract and the
- * carry predicate are asserted exactly - they are what the class documents about itself. The rider's drift across
- * the platform is NOT exact, and the honest form of that check is a bound derived from the platform's own geometry
- * rather than a number copied from one run: a rider that has slid further than half the platform's width is a rider
- * on its edge. MEASURED, at the parameters the generator actually uses: 24.4px of drift on a 96px platform, so the
- * bound holds with room and the number is printed on every run. At amplitude 120 the same measurement is 59px
- * against a 60px budget: the drift scales with the platform's travel, which is why the bound is a fraction of the
- * platform and not a constant.
+ * <p><b>AND IT FOUND THE FERRY SLIDING OUT FROM UNDER ITS RIDER.</b> Measured through `World` before any fix: the
+ * rider's offset from the platform drifted 24.4px across a 96px platform at the parameters the generator places -
+ * 461.6px at amplitude 120, and 4598px on a circular path at amplitude 48, where the rider simply fell off. The rider
+ * gained 1.4963x the platform's travel, the extra being exactly the platform's per-frame delta on alternating frames.
+ *
+ * <p><b>THE CAUSE WAS TWO CARRY MECHANISMS BOTH FIRING IN ONE FRAME.</b> `World` carries a rider by direct
+ * displacement when `isCarrying` is true, and again in the collision response when the body lands on the mover's top
+ * face. Both are needed - a body at rest generates no collision at all (tEntry=0 is rejected), and a platform fast
+ * enough to outrun `isCarrying`'s 4px tolerance is only caught by the response - but on the frames where the resting
+ * cycle's gravity dip is resolved, both fired and the rider was carried twice. The response now asks
+ * `Physics.Body.carriedThisFrame` first.
+ *
+ * <p><b>THE BOUND THIS FILE ASSERTS IS ONE PIXEL, and that is derived rather than convenient.</b> With the fix the
+ * residual drift is 0.333px on every path at the generator's amplitude - one frame of the gravity dip, which is what
+ * a rider resting on any surface in this engine sits within - while the fault it replaces produced tens to thousands
+ * of pixels. A bound a hair above the resting dip catches a return of the fault with three orders of magnitude to
+ * spare and does not fire on the dip itself.
+ *
+ * <p>NOT ASSERTED, and why: at amplitude 120 a VERTICAL or CIRCULAR platform moves faster than `isCarrying`'s 4px
+ * tolerance and loses its rider (22.95px and 5431px, unchanged by the fix). That is a real limitation of a
+ * predicate-based carry, it is not reachable from the generator - which places only horizontal movers, 96x16, at
+ * amplitude 48 and period 3.0 - and encoding it here as an expected failure would make this file assert the fault.
  */
 public class MovingPlatformTest {
     static int failures = 0;
@@ -147,12 +161,31 @@ public class MovingPlatformTest {
         double travel = excursion;
         verdict("the ferry actually travelled while carrying it (" + String.format("%.1f", travel) + "px)",
                 travel > AMP * 0.9);
-        // THE BOUND IS THE PLATFORM'S OWN GEOMETRY: half its width. A rider that has drifted further than that is
-        // past its centre and on the way off, so this fires on a carry that has stopped carrying - and it does not
-        // fire on the 24.4px the shipped parameters produce, which is a slide rather than a fall.
-        verdict("and the rider stays on it - drift " + String.format("%.1f", worstDrift)
-                + "px against a " + (int) (W / 2) + "px bound",
-                worstDrift < W / 2);
+        // ONE PIXEL, NOT HALF THE PLATFORM. Before the fix this bound was W/2, because the fault it was written
+        // against produced 24.4px - and a bound set for a broken engine stays a licence for it afterwards.
+        // MEASURED now: 0.333px, which is the gravity dip. Anything at or above a pixel is a carry double-counting.
+        verdict("and the rider stays on it - drift " + String.format("%.3f", worstDrift)
+                + "px against a 1px bound",
+                worstDrift < 1.0);
+
+        // ---- AND THE PATHS THAT WERE WORSE, at the amplitude the generator uses ----
+        // A circular mover dropped its rider entirely before the fix (4598px) and a vertical one drifted 1.675px.
+        // Both are 0.333px now, so they are asserted rather than mentioned.
+        for (MovingPlatform.PathType t : new MovingPlatform.PathType[]{
+                MovingPlatform.PathType.VERTICAL, MovingPlatform.PathType.CIRCULAR}) {
+            World w2 = new World();
+            MovingPlatform mov2 = new MovingPlatform(t, X0, Y0, W, H, AMP, PERIOD);
+            w2.addMover(mov2);
+            Physics.Body r2 = standingOn(mov2);
+            w2.addBody(r2);
+            double sox = r2.x - mov2.x, soy = r2.y - mov2.y, worst2 = 0;
+            for (int i = 0; i < frames; i++) {
+                w2.update(GameLoop.DT);
+                worst2 = Math.max(worst2, Math.hypot((r2.x - mov2.x) - sox, (r2.y - mov2.y) - soy));
+            }
+            verdict("a " + t.name().toLowerCase() + " mover holds its rider - drift "
+                    + String.format("%.3f", worst2) + "px", worst2 < 1.0);
+        }
 
         // ---- AND WHAT THIS DOES NOT COVER ----
         // `Emitter`, `Particle` and `ParticlePool` are in the same position: no test in either edition names them.

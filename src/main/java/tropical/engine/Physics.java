@@ -19,6 +19,18 @@ public class Physics {
         public boolean inWater;       // any part of the body below a water surface
         public double submersion;     // 0..1, how much of the body is under
         public double hw, hh;         // half-width, half-height (AABB)
+
+        /**
+         * The direct carry in {@code World.update} has already moved this body with a moving platform THIS frame.
+         *
+         * <p>There are two carry mechanisms and they double-count when both fire. The direct displacement moves a
+         * rider by the platform's delta; the collision response then adds the platform's velocity again when the
+         * body lands on the mover. On a resting rider the collision only fires on some frames - the ones where the
+         * gravity dip is resolved - so the rider gained 2x on those frames and 1x on the others: MEASURED, 1.4963x
+         * the platform's travel, and 24.4px of slide across a 96px platform. This flag is how the response knows the
+         * direct carry got there first. Reset at the top of every physics step, so it cannot go stale.
+         */
+        public boolean carriedThisFrame;
         public boolean grounded;      // touching ground this frame
         public boolean oneway;        // can jump through from below
         public boolean noGravity;     // skip gravity (hookshot pull, etc.)
