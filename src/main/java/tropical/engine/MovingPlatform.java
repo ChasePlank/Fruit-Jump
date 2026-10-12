@@ -28,7 +28,6 @@ public class MovingPlatform {
     final double amplitude;   // horizontal/vertical: distance from origin; circular: radius
     final double period;      // seconds for full cycle
     
-    Physics.Body standingPlayer = null; // player currently riding
     
     public MovingPlatform(PathType type, double x0, double y0, double w, double h,
                           double amplitude, double period) {

@@ -97,6 +97,9 @@ MUTATIONS=(
   "boss: it does not think every frame|src/main/java/tropical/engine/World.java|if (boss != null && !boss.dead) boss.update(dt, playerBody);|;|tropical.engine.BlastTest"
   "the validator stops matching the player|src/main/java/tropical/GameplayScreen.java|public static final double RUN_SPEED = 200;|public static final double RUN_SPEED = 300;|tropical.engine.PlayerModelTest"
   "rooms: no transition at all|src/main/java/tropical/engine/ScreenManager.java|TRANSITION_TIME = 0.3;|TRANSITION_TIME = 0.0;|tropical.engine.TransitionTest"
+  "moving platform: a quarter of a period is a sixth of one|src/main/java/tropical/engine/MovingPlatform.java|double phase = (pathTimer / period) * 2 * Math.PI;|double phase = (pathTimer / period) * Math.PI;|all"
+  "moving platform: the path is twice as wide as it says|src/main/java/tropical/engine/MovingPlatform.java|x = x0 + Math.sin(phase) * amplitude;|x = x0 + Math.sin(phase) * amplitude * 2;|all"
+  "moving platform: the rider is carried TWICE as far|src/main/java/tropical/engine/World.java|b.x += delta[0] * dt;|b.x += 2 * delta[0] * dt;|all"
 )
 
 if [ "${1:-}" = "--list" ]; then
