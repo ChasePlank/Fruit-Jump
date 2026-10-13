@@ -9,11 +9,15 @@ package tropical.engine;
  */
 public class WaterSuite {
     static int failures = 0;
+    /** Every check attempted, so the suite can report a count rather than only a verdict. */
+    static int checks = 0;
     static final double DT = GameLoop.DT;
 
     static void check(String n, boolean ok) { check(n, ok, ""); }
     static void check(String n, boolean ok, String d) {
         System.out.printf("%s  %s%s%n", ok ? "PASS" : "FAIL", n, d.isEmpty() ? "" : "   [" + d + "]");
+        checks++;
+        checks++;
         if (!ok) failures++;
     }
 
@@ -317,7 +321,7 @@ public class WaterSuite {
             String.format("%.0fpx still, %.0fpx in the current, over two seconds", stillRise, upRise));
 
         System.out.println();
-        System.out.println(failures == 0 ? "ALL PASS" : failures + " CHECK(S) FAILED");
+        System.out.println("=== " + (checks - failures) + " passed, " + failures + " failed ===");
         return failures;
     }
 }

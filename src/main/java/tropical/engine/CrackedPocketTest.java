@@ -6,9 +6,13 @@ package tropical.engine;
  *  falling into the pocket. */
 public class CrackedPocketTest {
     static int failures = 0;
+    /** Every check attempted, so the suite can report a count rather than only a verdict. */
+    static int checks = 0;
 
     static void verdict(String what, boolean ok) {
         System.out.println((ok ? "PASS: " : "FAIL: ") + what);
+        checks++;
+        checks++;
         if (!ok) failures++;
     }
 
@@ -118,6 +122,7 @@ public class CrackedPocketTest {
         System.out.printf("player ended at (%.0f,%.0f), hp=%.0f%n", player.x, player.y, combat.playerHP);
         boolean fellIn = player.y > cracked.y0;  // below the former floor line
         verdict("player falls through bombed hole into pocket", fellIn);
+        System.out.println("=== " + (checks - failures) + " passed, " + failures + " failed ===");
         return failures;
     }
 }
