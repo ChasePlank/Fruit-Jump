@@ -456,11 +456,16 @@ fi
 NOTES="docs/release-notes-1.15.md"
 if [ -f "$NOTES" ]; then
   RN_BAK=$(mktemp); cp "$NOTES" "$RN_BAK"
-  printf '\nDownload `holdfast-1.15-macos-x64.tar.gz` for macOS.\n' >> "$NOTES"
+  # TWO EXTENSIONS, because one of them was invisible until 2026-10-13: the pattern that reads names out of the
+  # notes did not match `.html` at all, so an html file promised and never attached passed silently - the exact fault
+  # this tool exists for, and the release that attaches one is the library's. The assertion below requires BOTH names
+  # to be reported, so a regression in either extension fails here rather than in a published release.
+  printf '\nDownload `holdfast-1.15-macos-x64.tar.gz` for macOS, and `holdfast-1.15-notes.html` for the changelog.\n' >> "$NOTES"
   out=$(tools/check-release-notes.sh --draft "$NOTES" holdfast-1.15-windows-x64.zip \
         holdfast-1.15-linux-x64.tar.gz tropical-punch.jar 2>&1); rc=$?
   cp "$RN_BAK" "$NOTES"; rm -f "$RN_BAK"
-  if [ $rc -ne 0 ] && echo "$out" | grep -q "holdfast-1.15-macos-x64.tar.gz"; then
+  if [ $rc -ne 0 ] && echo "$out" | grep -q "holdfast-1.15-macos-x64.tar.gz" \
+     && echo "$out" | grep -q "holdfast-1.15-notes.html"; then
     ok "check-release-notes --draft notices an unattached name" "$(echo "$out" | grep 'DRAFT FAILS' | tr -s ' ')"
   else
     bad "check-release-notes --draft notices an unattached name" "reported clean with a name attached to nothing"

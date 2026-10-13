@@ -62,7 +62,7 @@ import os, re, sys
 # the same extraction the published-release check uses, deliberately - a draft checked by different rules is not
 # evidence about what the publish will do
 def promised(body):
-    got = set(re.findall(r'[A-Za-z0-9._-]+\.(?:zip|tar\.gz|tgz|tar|AppImage)', body))
+    got = set(re.findall(r'[A-Za-z0-9._-]+\.(?:zip|tar\.gz|tgz|tar|AppImage|html)', body))
     got |= set(re.findall(r'Download\s*(?:\*\*)?\s*`?([A-Za-z0-9._-]+\.jar)', body))
     got |= set(re.findall(r'java\s+-jar\s+`?([A-Za-z0-9._-]+\.jar)', body))
     return got
@@ -115,11 +115,16 @@ everywhere = {a["name"] for r in releases for a in r.get("assets", [])}
 # bundle carries) were reported as missing assets. Twelve lines of noise over four real findings.
 #
 # NARROWED BY WHAT THE FILENAME IS FOR:
-#   archives  .zip .tar.gz .tgz .AppImage - always the thing you download, never inside another one. Anywhere.
+#   archives  .zip .tar.gz .tgz .AppImage .html - always the thing you download, never inside another one.
+#             Anywhere. **.html JOINED THIS LIST ON 2026-10-13**, and it belongs to the one fault this tool
+#             exists for: the aside release attaches `aside.html`, the pattern did not match it at all, and a
+#             notes file promising an html file that was NOT attached would have passed silently. Found by
+#             reading this tool's own output - the library release's draft reported "attaches (NOT NAMED)
+#             aside.html" for a file its notes name twice.
 #   jars      only after "Download" or after "java -jar"; `Holdfast.jar` inside the Windows zip is carried by the
 #             bundle, while `fruit-jump-1.13.jar` is the notes telling you what to fetch.
 def promised(body):
-    got = set(re.findall(r'[A-Za-z0-9._-]+\.(?:zip|tar\.gz|tgz|tar|AppImage)', body))
+    got = set(re.findall(r'[A-Za-z0-9._-]+\.(?:zip|tar\.gz|tgz|tar|AppImage|html)', body))
     got |= set(re.findall(r'Download\s*(?:\*\*)?\s*`?([A-Za-z0-9._-]+\.jar)', body))
     got |= set(re.findall(r'java\s+-jar\s+`?([A-Za-z0-9._-]+\.jar)', body))
     return got
