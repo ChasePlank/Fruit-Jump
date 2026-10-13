@@ -31,6 +31,25 @@ comparing the tutorial text against the code found them and reading the code alo
   a flooded level is built. But the game has two kinds, and the kind you can *swim* in was never shown. There is a
   pool now, with the controls on a sign beside it.
 
+## And three things that were broken without anyone being able to see them
+
+Found this week by looking at behaviour nothing was checking, which is where the last three releases' faults have
+all come from:
+
+- **Riding a moving platform slowly slid you off it.** The platform travelled 96px and the climber travelled 148 —
+  **1.4963x**, measured — because two carry mechanisms were both firing: the platform moved you, and then the
+  collision response moved you again. On the shipped settings that is 24px of drift across a single platform, and
+  on the worst path it was 461px. Both editions now agree the climber is carried once, and the measurement is
+  0.333px on every path.
+- **The extra hearts from a heart-in-a-jar did not survive a level.** The save the game writes at a level
+  transition carried your health and your keys but not your **lives cap**, so the cap was read back as the default
+  of 3 and the hearts you had earned were gone. This is the same fault a player reported as "lives still reset each
+  level" — the fix for that one carried the health and missed the cap beside it.
+- **A burst of splashes could kill the frame loop.** The droplet pool's cursor stepped one past its last index when
+  the pool had to grow, so the next droplet thrown an `IndexOutOfBoundsException` — from inside the animation pulse,
+  with nothing catching it. Around thirteen splashes inside half a second reaches it. One line, and a test that
+  fails without it.
+
 ## What is verified, and what is not
 
 Everything above is verified by **rendering** — screenshots of the real game, not test output. The tutorial's pool
