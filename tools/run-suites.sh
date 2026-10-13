@@ -158,6 +158,20 @@ for full in "${suites[@]}"; do
   fi
 done
 
+# AND THE APP ITSELF, WHICH THIS GATE EXCLUDED BY NAME. `Main` is listed in TOOLS above - a tool, not a suite - so
+# nothing here started it. The suites build their own screens and the Robot tests their own scenes, which means a
+# break in the entry point was invisible: `getResource("/style.css")` returning null, for instance.
+if [ -x tools/check-app-starts.sh ]; then
+  app_out=$(tools/check-app-starts.sh 2>&1); app_rc=$?
+  if [ $app_rc -eq 0 ]; then
+    echo "  app-start            ok     starts and stays up, with no exception"
+  else
+    echo "  app-start            FAIL   the app does not start"
+    echo "$app_out" | sed 's/^/    /' | head -4
+    fail=$((fail + 1)); failed_names+=("app-start")
+  fi
+fi
+
 echo "=== the readme ==="
 if [ -x tools/readme-counts.sh ]; then
   rc_out=$(tools/readme-counts.sh 2>&1); rc=$?

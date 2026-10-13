@@ -475,6 +475,27 @@ else bad "readme-counts clean after restore" "still failing once restored"; fi
 if tools/check-jar-current.sh >/dev/null 2>&1; then ok "jar-current clean after restore" "exit 0"
 else bad "jar-current clean after restore" "still failing once restored"; fi
 
+# ---- check-app-starts.sh must notice the app failing on its way up ------------------------------------------
+# THE FAULT IS THE ONE THE CHECK WAS WRITTEN FOR: Main builds its scene with
+# `getResource("/style.css").toExternalForm()`, so hiding that resource makes the entry point throw before the
+# window is up. MEASURED: with it hidden the app prints "Exception in Application start method" and the check reports
+# it; with it in place the process comes up and stays up.
+if [ -x tools/check-app-starts.sh ]; then
+  CSS=src/main/resources/style.css
+  if [ -f "$CSS" ]; then
+    CSSBAK=$(mktemp); cp "$CSS" "$CSSBAK"; mv "$CSS" "$CSS.hidden"
+    out=$(timeout 120 tools/check-app-starts.sh 2>&1); rc=$?
+    mv "$CSS.hidden" "$CSS"; rm -f "$CSSBAK"
+    if [ $rc -ne 0 ] && grep -q "failed on its way up" <<<"$out"; then
+      ok "check-app-starts notices the app failing to start" "$(echo "$out" | grep -m1 'Exception in Application' | tr -s ' ' | cut -c1-46)"
+    else
+      bad "check-app-starts notices the app failing to start" "exit $rc with style.css hidden"
+    fi
+  else
+    bad "check-app-starts notices the app failing to start" "no $CSS to hide"
+  fi
+fi
+
 echo
 echo "=== $pass tool self-test(s) passed, $fail failed ==="
 [ "$fail" -eq 0 ] || exit 1
