@@ -22,3 +22,17 @@ saves/
 # this line existed, which is how a release repository ends up carrying its own crash reports.
 hs_err_pid*.log
 replay_pid*.log
+
+# The same class as the crash logs above, and the reason a rule is worth having even when one instance is already
+# covered: THREE BUILD ARTEFACTS WERE TRACKED IN THIS RELEASE REPOSITORY, each regenerable and none of them
+# referenced by the pom, the scripts, the docs or the source - measured with grep before removing them.
+#
+#   javafx-swt.jar             36 KB, an SWT bridge nothing here uses
+#   dependency-reduced-pom.xml written by maven-shade-plugin on every build (the plugin is in pom.xml)
+#   fjerr.log                  a JavaFX startup warning from 2026-09-23
+#
+# `hs_err_pid*.log` was already ignored because two crash logs had been committed; `fjerr.log` is a log too, and it
+# slipped past a rule that named ONE KIND of log rather than logs.
+*.log
+javafx-swt.jar
+dependency-reduced-pom.xml
