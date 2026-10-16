@@ -83,6 +83,19 @@ while IFS= read -r f; do
 done < <(grep -rl "public static void main" src/main/java --include='*.java' | sort)
 echo "  (${#suites[@]} discovered; not run here: $TOOLS)"
 
+# AND IT REFUSES TO PASS BY HAVING DISCOVERED NOTHING. MEASURED 2026-10-16: with the discovery pattern broken, this
+# gate printed "(0 discovered)" and "=== 4 check(s) passed, 0 failed ===" AND EXITED 0 - a pass. The four checks that
+# still ran are the tool checks; the entire test suite was skipped and the exit code said everything was fine. THAT IS
+# THE SAME SHAPE THE OTHER THREE PROJECTS WERE SWEPT FOR THIS HOUR - a pass that cannot distinguish "nothing wrong"
+# from "nothing read" - and this is the copy of it that matters most, because `tools/release.sh` runs THIS GATE AS ITS
+# VERIFICATION STEP, so a broken discovery would let a release proceed on a tree nothing had tested. The sibling
+# repository's gate has had this floor for weeks (`found no suites under ...; exit 2`); this one did not.
+if [ ${#suites[@]} -eq 0 ]; then
+  echo "  no suites discovered under src/main/java - THE DISCOVERY PATTERN HAS STOPPED MATCHING, and a gate that ran" >&2
+  echo "  no tests must not report success. Fix the discovery, then read what it finds." >&2
+  exit 2
+fi
+
 for full in "${suites[@]}"; do
   t="$full"
   out=$(timeout 300 "$JAVA" --module-path "$FX" --add-modules "$MODS" \
