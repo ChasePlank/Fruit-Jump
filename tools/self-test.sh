@@ -527,5 +527,19 @@ if [ -x tools/check-app-starts.sh ]; then
 fi
 
 echo
+# ---- mutations.sh must REFUSE A FILTER THAT NAMES NO ENTRY ------------------------------------------------------
+# THE GUARD HAS EXISTED FOR WEEKS AND WAS NEVER INJECTED - verified by hand once, on a tool that is not in this gate,
+# so nothing would have noticed it being removed. The injection costs NOTHING, because a filter matching nothing runs
+# no suites at all, and what it guards is a run that prints OK over nothing: a typo in a filter, or an entry renamed,
+# reads as a pass.
+if [ -x tools/mutations.sh ]; then
+  mout=$(tools/mutations.sh "zzz-no-such-mutation-zzz" 2>&1); mrc=$?
+  if [ $mrc -ne 0 ] && grep -q "FILTER MATCHED NOTHING" <<<"$mout"; then
+    ok "mutations refuses a filter that names no entry" "$(grep 'FILTER MATCHED' <<<"$mout" | tr -s ' ' | cut -c1-44)"
+  else
+    bad "mutations refuses a filter that names no entry" "printed OK (rc=$mrc) over a filter matching nothing"
+  fi
+fi
+
 echo "=== $pass tool self-test(s) passed, $fail failed ==="
 [ "$fail" -eq 0 ] || exit 1
