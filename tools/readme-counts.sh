@@ -155,17 +155,28 @@ fi
 # sky comparison, the jar and six tools. All present today - checked by hand once - and a hand check is not a
 # check. Only relative targets: an https link is somebody else's problem.
 MISSING_FILES=""
+TARGETS=0
 for f in $(grep -oE '\[[^]]*\]\(([^)]+)\)' README.md | grep -oE '\(([^)]+)\)' | tr -d '()' | grep -vE '^https?:' | sort -u); do
+  TARGETS=$((TARGETS + 1))
   [ -e "$f" ] || MISSING_FILES="$MISSING_FILES $f"
 done
 # A BARE NAME IS RELATIVE TO tools/. The first version looked only at the repository root and reported six tools
 # missing that are all present under tools/ - the README's own prose says "the tools under `tools/`", so the bare
 # names are relative to that. A check built on a guess reports its own error as a fault in the repository.
 for f in $(grep -oE '`[A-Za-z0-9_./-]+\.(md|png|jar|sh|css|cmd)`' README.md | tr -d '`' | sort -u); do
+  TARGETS=$((TARGETS + 1))
   if [ ! -e "$f" ] && [ ! -e "tools/$f" ]; then MISSING_FILES="$MISSING_FILES $f"; fi
 done
-echo "  files the README names but that do not exist:${MISSING_FILES:- none}"
-if [ -z "$MISSING_FILES" ]; then echo "  ok"; else
+echo "  files the README names but that do not exist:${MISSING_FILES:- none}   ($TARGETS target(s) read)"
+# AND IT REFUSES TO PASS BY READING NOTHING - THE SAME GUARD THE UNWIRED-CLAIMS HALF BELOW ALREADY HAS, WHICH THIS
+# HALF WAS MISSING. Measured 2026-10-16: eleven targets read, so the guard cannot fire today. Without it, a README
+# rewritten to use different link syntax - or an extraction that simply broke - would leave MISSING_FILES empty,
+# print "none", and PASS: an empty list and a broken grep look identical, and this whole file exists because a hand
+# check is not a check.
+if [ "$TARGETS" -eq 0 ]; then
+  echo "  I READ NOTHING - the README names no relative file, or the extraction broke. That is not a pass." >&2
+  fails=$((fails + 1))
+elif [ -z "$MISSING_FILES" ]; then echo "  ok"; else
   echo "  MISMATCH - the README points at something that is not there" >&2; fails=$((fails + 1)); fi
 
 # AND THAT THE ENGINE STILL DOES NOT KNOW JAVAFX EXISTS. The README states it as a property - "the engine never

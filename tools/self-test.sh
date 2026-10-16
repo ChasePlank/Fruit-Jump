@@ -86,6 +86,31 @@ else
   bad "readme-counts notices a wrong tutorial count" "no 'N hand-built levels' line to break"
 fi
 
+# ---- readme-counts.sh must REFUSE TO PASS WHEN IT READS NOTHING ----------------------------------------------
+# THE HEADER OF THIS FILE ALREADY NAMED THE RISK - "readme-counts.sh would rot silently if the README parse stopped
+# matching" - and the file-reference half had NO GUARD FOR IT: an empty MISSING_FILES list printed "none" and passed,
+# and an empty list and a broken grep look identical. Measured 2026-10-16: eleven targets read, so the guard cannot
+# fire today; it fires when the extraction stops matching, which is what this injects.
+#
+# THE INJECTION NEUTRALISES THE EXTRACTION RATHER THAN THE README'S CONTENT: every markdown link target is made
+# https (which the half filters out on purpose) and every backticked file name gets a space before its closing tick
+# (which the pattern then misses). NOTHING IS DELETED, so the rest of the tool still has a README to read and any
+# other failure is a real one.
+if grep -qE '\]\([^)h]' README.md; then
+  RD_BAK=$(mktemp); cp README.md "$RD_BAK"
+  sed -i -E 's/\]\(([^)]+)\)/](https:\/\/x\/\1)/g' README.md
+  sed -i -E 's/`([A-Za-z0-9_./-]+\.(md|png|jar|sh|css|cmd))`/`\1 `/g' README.md
+  out=$(tools/readme-counts.sh 2>&1); rc=$?
+  if [ $rc -ne 0 ] && echo "$out" | grep -q "I READ NOTHING"; then
+    ok "readme-counts refuses to pass when it reads nothing" "$(echo "$out" | grep 'target(s) read' | tr -s ' ')"
+  else
+    bad "readme-counts refuses to pass when it reads nothing" "reported clean while reading nothing (rc=$rc)"
+  fi
+  cp "$RD_BAK" README.md; rm -f "$RD_BAK"
+else
+  bad "readme-counts refuses to pass when it reads nothing" "no relative link in the README to neutralise - fix this entry rather than letting it pass"
+fi
+
 # ---- readme-counts.sh must notice a BALANCE NUMBER that no longer matches the README ---------------------------
 # The patterns for these were wrong twice before they worked - one matched the wrong Math.max in the file and
 # returned "." as a value, which is worse than no match because it looks like a number. An assertion whose pattern
